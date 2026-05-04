@@ -9,6 +9,9 @@
     "install:all": "cd backend && npm install && cd ../frontend && npm install"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "vite": "^5.4.21",
+    "@vitejs/plugin-react": "^4.7.0",
+    "typescript": "^5.3.3"
   }
 }
