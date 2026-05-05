@@ -43,6 +43,18 @@ function IconUser({ active }: { active: boolean }) {
   );
 }
 
+function IconClipboard({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={active ? 2.5 : 2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+      <rect x="9" y="3" width="6" height="4" rx="1" />
+      <line x1="9" y1="12" x2="15" y2="12" />
+      <line x1="9" y1="16" x2="13" y2="16" />
+    </svg>
+  );
+}
+
 // ── タブ定義 ────────────────────────────────────────────────────────────────
 
 const TABS = [
@@ -57,6 +69,12 @@ const TABS = [
     label: '案件',
     Icon: IconBriefcase,
     match: (p: string) => p.startsWith('/craftsman/jobs') || p.startsWith('/craftsman/apply'),
+  },
+  {
+    href: '/craftsman/dashboard',
+    label: '管理',
+    Icon: IconClipboard,
+    match: (p: string) => p.startsWith('/craftsman/dashboard'),
   },
   {
     href: '/craftsman/help-list',
@@ -100,7 +118,7 @@ export default function BottomNav({ variant = 'fixed', subtle = false }: Props) 
       className={`${outerClass} border-t ${subtle ? 'bg-white/80 backdrop-blur-sm border-slate-100' : 'bg-white border-slate-200'}`}
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="grid grid-cols-4 h-14 max-w-lg mx-auto">
+      <div className="grid grid-cols-5 h-14 max-w-lg mx-auto">
         {TABS.map(({ href, label, Icon, match }) => {
           const active = match(pathname);
           const activeColor  = subtle ? 'text-slate-600' : 'text-blue-600';

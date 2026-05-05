@@ -1,0 +1,399 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
+import BottomNav from '../../components/BottomNav';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type DashboardRow = {
+  id: string;
+  estimate_request_id: string;
+  status: string | null;
+  price: number | null;
+  message: string | null;
+  is_contracted: boolean | null;
+  contracted_at: string | null;
+  review_requested_at: string | null;
+  reviewed_at: string | null;
+  service_fee: number | null;
+  created_at: string;
+  estimate_requests: { work_type: string | null; city: string | null } | null;
+};
+
+type StatusLabel =
+  | '全て'
+  | '応募中'
+  | '金額入力済み'
+  | '依頼者確認中'
+  | '成約済み'
+  | '工事完了'
+  | '見送り';
+
+// ─── Status config ────────────────────────────────────────────────────────────
+
+const STATUS_CONFIG: Record<
+  Exclude<StatusLabel, '全て'>,
+  { bg: string; text: string; dot: string; icon: string }
+> = {
+  '応募中':       { bg: 'bg-blue-100',    text: 'text-blue-700',    dot: 'bg-blue-500',    icon: '📤' },
+  '金額入力済み': { bg: 'bg-indigo-100',  text: 'text-indigo-700',  dot: 'bg-indigo-500',  icon: '💰' },
+  '依頼者確認中': { bg: 'bg-amber-100',   text: 'text-amber-700',   dot: 'bg-amber-500',   icon: '🔍' },
+  '成約済み':     { bg: 'bg-green-100',   text: 'text-green-700',   dot: 'bg-green-500',   icon: '🤝' },
+  '工事完了':     { bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500', icon: '✅' },
+  '見送り':       { bg: 'bg-slate-100',   text: 'text-slate-500',   dot: 'bg-slate-400',   icon: '🚫' },
+};
+
+const FILTER_TABS: StatusLabel[] = [
+  '全て', '応募中', '金額入力済み', '依頼者確認中', '成約済み', '工事完了', '見送り',
+];
+
+// ─── Demo data ────────────────────────────────────────────────────────────────
+
+const DEMO: DashboardRow[] = [
+  {
+    id: 'demo-d1',
+    estimate_request_id: 'demo-1',
+    status: null, price: null, message: null,
+    is_contracted: false, contracted_at: null, review_requested_at: null, reviewed_at: null,
+    service_fee: null,
+    created_at: new Date(Date.now() - 86400000).toISOString(),
+    estimate_requests: { work_type: 'クロス張替え', city: '太田市' },
+  },
+  {
+    id: 'demo-d2',
+    estimate_request_id: 'demo-2',
+    status: null, price: 45000, message: '午前中スタート希望です',
+    is_contracted: false, contracted_at: null, review_requested_at: null, reviewed_at: null,
+    service_fee: 2000,
+    created_at: new Date(Date.now() - 172800000).toISOString(),
+    estimate_requests: { work_type: '床CF張替え', city: '伊勢崎市' },
+  },
+  {
+    id: 'demo-d3',
+    estimate_request_id: 'demo-3',
+    status: null, price: 28000, message: null,
+    is_contracted: false, contracted_at: null,
+    review_requested_at: new Date(Date.now() - 86400000).toISOString(),
+    reviewed_at: null,
+    service_fee: 1000,
+    created_at: new Date(Date.now() - 345600000).toISOString(),
+    estimate_requests: { work_type: 'クロス補修', city: '前橋市' },
+  },
+  {
+    id: 'demo-d4',
+    estimate_request_id: 'demo-4',
+    status: null, price: 28000, message: null,
+    is_contracted: true, contracted_at: new Date(Date.now() - 432000000).toISOString(),
+    review_requested_at: null, reviewed_at: null,
+    service_fee: 1000,
+    created_at: new Date(Date.now() - 518400000).toISOString(),
+    estimate_requests: { work_type: '床補修', city: '高崎市' },
+  },
+  {
+    id: 'demo-d5',
+    estimate_request_id: 'demo-5',
+    status: null, price: 95000, message: null,
+    is_contracted: true,
+    contracted_at: new Date(Date.now() - 864000000).toISOString(),
+    review_requested_at: new Date(Date.now() - 518400000).toISOString(),
+    reviewed_at: new Date(Date.now() - 259200000).toISOString(),
+    service_fee: 3000,
+    created_at: new Date(Date.now() - 950400000).toISOString(),
+    estimate_requests: { work_type: 'クロス全面張替え', city: '桐生市' },
+  },
+  {
+    id: 'demo-d6',
+    estimate_request_id: 'demo-6',
+    status: 'rejected', price: null, message: null,
+    is_contracted: false, contracted_at: null, review_requested_at: null, reviewed_at: null,
+    service_fee: null,
+    created_at: new Date(Date.now() - 691200000).toISOString(),
+    estimate_requests: { work_type: '補修工事', city: '沼田市' },
+  },
+];
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getUserId(): string {
+  const stored = localStorage.getItem('user');
+  if (stored) return String(JSON.parse(stored).id);
+  return localStorage.getItem('craftsman_guest_id') ?? '';
+}
+
+function deriveStatus(app: DashboardRow): Exclude<StatusLabel, '全て'> {
+  if (app.reviewed_at)            return '工事完了';
+  if (app.review_requested_at)    return '依頼者確認中';
+  if (app.is_contracted)          return '成約済み';
+  if (app.status === 'rejected')  return '見送り';
+  if (app.price != null)          return '金額入力済み';
+  return '応募中';
+}
+
+function formatDate(iso: string) {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function StatusBadge({ label }: { label: Exclude<StatusLabel, '全て'> }) {
+  const cfg = STATUS_CONFIG[label];
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${cfg.bg} ${cfg.text}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+      {label}
+    </span>
+  );
+}
+
+function SummaryCard({ icon, value, label, accent }: {
+  icon: string; value: number; label: string; accent?: boolean;
+}) {
+  return (
+    <div className={`rounded-2xl border p-3 text-center ${accent ? 'bg-blue-50 border-blue-100' : 'bg-white border-slate-200'} shadow-sm`}>
+      <p className="text-base">{icon}</p>
+      <p className={`text-xl font-extrabold leading-tight ${accent ? 'text-blue-700' : 'text-slate-900'}`}>{value}</p>
+      <p className={`text-[11px] mt-0.5 ${accent ? 'text-blue-500' : 'text-slate-400'}`}>{label}</p>
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export default function CraftsmanDashboardPage() {
+  const navigate = useNavigate();
+  const [apps,    setApps]    = useState<DashboardRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isDemo,  setIsDemo]  = useState(false);
+  const [filter,  setFilter]  = useState<StatusLabel>('全て');
+  const userId = getUserId();
+
+  useEffect(() => {
+    (async () => {
+      if (!userId) {
+        setApps(DEMO); setIsDemo(true); setLoading(false); return;
+      }
+
+      const { data, error } = await supabase
+        .from('job_applications')
+        .select('*, estimate_requests(work_type, city)')
+        .eq('craftsman_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error || !data || data.length === 0) {
+        setApps(DEMO); setIsDemo(true);
+      } else {
+        setApps(data as DashboardRow[]);
+      }
+      setLoading(false);
+    })();
+  }, [userId]);
+
+  const withStatus = apps.map(a => ({ ...a, _status: deriveStatus(a) }));
+
+  const filtered = filter === '全て'
+    ? withStatus
+    : withStatus.filter(a => a._status === filter);
+
+  const counts = {
+    active:    withStatus.filter(a => a._status === '応募中' || a._status === '金額入力済み' || a._status === '依頼者確認中').length,
+    contracted: withStatus.filter(a => a._status === '成約済み').length,
+    done:       withStatus.filter(a => a._status === '工事完了').length,
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+
+      {/* ヘッダー */}
+      <header className="sticky top-0 z-20 bg-white border-b border-slate-200">
+        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center shadow-sm shadow-blue-200">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+                <rect x="9" y="3" width="6" height="4" rx="1"/>
+                <line x1="9" y1="12" x2="15" y2="12"/>
+                <line x1="9" y1="16" x2="13" y2="16"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-extrabold text-slate-900 leading-none">案件管理</p>
+              <p className="text-[10px] text-slate-400 leading-none mt-0.5">応募・進行中・完了の一覧</p>
+            </div>
+          </div>
+          <a href="/craftsman/jobs" className="text-xs text-blue-600 font-semibold hover:underline">
+            新しい案件を探す →
+          </a>
+        </div>
+      </header>
+
+      <div className="max-w-2xl mx-auto pb-24">
+
+        {/* デモバナー */}
+        {isDemo && (
+          <div className="mx-4 mt-4 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 flex items-center gap-2">
+            <span className="text-amber-500 text-xs">📋</span>
+            <p className="text-xs text-amber-700 font-semibold">
+              デモ表示中 — ログイン後に実際の応募状況が表示されます
+            </p>
+          </div>
+        )}
+
+        {/* サマリー */}
+        <div className="grid grid-cols-3 gap-3 px-4 pt-4">
+          <SummaryCard icon="📤" value={counts.active}     label="進行中" accent />
+          <SummaryCard icon="🤝" value={counts.contracted} label="成約済み" />
+          <SummaryCard icon="✅" value={counts.done}       label="工事完了" />
+        </div>
+
+        {/* ステータスフィルター */}
+        <div className="mt-4 px-4 overflow-x-auto">
+          <div className="flex gap-2 pb-1" style={{ minWidth: 'max-content' }}>
+            {FILTER_TABS.map(tab => {
+              const count = tab === '全て'
+                ? apps.length
+                : withStatus.filter(a => a._status === tab).length;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setFilter(tab)}
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold border whitespace-nowrap transition ${
+                    filter === tab
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                  }`}
+                >
+                  {tab}
+                  {count > 0 && (
+                    <span className={`rounded-full text-[10px] font-extrabold px-1.5 py-0.5 leading-none ${
+                      filter === tab ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* カード一覧 */}
+        <div className="px-4 mt-4 space-y-3">
+          {loading ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-slate-400 text-sm">
+              読み込み中...
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center shadow-sm">
+              <p className="text-3xl mb-2">📭</p>
+              <p className="text-sm font-bold text-slate-700">
+                {filter === '全て' ? 'まだ応募した案件がありません' : `「${filter}」の案件はありません`}
+              </p>
+              {filter === '全て' && (
+                <a
+                  href="/craftsman/jobs"
+                  className="mt-4 inline-block bg-blue-600 text-white rounded-2xl px-6 py-2.5 text-sm font-extrabold"
+                >
+                  案件を探す
+                </a>
+              )}
+            </div>
+          ) : (
+            filtered.map(app => {
+              const workType = app.estimate_requests?.work_type ?? '内装工事';
+              const city     = app.estimate_requests?.city ?? 'エリア未設定';
+              const isSensitive = app._status === '成約済み' || app._status === '工事完了';
+
+              return (
+                <article key={app.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+
+                  {/* カードヘッダー */}
+                  <div className="px-4 pt-4 pb-3">
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <StatusBadge label={app._status} />
+                        </div>
+                        <h2 className="text-base font-extrabold text-slate-900 leading-snug truncate">
+                          {workType}
+                        </h2>
+                        <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                          <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                          </svg>
+                          {city}
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-slate-400 flex-shrink-0 mt-0.5">
+                        {formatDate(app.created_at)} 依頼
+                      </p>
+                    </div>
+
+                    {/* 金額・手数料グリッド */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-xl bg-slate-50 px-3 py-2">
+                        <p className="text-[10px] text-slate-400 font-bold">概算金額</p>
+                        <p className="text-sm font-extrabold text-slate-900 mt-0.5">
+                          {app.price != null ? `¥${app.price.toLocaleString()}` : '未入力'}
+                        </p>
+                      </div>
+                      <div className={`rounded-xl px-3 py-2 ${app.service_fee ? 'bg-amber-50' : 'bg-slate-50'}`}>
+                        <p className="text-[10px] text-slate-400 font-bold">成立時手数料</p>
+                        <p className={`text-sm font-extrabold mt-0.5 ${app.service_fee ? 'text-amber-700' : 'text-slate-400'}`}>
+                          {app.service_fee != null ? `¥${app.service_fee.toLocaleString()}` : '—'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* メッセージ */}
+                    {app.message && (
+                      <p className="mt-2 text-xs text-slate-600 bg-blue-50 rounded-xl px-3 py-2 leading-relaxed">
+                        💬 {app.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* 成約情報バナー */}
+                  {isSensitive && (
+                    <div className="border-t border-slate-100 bg-green-50 px-4 py-2.5">
+                      <p className="text-[11px] text-green-700 font-bold">
+                        {app._status === '工事完了' ? '✅ 工事完了 — 実績として記録されました' : '🤝 成約済み — 詳細は直接やりとりしてください'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* アクションボタン */}
+                  <div className="border-t border-slate-100 px-4 py-3 flex gap-2">
+                    <button
+                      onClick={() => navigate(`/craftsman/apply/${app.estimate_request_id}`, {
+                        state: { readOnly: true }
+                      })}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-xs font-extrabold transition active:scale-95"
+                    >
+                      詳細を見る
+                    </button>
+                    <button
+                      onClick={() => navigate(`/craftsman/profile/${userId}`)}
+                      className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl py-2.5 text-xs font-bold transition active:scale-95"
+                    >
+                      マイプロフィール
+                    </button>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
+
+        {apps.length > 0 && (
+          <p className="mt-6 text-center text-xs text-slate-400 px-4 leading-relaxed">
+            🔒 依頼者の個人情報（電話・住所など）は成約後のやりとりでのみ開示されます
+          </p>
+        )}
+      </div>
+
+      <BottomNav />
+    </div>
+  );
+}

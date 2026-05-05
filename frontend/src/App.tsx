@@ -25,6 +25,7 @@ import HelpListPage from './pages/craftsman/HelpListPage';
 import CraftsmanApplyPage from './pages/craftsman/CraftsmanApplyPage';
 import CraftsmanApplicationsPage from './pages/craftsman/CraftsmanApplicationsPage';
 import CraftsmanPublicProfile from './pages/craftsman/CraftsmanPublicProfile';
+import CraftsmanDashboardPage from './pages/craftsman/CraftsmanDashboardPage';
 import HomePage from './pages/HomePage';
 
 function CraftsmanEstimateRoute({ user, logout }: { user: ReturnType<typeof useAuth>['user']; logout: () => void }) {
@@ -84,6 +85,7 @@ export default function App() {
         {/* 職人向け案件ボード・プロフィール */}
         <Route path="/pro/jobs"           element={<ProJobs />} />
         <Route path="/craftsman/jobs"     element={<CraftsmanJobsPage />} />
+        <Route path="/craftsman/dashboard"         element={<CraftsmanDashboardPage />} />
         <Route path="/craftsman/profile"          element={<CraftsmanProfile />} />
         <Route path="/craftsman/profile/:userId"   element={<CraftsmanPublicProfile />} />
         <Route path="/craftsman/help"      element={<HelpRequestPage />} />
