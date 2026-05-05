@@ -215,18 +215,29 @@ export default function CraftsmanApplyPage() {
               <p className="mt-1.5 text-xs text-slate-400">税込・概算でOKです</p>
             </div>
 
-            {/* 手数料インジケーター（金額入力後に表示） */}
-            {Number(price) > 0 && (
-              <div className="rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-amber-700">この案件が成立した場合の手数料</p>
-                  <p className="text-[11px] text-amber-600 mt-0.5">工事完了後にお支払いいただきます</p>
+            {/* 収益まとめ（金額入力後に表示） */}
+            {Number(price) > 0 && (() => {
+              const safePrice = Math.max(0, Number(price) || 0);
+              const fee       = calculateServiceFee(safePrice);
+              const takeHome  = safePrice - fee;
+              return (
+                <div className="rounded-2xl bg-slate-900 text-white px-4 py-3.5 space-y-1.5">
+                  <p className="text-[11px] text-slate-400 font-bold mb-2">この案件の収益</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-slate-300">想定売上</p>
+                    <p className="text-base font-extrabold">¥{safePrice.toLocaleString()}</p>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-slate-400">サービス料</p>
+                    <p className="text-sm text-slate-300">− {formatFee(fee)}</p>
+                  </div>
+                  <div className="flex items-center justify-between pt-1.5 border-t border-white/10">
+                    <p className="text-xs text-slate-300 font-bold">手取り</p>
+                    <p className="text-lg font-extrabold text-emerald-400">¥{takeHome.toLocaleString()}</p>
+                  </div>
                 </div>
-                <p className="text-lg font-extrabold text-amber-800">
-                  {formatFee(calculateServiceFee(Number(price)))}
-                </p>
-              </div>
-            )}
+              );
+            })()}
 
             {/* メッセージ */}
             <div>
@@ -261,9 +272,10 @@ export default function CraftsmanApplyPage() {
 
             <p className="text-center text-xs text-slate-400">応募・見積もり提出は無料です</p>
             <p className="text-center text-xs text-slate-400">手数料は工事成立時のみ発生します</p>
-            <p className="text-center text-xs text-slate-400 leading-relaxed">
-              送信後も個人情報は開示されません
-            </p>
+            <div className="rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 space-y-1">
+              <p className="text-[11px] text-slate-500 text-center">🔒 成約前は電話番号・住所は表示されません</p>
+              <p className="text-[11px] text-slate-500 text-center">✓ 成約後に依頼者の詳細情報を確認できます</p>
+            </div>
             <p className="text-center text-[11px] text-slate-300 leading-relaxed px-2">
               ※契約・施工は当事者間で行われます。当サービスはマッチングの場を提供するものであり、施工内容・品質・トラブルについては当事者間でご確認ください。
             </p>

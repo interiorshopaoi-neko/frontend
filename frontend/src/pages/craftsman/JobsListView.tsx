@@ -69,6 +69,13 @@ export default function JobsListView({ jobs, loading }: Props) {
     <div className="h-full overflow-y-auto bg-slate-50 px-4 py-4">
       <div className="mx-auto max-w-3xl">
 
+        {/* 収益モデル説明 */}
+        <div className="mb-3 rounded-xl bg-slate-100 px-4 py-2.5 text-[11px] text-slate-500 leading-relaxed space-y-0.5">
+          <p>・工事代金は依頼者と直接やり取りします</p>
+          <p>・PRO MATCHは工事代金をお預かりしません</p>
+          <p>・成約後に連絡先が開示されます</p>
+        </div>
+
         {/* フィルター */}
         <div className="mb-4 bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 p-2.5 grid grid-cols-3 gap-2">
           {(['all', 'today', 'video'] as const).map(f => (
@@ -158,19 +165,17 @@ export default function JobsListView({ jobs, loading }: Props) {
 
                   {/* ── 売上ブロック（メイン） ── */}
                   <div className="mx-4 mb-3 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white px-4 py-3.5 shadow-sm shadow-blue-200">
-                    <p className="text-[11px] text-blue-200 font-bold mb-1">想定売上（目安）</p>
-                    <p className="text-3xl font-extrabold tracking-tight leading-none mb-2">
-                      {fmt(revenue)}
-                    </p>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="text-[11px] text-blue-200 font-bold">想定売上</p>
+                      <p className="text-2xl font-extrabold tracking-tight">{fmt(revenue)}</p>
+                    </div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[11px] text-blue-300">サービス料</p>
+                      <p className="text-sm text-blue-200">− {fmt(fee)}</p>
+                    </div>
                     <div className="flex items-center justify-between pt-2 border-t border-white/20">
-                      <div>
-                        <p className="text-[10px] text-blue-200">手取り目安</p>
-                        <p className="text-lg font-extrabold">{fmt(takHome)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[10px] text-blue-200">成立時手数料</p>
-                        <p className="text-sm font-bold text-blue-100">{fmt(fee)}</p>
-                      </div>
+                      <p className="text-[11px] text-blue-200 font-bold">手取り目安</p>
+                      <p className="text-xl font-extrabold text-emerald-300">{fmt(takHome)}</p>
                     </div>
                   </div>
 
