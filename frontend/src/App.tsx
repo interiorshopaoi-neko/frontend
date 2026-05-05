@@ -24,6 +24,7 @@ import HelpRequestPage from './pages/craftsman/HelpRequestPage';
 import HelpListPage from './pages/craftsman/HelpListPage';
 import CraftsmanApplyPage from './pages/craftsman/CraftsmanApplyPage';
 import CraftsmanApplicationsPage from './pages/craftsman/CraftsmanApplicationsPage';
+import HomePage from './pages/HomePage';
 
 function CraftsmanEstimateRoute({ user, logout }: { user: ReturnType<typeof useAuth>['user']; logout: () => void }) {
   const { id } = useParams();
@@ -93,11 +94,11 @@ export default function App() {
         <Route path="/pro-signup" element={<ProSignupPage />} />
         <Route path="/policy"     element={<PolicyPage />} />
 
-        {/* ランディング：未ログインなら動画見積もり、ログイン済みはダッシュボードへ */}
+        {/* ランディング：未ログインなら新トップページ、ログイン済みはダッシュボードへ */}
         <Route path="/" element={
           user
             ? <Navigate to={user.role === 'customer' ? '/customer' : '/craftsman'} />
-            : <CorporateRequest />
+            : <HomePage />
         } />
 
         <Route path="*" element={
