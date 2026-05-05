@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { calculateServiceFee, formatFee } from '../../lib/serviceFee';
 import type { Job } from './CraftsmanJobsPage';
 
 function labelUrgency(level?: string) {
@@ -112,6 +113,7 @@ export default function CraftsmanApplyPage() {
       craftsman_id: craftsmanId,
       status: 'available',
       price: numPrice,
+      service_fee: calculateServiceFee(numPrice),
       message: message.trim() || null,
     });
 
@@ -213,6 +215,19 @@ export default function CraftsmanApplyPage() {
               <p className="mt-1.5 text-xs text-slate-400">税込・概算でOKです</p>
             </div>
 
+            {/* 手数料インジケーター（金額入力後に表示） */}
+            {Number(price) > 0 && (
+              <div className="rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-amber-700">この案件が成立した場合の手数料</p>
+                  <p className="text-[11px] text-amber-600 mt-0.5">工事完了後にお支払いいただきます</p>
+                </div>
+                <p className="text-lg font-extrabold text-amber-800">
+                  {formatFee(calculateServiceFee(Number(price)))}
+                </p>
+              </div>
+            )}
+
             {/* メッセージ */}
             <div>
               <label className="block text-sm font-extrabold text-slate-900 mb-1.5">
@@ -244,8 +259,8 @@ export default function CraftsmanApplyPage() {
               {submitting ? '送信中...' : 'この内容で送る'}
             </button>
 
-            <p className="text-center text-xs text-slate-400">現在は無料で利用できます</p>
-            <p className="text-center text-xs text-slate-400">正式版では応募時に手数料がかかる場合があります</p>
+            <p className="text-center text-xs text-slate-400">応募・見積もり提出は無料です</p>
+            <p className="text-center text-xs text-slate-400">手数料は工事成立時のみ発生します</p>
             <p className="text-center text-xs text-slate-400 leading-relaxed">
               送信後も個人情報は開示されません
             </p>

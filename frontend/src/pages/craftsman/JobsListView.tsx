@@ -218,7 +218,9 @@ export default function JobsListView({ jobs, loading }: Props) {
                         次の画面で概算金額を入力します
                       </p>
                     )}
-                    <p className="mt-1 text-center text-xs text-slate-400">現在は無料で利用できます</p>
+                    <p className="mt-1 text-center text-xs text-slate-400">
+                      応募無料・工事成立時のみ手数料（¥1,000〜¥3,000）
+                    </p>
                   </div>
                 </article>
               );
