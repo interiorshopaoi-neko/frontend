@@ -63,36 +63,30 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 30秒バッジ */}
+        {/* バッジ */}
         <div className="flex justify-center mb-5">
-          <span className="inline-flex items-center gap-1.5 bg-yellow-400 text-yellow-900 text-xs font-extrabold px-4 py-1.5 rounded-full shadow-sm tracking-wide">
-            📱 30秒で撮影OK
+          <span className="inline-block bg-yellow-400 text-yellow-900 text-sm font-bold px-4 py-1 rounded-full shadow-sm">
+            30秒で完了
           </span>
         </div>
 
         {/* メインタイトル */}
-        <h1 className="text-2xl font-extrabold text-slate-900 text-center leading-snug tracking-tight mb-4">
+        <h1 className="text-3xl font-bold text-slate-900 text-center leading-tight tracking-tight mb-3">
           <span className="block">ショート動画で、</span>
-          <span className="block">すぐ見積もり。</span>
+          <span className="block">すぐ見積もり</span>
         </h1>
 
         {/* サブコピー */}
-        <p className="text-[0.95rem] text-slate-600 text-center leading-relaxed mb-7">
-          部屋を30秒ほど撮って送るだけ。<br />
-          近くの職人が内容を確認します。
+        <p className="text-slate-600 text-center mb-6">
+          部屋を撮るだけ。プロがすぐ確認。
         </p>
 
-        {/* 安心ポイント */}
-        <div className="flex flex-col gap-2.5 mb-8 bg-blue-50 border border-blue-100 rounded-2xl px-5 py-4">
+        {/* 信頼要素 */}
+        <div className="flex flex-col gap-2 mb-6">
           {TRUST_POINTS.map(({ icon, label }) => (
-            <div key={label} className="flex items-center gap-3">
-              <span className="text-base">{icon}</span>
-              <span className="text-sm font-semibold text-blue-800">{label}</span>
-              <span className="ml-auto text-blue-500">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M3 8l4 4 6-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
+            <div key={label} className="flex items-center justify-center gap-2 text-sm text-slate-700">
+              <span>{icon}</span>
+              <span>{label}</span>
             </div>
           ))}
         </div>
@@ -100,22 +94,19 @@ export default function HomePage() {
         {/* メインCTA */}
         <button
           onClick={handleStartEstimate}
-          className="w-full py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-extrabold text-base shadow-lg shadow-blue-200 transition-all mb-3"
+          className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-lg shadow-lg transition-all mb-3"
         >
-          ショート動画を送る　→
+          30秒で見積もりする →
         </button>
 
         {/* サブCTA */}
-        <button
-          onClick={scrollToGuide}
-          className="w-full py-3.5 rounded-2xl border-2 border-blue-200 hover:border-blue-300 active:scale-95 text-blue-600 font-bold text-sm transition-all"
-        >
-          まず撮り方を見る
-        </button>
+        <p className="text-center text-sm text-slate-500 mb-2">
+          今だけ無料（正式版は300円予定）
+        </p>
 
-        {/* 小さな補足 */}
-        <p className="text-center text-xs text-slate-400 mt-4">
-          ログイン不要・登録なしで今すぐ送れます
+        {/* ソーシャルプルーフ */}
+        <p className="text-center text-xs text-slate-400">
+          ・今日すでに3件依頼されています
         </p>
       </section>
 
