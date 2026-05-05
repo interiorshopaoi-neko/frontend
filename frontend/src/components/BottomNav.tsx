@@ -48,25 +48,25 @@ function IconUser({ active }: { active: boolean }) {
 const TABS = [
   {
     href: '/',
-    label: '依頼する',
+    label: '見積もり',
     Icon: IconHome,
     match: (p: string) => p === '/',
   },
   {
     href: '/craftsman/jobs',
-    label: '職人案件',
+    label: '案件',
     Icon: IconBriefcase,
     match: (p: string) => p.startsWith('/craftsman/jobs') || p.startsWith('/craftsman/apply'),
   },
   {
     href: '/craftsman/help-list',
-    label: '助っ人',
+    label: '応援',
     Icon: IconHandshake,
     match: (p: string) => p.startsWith('/craftsman/help'),
   },
   {
     href: '/craftsman/profile',
-    label: 'プロフィール',
+    label: 'マイページ',
     Icon: IconUser,
     match: (p: string) => p.startsWith('/craftsman/profile'),
   },
@@ -80,11 +80,13 @@ interface Props {
    * "flex"   … height:100dvh のフレックスレイアウト内（flex-shrink-0）
    */
   variant?: 'fixed' | 'flex';
+  /** トップページなど、職人向けでないページでは控えめに表示 */
+  subtle?: boolean;
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-export default function BottomNav({ variant = 'fixed' }: Props) {
+export default function BottomNav({ variant = 'fixed', subtle = false }: Props) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
@@ -94,26 +96,32 @@ export default function BottomNav({ variant = 'fixed' }: Props) {
       : 'flex-shrink-0';
 
   return (
-    <nav className={`${outerClass} bg-white border-t border-slate-200`}
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <nav
+      className={`${outerClass} border-t ${subtle ? 'bg-white/80 backdrop-blur-sm border-slate-100' : 'bg-white border-slate-200'}`}
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
       <div className="grid grid-cols-4 h-14 max-w-lg mx-auto">
         {TABS.map(({ href, label, Icon, match }) => {
           const active = match(pathname);
+          const activeColor  = subtle ? 'text-slate-600' : 'text-blue-600';
+          const inactiveColor = subtle ? 'text-slate-300' : 'text-slate-400';
           return (
             <button
               key={href}
               onClick={() => navigate(href)}
               className={`flex flex-col items-center justify-center gap-0.5 relative transition-colors active:scale-95 ${
-                active ? 'text-blue-600' : 'text-slate-400'
+                active ? activeColor : inactiveColor
               }`}
             >
-              {/* アクティブインジケーター（上線） */}
-              {active && (
+              {/* アクティブインジケーター（上線）— subtle では非表示 */}
+              {active && !subtle && (
                 <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-blue-600 rounded-full" />
               )}
               <Icon active={active} />
-              <span className={`text-[10px] font-semibold leading-none ${
-                active ? 'text-blue-600' : 'text-slate-400'
+              <span className={`text-[10px] leading-none ${
+                active
+                  ? subtle ? 'font-semibold' : 'font-bold'
+                  : 'font-medium'
               }`}>
                 {label}
               </span>

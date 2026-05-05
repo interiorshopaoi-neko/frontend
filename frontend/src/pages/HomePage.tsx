@@ -243,7 +243,7 @@ export default function HomePage() {
         </div>
       </footer>
 
-      <BottomNav />
+      <BottomNav subtle />
     </div>
   );
 }
