@@ -36,16 +36,32 @@ export default function HomePage() {
           <Logo size={36} />
         </div>
 
-        {/* デモ動画 */}
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="w-full rounded-2xl shadow-lg mb-7"
-        >
-          <source src="/demo.mp4" type="video/mp4" />
-        </video>
+        {/* スマホ撮影カード */}
+        <div className="mb-7 bg-slate-900 rounded-3xl overflow-hidden shadow-xl"
+          style={{ background: 'linear-gradient(160deg, #1e293b 0%, #0f172a 100%)' }}>
+          <div className="px-5 pt-5 pb-6 flex flex-col items-center gap-4">
+            {/* 録画インジケータ */}
+            <div className="self-end flex items-center gap-1.5 bg-black/60 rounded-full px-3 py-1.5">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-[10px] font-bold text-white tracking-wide">REC</span>
+            </div>
+
+            {/* 中央アイコン */}
+            <div className="flex flex-col items-center gap-3 select-none py-2">
+              <div className="w-20 h-20 rounded-3xl bg-white/10 border-2 border-white/20 flex items-center justify-center">
+                <span className="text-4xl">🎬</span>
+              </div>
+              <p className="text-white/60 text-xs font-medium text-center">
+                部屋をゆっくり一周するように撮影
+              </p>
+            </div>
+
+            {/* カメラボタン */}
+            <div className="w-14 h-14 rounded-full border-4 border-white/80 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-full bg-white/90" />
+            </div>
+          </div>
+        </div>
 
         {/* バッジ */}
         <div className="flex justify-center mb-5">
