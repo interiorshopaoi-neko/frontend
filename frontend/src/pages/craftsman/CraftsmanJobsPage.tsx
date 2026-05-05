@@ -86,7 +86,7 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
 export default function CraftsmanJobsPage() {
   const [jobs,    setJobs]    = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab,     setTab]     = useState<Tab>('list');
+  const [tab,     setTab]     = useState<Tab>('video');
   const [isDemo,  setIsDemo]  = useState(false);
 
   useEffect(() => {

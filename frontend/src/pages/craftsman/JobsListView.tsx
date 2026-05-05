@@ -1,116 +1,93 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { calculateServiceFee } from '../../lib/serviceFee';
 import type { Job } from './CraftsmanJobsPage';
+
+// ─── Revenue estimator ────────────────────────────────────────────────────────
+
+function estimateRevenue(job: Job): number {
+  const type   = (job.work_type ?? '').toLowerCase();
+  const damage = job.damage_level;
+  const size   = job.room_size ?? '';
+
+  let base = 32000;
+  if (type.includes('cf') || type.includes('クッションフロア')) base = 24000;
+  else if (type.includes('補修'))                              base = 16000;
+  else if (type.includes('床'))                               base = 34000;
+  else if (type.includes('クロス'))                           base = 32000;
+
+  const m = size.match(/(\d+)/);
+  const tatami = m ? parseInt(m[1]) : 6;
+  const sizeMul = tatami >= 10 ? 1.5 : tatami >= 8 ? 1.25 : tatami >= 6 ? 1.0 : 0.8;
+
+  const damageMul = damage === 'high' ? 1.3 : damage === 'middle' ? 1.1 : 1.0;
+
+  return Math.round((base * sizeMul * damageMul) / 1000) * 1000;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function getDifficulty(job: Job) {
-  const damage = job.damage_level === 'high' ? 3 : job.damage_level === 'middle' ? 2 : 1;
-  const size = job.room_size?.includes('10') || job.room_size?.includes('12') ? 2 : 1;
-  return Math.min(5, damage + size);
-}
-
 function getPriority(job: Job) {
   let score = 0;
-  if (job.urgency === 'today') score += 3;
-  if (job.urgency === 'tomorrow') score += 2;
-  if (job.has_video) score += 2;
-  if ((job.distance_km ?? 999) <= 10) score += 2;
-  if (job.has_photos) score += 1;
+  if (job.urgency === 'today')               score += 3;
+  if (job.urgency === 'tomorrow')            score += 2;
+  if (job.has_video)                         score += 2;
+  if ((job.distance_km ?? 999) <= 10)        score += 2;
+  if (job.has_photos)                        score += 1;
   return Math.min(5, score);
 }
 
-function labelDamage(level?: string) {
-  if (level === 'low') return '軽め';
-  if (level === 'middle') return '普通';
-  if (level === 'high') return '重め';
-  return '未入力';
-}
-
-function labelUrgency(level?: string) {
-  if (level === 'today') return '今日できる人希望';
-  if (level === 'tomorrow') return '明日まで希望';
-  if (level === 'soon') return '数日以内';
-  return '急ぎではない';
-}
-
-function Stars({ value }: { value: number }) {
-  return (
-    <span className="text-sm tracking-tight">
-      {'★'.repeat(value)}
-      <span className="text-gray-300">{'★'.repeat(5 - value)}</span>
-    </span>
-  );
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-slate-50 p-3">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 font-bold text-slate-900">{value}</p>
-    </div>
-  );
+function fmt(n: number) {
+  return `¥${n.toLocaleString()}`;
 }
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
-type Props = {
-  jobs: Job[];
-  loading: boolean;
-};
+type Props = { jobs: Job[]; loading: boolean };
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function JobsListView({ jobs, loading }: Props) {
-  const navigate = useNavigate();
-  const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
-  const [filter,     setFilter]     = useState<'all' | 'today' | 'video'>('all');
+  const navigate   = useNavigate();
+  const [filter, setFilter] = useState<'all' | 'today' | 'video'>('all');
 
   const sortedJobs = useMemo(() => {
     return jobs
-      .filter((job) => {
+      .filter(job => {
         if (filter === 'today') return job.urgency === 'today' || job.urgency === 'tomorrow';
         if (filter === 'video') return job.has_video;
         return true;
       })
       .sort((a, b) => {
-        const videoPriority = Number(b.has_video) - Number(a.has_video);
-        if (videoPriority !== 0) return videoPriority;
-        const urgentPriority = getPriority(b) - getPriority(a);
-        if (urgentPriority !== 0) return urgentPriority;
-        return (a.distance_km ?? 999) - (b.distance_km ?? 999);
+        const vp = Number(b.has_video) - Number(a.has_video);
+        if (vp !== 0) return vp;
+        return getPriority(b) - getPriority(a);
       });
   }, [jobs, filter]);
 
-  function handleApply(job: Job) {
-    if (appliedIds.has(job.id)) return;
-    setAppliedIds(prev => new Set([...prev, job.id]));
-    navigate(`/craftsman/apply/${job.id}`, { state: { job } });
-  }
-
   return (
-    <div className="h-full overflow-y-auto bg-slate-50 px-4 py-5">
+    <div className="h-full overflow-y-auto bg-slate-50 px-4 py-4">
       <div className="mx-auto max-w-3xl">
-        {/* フィルター */}
-        <section className="mb-4 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200">
-          <div className="grid grid-cols-3 gap-2">
-            {(['all', 'today', 'video'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
-                  filter === f ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
-                }`}
-              >
-                {f === 'all' ? '全て' : f === 'today' ? '今日・明日' : '動画あり'}
-              </button>
-            ))}
-          </div>
-        </section>
 
+        {/* フィルター */}
+        <div className="mb-4 bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 p-2.5 grid grid-cols-3 gap-2">
+          {(['all', 'today', 'video'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`rounded-xl py-2 text-sm font-bold transition ${
+                filter === f ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              {f === 'all' ? '全て' : f === 'today' ? '今日・明日' : '動画あり'}
+            </button>
+          ))}
+        </div>
+
+        {/* ローディング / 空 */}
         {loading ? (
-          <div className="rounded-2xl bg-white p-6 text-center text-slate-500 shadow-sm">
-            案件を読み込み中...
+          <div className="rounded-2xl bg-white p-10 text-center text-slate-400 text-sm shadow-sm">
+            読み込み中...
           </div>
         ) : sortedJobs.length === 0 ? (
           <div className="rounded-2xl bg-white p-10 text-center shadow-sm ring-1 ring-slate-200">
@@ -119,109 +96,132 @@ export default function JobsListView({ jobs, loading }: Props) {
           </div>
         ) : (
           <div className="space-y-4">
-            {sortedJobs.map((job) => {
-              const difficulty = getDifficulty(job);
-              const priority = getPriority(job);
-              const applied = appliedIds.has(job.id);
+            {sortedJobs.map(job => {
+              const revenue = estimateRevenue(job);
+              const fee     = calculateServiceFee(revenue);
+              const takHome = revenue - fee;
+
+              const isToday    = job.urgency === 'today';
+              const isTomorrow = job.urgency === 'tomorrow';
+              const isSoon     = job.urgency === 'soon';
+              const hasMedia   = job.has_video || job.has_photos || job.has_floor_plan;
 
               return (
-                <article
-                  key={job.id}
-                  className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200"
-                >
-                  <div className="border-b border-slate-100 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="mb-2 flex flex-wrap gap-2">
-                          {job.has_video && (
-                            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
-                              動画あり 優先
-                            </span>
-                          )}
-                          {job.urgency === 'today' && (
-                            <span className="rounded-full bg-red-500 px-2.5 py-1 text-xs font-bold text-white animate-pulse">
-                              🔥 本日中に決まります
-                            </span>
-                          )}
-                          {job.urgency === 'tomorrow' && (
-                            <span className="rounded-full bg-orange-500 px-2.5 py-1 text-xs font-bold text-white">
-                              ⏰ 今日中に決めたい
-                            </span>
-                          )}
-                          {job.urgency !== 'today' && job.urgency !== 'tomorrow' && (
-                            <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700">
-                              急ぎ
-                            </span>
-                          )}
-                        </div>
-                        <h2 className="text-lg font-bold text-slate-900">
-                          {job.work_type || '内装工事'}
-                        </h2>
-                        <p className="mt-1 text-sm text-slate-500">
-                          {job.city || 'エリア未設定'} ・ 約{job.distance_km ?? '-'}km
-                        </p>
-                      </div>
-                      <div className="rounded-2xl bg-slate-900 px-3 py-2 text-right text-white">
-                        <p className="text-xs opacity-70">距離</p>
-                        <p className="text-lg font-bold">{job.distance_km ?? '-'}km</p>
-                      </div>
-                    </div>
-                  </div>
+                <article key={job.id} className="bg-white rounded-3xl ring-1 ring-slate-200 shadow-sm overflow-hidden">
 
-                  <div className="grid grid-cols-2 gap-3 p-4">
-                    <Info label="希望時期" value={job.preferred_date || labelUrgency(job.urgency)} />
-                    <Info label="部屋サイズ" value={job.room_size || '未入力'} />
-                    <Info label="汚れ・傷" value={labelDamage(job.damage_level)} />
-                    <Info
-                      label="資料"
-                      value={
-                        `${job.has_video ? '動画 ' : ''}${job.has_photos ? '写真 ' : ''}${job.has_floor_plan ? '図面' : ''}`.trim() || 'なし'
-                      }
-                    />
-                  </div>
-
-                  <div className="px-4 pb-4">
-                    <div className="rounded-2xl bg-blue-50 p-3">
-                      <p className="text-xs font-bold text-blue-700">3秒判断メモ</p>
-                      <p className="mt-1 text-sm leading-relaxed text-slate-700">
-                        {job.customer_note ||
-                          '近場で判断しやすい案件です。動画・写真がある場合は優先的に確認してください。'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 px-4 pb-4">
-                    <div className="rounded-2xl border border-slate-200 p-3">
-                      <p className="text-xs text-slate-500">難易度</p>
-                      <div className="mt-1"><Stars value={difficulty} /></div>
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 p-3">
-                      <p className="text-xs text-slate-500">優先度</p>
-                      <div className="mt-1"><Stars value={priority} /></div>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-slate-100 p-4">
-                    <button
-                      onClick={() => handleApply(job)}
-                      disabled={applied}
-                      className={`w-full rounded-2xl px-4 py-3 text-base font-bold shadow-sm transition active:scale-[0.99] disabled:opacity-60 ${
-                        applied
-                          ? 'bg-green-600 text-white'
-                          : 'bg-blue-600 text-white'
-                      }`}
-                    >
-                      {applied ? '✓ 応募へ進みました' : '今すぐ行けます →'}
-                    </button>
-                    {!applied && (
-                      <p className="mt-2 text-center text-xs text-slate-400">
-                        次の画面で概算金額を入力します
-                      </p>
+                  {/* ── バッジ行 ── */}
+                  <div className="px-4 pt-4 pb-0 flex flex-wrap gap-1.5">
+                    {isToday && (
+                      <span className="bg-red-500 text-white text-xs font-extrabold px-2.5 py-1 rounded-full animate-pulse">
+                        🔥 本日中に決まります
+                      </span>
                     )}
-                    <p className="mt-1 text-center text-xs text-slate-400">
-                      応募無料・工事成立時のみ手数料（¥1,000〜¥3,000）
-                    </p>
+                    {isTomorrow && (
+                      <span className="bg-orange-500 text-white text-xs font-extrabold px-2.5 py-1 rounded-full">
+                        ⏰ 明日まで
+                      </span>
+                    )}
+                    {isSoon && !isToday && !isTomorrow && (
+                      <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                        数日以内
+                      </span>
+                    )}
+                    {job.has_video && (
+                      <span className="bg-blue-50 text-blue-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                        ▶ 動画あり
+                      </span>
+                    )}
                   </div>
+
+                  {/* ── タイトル・エリア ── */}
+                  <div className="px-4 pt-3 pb-2 flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-base font-extrabold text-slate-900 leading-tight">
+                        {job.work_type || '内装工事'}
+                      </h2>
+                      <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                        <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        {job.city || 'エリア未設定'}
+                        {job.distance_km != null && ` · 約${job.distance_km}km`}
+                      </p>
+                    </div>
+                    {job.distance_km != null && (
+                      <div className="bg-slate-900 text-white rounded-2xl px-3 py-1.5 text-center flex-shrink-0">
+                        <p className="text-[10px] opacity-60 leading-none">距離</p>
+                        <p className="text-base font-extrabold leading-tight">{job.distance_km}km</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── 売上ブロック（メイン） ── */}
+                  <div className="mx-4 mb-3 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white px-4 py-3.5 shadow-sm shadow-blue-200">
+                    <p className="text-[11px] text-blue-200 font-bold mb-1">想定売上（目安）</p>
+                    <p className="text-3xl font-extrabold tracking-tight leading-none mb-2">
+                      {fmt(revenue)}
+                    </p>
+                    <div className="flex items-center justify-between pt-2 border-t border-white/20">
+                      <div>
+                        <p className="text-[10px] text-blue-200">手取り目安</p>
+                        <p className="text-lg font-extrabold">{fmt(takHome)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-blue-200">成立時手数料</p>
+                        <p className="text-sm font-bold text-blue-100">{fmt(fee)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── クイック情報チップ ── */}
+                  <div className="px-4 mb-3 flex flex-wrap gap-1.5">
+                    {job.room_size && (
+                      <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">
+                        {job.room_size}
+                      </span>
+                    )}
+                    {hasMedia && (
+                      <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">
+                        {[job.has_video && '動画', job.has_photos && '写真', job.has_floor_plan && '図面'].filter(Boolean).join(' · ')}
+                      </span>
+                    )}
+                    {job.damage_level && (
+                      <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">
+                        損傷: {job.damage_level === 'low' ? '軽め' : job.damage_level === 'middle' ? '普通' : '重め'}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* ── メモ（折り畳み） ── */}
+                  {job.customer_note && (
+                    <div className="mx-4 mb-3 bg-blue-50 rounded-xl px-3 py-2.5">
+                      <p className="text-[10px] text-blue-500 font-bold mb-1">依頼メモ</p>
+                      <p className="text-xs text-slate-700 leading-relaxed line-clamp-2">
+                        {job.customer_note}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* ── アクション ── */}
+                  <div className="border-t border-slate-100 px-4 py-3 flex gap-2">
+                    <button
+                      onClick={() => navigate(`/craftsman/apply/${job.id}`, { state: { job } })}
+                      className="flex-none px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition active:scale-95"
+                    >
+                      詳しく見る
+                    </button>
+                    <button
+                      onClick={() => navigate(`/craftsman/apply/${job.id}`, { state: { job } })}
+                      className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-extrabold shadow-sm shadow-blue-200 transition active:scale-[0.98]"
+                    >
+                      今すぐ応募する →
+                    </button>
+                  </div>
+
+                  <p className="pb-3 text-center text-[10px] text-slate-400">
+                    応募無料 · 手数料は工事成立時のみ
+                  </p>
                 </article>
               );
             })}
@@ -231,4 +231,3 @@ export default function JobsListView({ jobs, loading }: Props) {
     </div>
   );
 }
-
