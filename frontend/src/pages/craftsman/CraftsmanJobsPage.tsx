@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import JobsListView from './JobsListView';
 import JobsSwipeView from './JobsSwipeView';
+import BottomNav from '../../components/BottomNav';
 
 // ─── Job type（子コンポーネントで import して使う）────────────────────────────
 
@@ -173,6 +174,8 @@ export default function CraftsmanJobsPage() {
           <JobsSwipeView jobs={jobs} />
         )}
       </div>
+
+      <BottomNav variant="flex" />
     </div>
   );
 }

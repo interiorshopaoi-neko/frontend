@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
+import BottomNav from '../components/BottomNav';
 
 const TRUST_POINTS = [
   { icon: '🔓', label: 'ログイン不要' },
@@ -231,14 +232,8 @@ export default function HomePage() {
       </section>
 
       {/* ── Footer：職人向け導線 ─────────────────────────────── */}
-      <footer className="py-8 px-5 text-center border-t border-slate-100 bg-white">
-        <a
-          href="/craftsman/jobs"
-          className="text-xs text-slate-400 hover:text-blue-600 hover:underline transition-colors"
-        >
-          職人の方はこちら →
-        </a>
-        <div className="mt-4 flex justify-center gap-5">
+      <footer className="py-8 px-5 pb-24 text-center border-t border-slate-100 bg-white">
+        <div className="flex justify-center gap-5">
           <a href="/policy" className="text-xs text-slate-300 hover:text-slate-500 transition-colors">
             料金・ポリシー
           </a>
@@ -248,6 +243,7 @@ export default function HomePage() {
         </div>
       </footer>
 
+      <BottomNav />
     </div>
   );
 }

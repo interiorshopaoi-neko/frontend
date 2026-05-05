@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import BottomNav from '../../components/BottomNav';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -164,7 +165,7 @@ export default function CraftsmanProfile() {
         </div>
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 py-6 pb-24">
+      <div className="max-w-2xl mx-auto px-4 py-6 pb-36">
 
         {/* エラーバナー */}
         {error && (
@@ -358,7 +359,7 @@ export default function CraftsmanProfile() {
         </div>
 
         {/* 保存ボタン（固定フッター） */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 safe-area-inset-bottom z-20">
+        <div className="fixed bottom-14 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 z-20">
           <div className="max-w-2xl mx-auto">
             <button
               onClick={handleSave}
@@ -380,6 +381,7 @@ export default function CraftsmanProfile() {
           </div>
         </div>
       </div>
+      <BottomNav />
     </div>
   );
 }
