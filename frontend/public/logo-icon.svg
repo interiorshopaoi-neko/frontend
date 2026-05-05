@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 46 46" fill="none">
+  <defs>
+    <linearGradient id="g" x1="2" y1="9" x2="44" y2="43" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="60%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+
+  <!-- House: roof (flatter, wider) -->
+  <path
+    d="M2,21 L23,9 L44,21"
+    stroke="url(#g)"
+    stroke-width="3.2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <!-- House: walls (wider) -->
+  <path
+    d="M7,21 L7,43 L39,43 L39,21"
+    stroke="url(#g)"
+    stroke-width="3.2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Play button -->
+  <path
+    d="M14,27 L14,40 L34,33.5 Z"
+    fill="url(#g)"
+  />
+</svg>
