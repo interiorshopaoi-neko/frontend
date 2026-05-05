@@ -13,6 +13,14 @@ type ProfileForm = {
   specialty: string;
   available_weekdays: string[];
   notification_enabled: boolean;
+  profile_image_url: string;
+  age: string;
+  experience_years: string;
+  bio: string;
+  available_time: string;
+  has_car: boolean;
+  has_tools: boolean;
+  public_profile_enabled: boolean;
 };
 
 const DEFAULT_FORM: ProfileForm = {
@@ -24,13 +32,22 @@ const DEFAULT_FORM: ProfileForm = {
   specialty: '',
   available_weekdays: [],
   notification_enabled: true,
+  profile_image_url: '',
+  age: '',
+  experience_years: '',
+  bio: '',
+  available_time: '',
+  has_car: false,
+  has_tools: false,
+  public_profile_enabled: true,
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const WORK_TYPE_OPTIONS = ['クロス', '床', 'CF', '補修', 'その他'] as const;
-const RADIUS_OPTIONS    = [10, 20, 30, 50] as const;
-const WEEKDAYS          = ['月', '火', '水', '木', '金', '土', '日'] as const;
+const WORK_TYPE_OPTIONS  = ['クロス', '床', 'CF', '補修', 'その他'] as const;
+const RADIUS_OPTIONS     = [10, 20, 30, 50] as const;
+const WEEKDAYS           = ['月', '火', '水', '木', '金', '土', '日'] as const;
+const TIME_OPTIONS       = ['午前', '午後', '夜間可', '終日', '応相談'] as const;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -64,6 +81,27 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+function BoolToggle({
+  label, sub, enabled, onChange,
+}: { label: string; sub: string; enabled: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      onClick={() => onChange(!enabled)}
+      className={`flex items-center justify-between w-full rounded-xl border px-4 py-3 transition ${
+        enabled ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200'
+      }`}
+    >
+      <div className="text-left">
+        <p className="text-sm font-bold text-slate-800">{label}</p>
+        <p className="text-xs text-slate-500 mt-0.5">{sub}</p>
+      </div>
+      <div className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${enabled ? 'bg-blue-600' : 'bg-slate-300'}`}>
+        <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${enabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
+      </div>
+    </button>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function CraftsmanProfile() {
@@ -74,7 +112,6 @@ export default function CraftsmanProfile() {
   const [error,   setError]   = useState<string | null>(null);
   const userId = getUserId();
 
-  // 既存プロフィール読み込み
   useEffect(() => {
     (async () => {
       const { data } = await supabase
@@ -85,14 +122,22 @@ export default function CraftsmanProfile() {
 
       if (data) {
         setForm({
-          shop_name:           data.shop_name           ?? '',
-          full_name:           data.full_name           ?? '',
-          service_area:        data.service_area        ?? '',
-          radius_km:           data.radius_km           ?? 20,
-          work_types:          data.work_types          ?? [],
-          specialty:           data.specialty           ?? '',
-          available_weekdays:  data.available_weekdays  ?? [],
+          shop_name:            data.shop_name           ?? '',
+          full_name:            data.full_name           ?? '',
+          service_area:         data.service_area        ?? '',
+          radius_km:            data.radius_km           ?? 20,
+          work_types:           data.work_types          ?? [],
+          specialty:            data.specialty           ?? '',
+          available_weekdays:   data.available_weekdays  ?? [],
           notification_enabled: data.notification_enabled ?? true,
+          profile_image_url:    data.profile_image_url   ?? '',
+          age:                  data.age != null ? String(data.age) : '',
+          experience_years:     data.experience_years != null ? String(data.experience_years) : '',
+          bio:                  data.bio                 ?? '',
+          available_time:       data.available_time      ?? '',
+          has_car:              data.has_car             ?? false,
+          has_tools:            data.has_tools           ?? false,
+          public_profile_enabled: data.public_profile_enabled ?? true,
         });
       }
       setLoading(false);
@@ -107,16 +152,24 @@ export default function CraftsmanProfile() {
       .from('craftsmen')
       .upsert(
         {
-          user_id:              userId,
-          shop_name:            form.shop_name,
-          full_name:            form.full_name,
-          service_area:         form.service_area,
-          radius_km:            form.radius_km,
-          work_types:           form.work_types,
-          specialty:            form.specialty,
-          available_weekdays:   form.available_weekdays,
-          notification_enabled: form.notification_enabled,
-          updated_at:           new Date().toISOString(),
+          user_id:               userId,
+          shop_name:             form.shop_name,
+          full_name:             form.full_name,
+          service_area:          form.service_area,
+          radius_km:             form.radius_km,
+          work_types:            form.work_types,
+          specialty:             form.specialty,
+          available_weekdays:    form.available_weekdays,
+          notification_enabled:  form.notification_enabled,
+          profile_image_url:     form.profile_image_url || null,
+          age:                   form.age !== '' ? Number(form.age) : null,
+          experience_years:      form.experience_years !== '' ? Number(form.experience_years) : null,
+          bio:                   form.bio || null,
+          available_time:        form.available_time || null,
+          has_car:               form.has_car,
+          has_tools:             form.has_tools,
+          public_profile_enabled: form.public_profile_enabled,
+          updated_at:            new Date().toISOString(),
         },
         { onConflict: 'user_id' }
       );
@@ -142,6 +195,8 @@ export default function CraftsmanProfile() {
       </div>
     );
   }
+
+  const avatarLetter = (form.shop_name || form.full_name || '?').charAt(0);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -184,6 +239,24 @@ export default function CraftsmanProfile() {
           </div>
         )}
 
+        {/* 公開プロフィールへのリンク */}
+        {form.public_profile_enabled && (
+          <a
+            href={`/craftsman/profile/${userId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mb-4 flex items-center justify-between bg-blue-600 text-white rounded-2xl px-4 py-3 shadow-sm shadow-blue-200 hover:bg-blue-700 transition"
+          >
+            <div>
+              <p className="text-sm font-extrabold">公開プロフィールを確認する</p>
+              <p className="text-[11px] text-blue-200 mt-0.5">依頼者・他の職人から見える画面</p>
+            </div>
+            <svg className="w-4 h-4 text-blue-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+            </svg>
+          </a>
+        )}
+
         {/* 実績エリア */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-4">
           <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-3">実績・評価</p>
@@ -208,9 +281,9 @@ export default function CraftsmanProfile() {
           </a>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-1">
+        {/* ── 基本情報 ─────────────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-1 mb-4">
 
-          {/* 屋号 / 名前 */}
           <Field label="屋号 / 名前">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -238,7 +311,6 @@ export default function CraftsmanProfile() {
 
           <div className="border-t border-slate-100 my-4" />
 
-          {/* 対応エリア */}
           <Field label="対応エリア">
             <input
               type="text"
@@ -249,7 +321,6 @@ export default function CraftsmanProfile() {
             />
           </Field>
 
-          {/* 対応半径 */}
           <Field label="対応半径">
             <div className="flex gap-2">
               {RADIUS_OPTIONS.map(km => (
@@ -270,7 +341,6 @@ export default function CraftsmanProfile() {
 
           <div className="border-t border-slate-100 my-4" />
 
-          {/* 対応可能工事 */}
           <Field label="対応可能工事（複数選択可）">
             <div className="flex flex-wrap gap-2">
               {WORK_TYPE_OPTIONS.map(wt => {
@@ -292,7 +362,6 @@ export default function CraftsmanProfile() {
             </div>
           </Field>
 
-          {/* 得意案件 */}
           <Field label="得意案件（自由記述）">
             <textarea
               value={form.specialty}
@@ -305,7 +374,6 @@ export default function CraftsmanProfile() {
 
           <div className="border-t border-slate-100 my-4" />
 
-          {/* 空き日（曜日） */}
           <Field label="空き日（対応しやすい曜日）">
             <div className="flex gap-2 flex-wrap">
               {WEEKDAYS.map(day => {
@@ -332,29 +400,158 @@ export default function CraftsmanProfile() {
 
           <div className="border-t border-slate-100 my-4" />
 
-          {/* 通知希望 */}
           <Field label="通知設定">
-            <button
-              onClick={() => set('notification_enabled', !form.notification_enabled)}
-              className={`flex items-center justify-between w-full rounded-xl border px-4 py-3 transition ${
-                form.notification_enabled
-                  ? 'bg-blue-50 border-blue-200'
-                  : 'bg-slate-50 border-slate-200'
-              }`}
-            >
-              <div className="text-left">
-                <p className="text-sm font-bold text-slate-800">新着案件の通知を受け取る</p>
-                <p className="text-xs text-slate-500 mt-0.5">対応エリアに案件が届いたとき通知</p>
+            <BoolToggle
+              label="新着案件の通知を受け取る"
+              sub="対応エリアに案件が届いたとき通知"
+              enabled={form.notification_enabled}
+              onChange={v => set('notification_enabled', v)}
+            />
+          </Field>
+        </div>
+
+        {/* ── 自己紹介・公開情報 ───────────────────────── */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-1 mb-4">
+          <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-4">
+            自己紹介・公開プロフィール
+          </p>
+
+          {/* プロフィール写真プレビュー */}
+          <Field label="プロフィール写真">
+            <div className="flex items-center gap-4 mb-3">
+              <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                {form.profile_image_url ? (
+                  <img
+                    src={form.profile_image_url}
+                    alt="プロフィール写真"
+                    className="w-full h-full object-cover"
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                ) : (
+                  <span className="text-2xl font-extrabold text-slate-400">{avatarLetter}</span>
+                )}
               </div>
-              {/* トグルスイッチ */}
-              <div className={`relative w-12 h-6 rounded-full transition-colors ${
-                form.notification_enabled ? 'bg-blue-600' : 'bg-slate-300'
-              }`}>
-                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                  form.notification_enabled ? 'translate-x-6' : 'translate-x-0.5'
-                }`} />
+              <div className="flex-1">
+                <input
+                  type="url"
+                  value={form.profile_image_url}
+                  onChange={e => set('profile_image_url', e.target.value)}
+                  placeholder="https://... 画像URL"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+                <p className="mt-1 text-[11px] text-slate-400">
+                  ※ 正式版ではカメラロールから直接アップロード予定
+                </p>
               </div>
-            </button>
+            </div>
+          </Field>
+
+          <div className="border-t border-slate-100 my-4" />
+
+          {/* 年齢 / 内装歴 */}
+          <Field label="基本スペック">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] text-slate-400 font-semibold">年齢</label>
+                <div className="mt-1 flex items-center gap-1">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={form.age}
+                    onChange={e => set('age', e.target.value)}
+                    placeholder="35"
+                    min={18}
+                    max={80}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                  <span className="text-sm text-slate-500 flex-shrink-0">歳</span>
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] text-slate-400 font-semibold">内装歴</label>
+                <div className="mt-1 flex items-center gap-1">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={form.experience_years}
+                    onChange={e => set('experience_years', e.target.value)}
+                    placeholder="10"
+                    min={0}
+                    max={60}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                  <span className="text-sm text-slate-500 flex-shrink-0">年</span>
+                </div>
+              </div>
+            </div>
+          </Field>
+
+          <div className="border-t border-slate-100 my-4" />
+
+          <Field label="一言プロフィール">
+            <textarea
+              value={form.bio}
+              onChange={e => set('bio', e.target.value)}
+              placeholder="例：群馬県内で10年以上クロス工事を専門に行っています。急ぎの原状回復もお任せください。"
+              rows={3}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </Field>
+
+          <div className="border-t border-slate-100 my-4" />
+
+          <Field label="対応できる時間帯">
+            <div className="flex flex-wrap gap-2">
+              {TIME_OPTIONS.map(t => (
+                <button
+                  key={t}
+                  onClick={() => set('available_time', form.available_time === t ? '' : t)}
+                  className={`px-4 py-2 rounded-full text-sm font-bold border transition ${
+                    form.available_time === t
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          <div className="border-t border-slate-100 my-4" />
+
+          {/* 車あり / 道具あり */}
+          <Field label="装備・設備">
+            <div className="flex flex-col gap-3">
+              <BoolToggle
+                label="🚗 車あり"
+                sub="現場への移動手段がある"
+                enabled={form.has_car}
+                onChange={v => set('has_car', v)}
+              />
+              <BoolToggle
+                label="🔧 道具あり"
+                sub="専用工具・道具一式を持参できる"
+                enabled={form.has_tools}
+                onChange={v => set('has_tools', v)}
+              />
+            </div>
+          </Field>
+
+          <div className="border-t border-slate-100 my-4" />
+
+          <Field label="プロフィール公開設定">
+            <BoolToggle
+              label="公開プロフィールを有効にする"
+              sub="依頼者や他の職人がプロフィールを見られます"
+              enabled={form.public_profile_enabled}
+              onChange={v => set('public_profile_enabled', v)}
+            />
+            {form.public_profile_enabled && (
+              <p className="mt-2 text-[11px] text-blue-600 font-semibold">
+                ✓ 公開中 — 電話・住所などの個人情報は表示されません
+              </p>
+            )}
           </Field>
         </div>
 
