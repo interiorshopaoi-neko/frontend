@@ -189,35 +189,43 @@ export default function CraftsmanApplyPage() {
             </div>
           )}
           {/* 部屋情報 */}
-          {(job?.meta?.rooms?.length ?? 0) > 0 && (
-            <div className="mx-5 mb-3">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">
-                部屋情報（{job!.meta!.rooms!.length}部屋）
-              </p>
-              <div className="space-y-2">
-                {job!.meta!.rooms!.map((room, i) => (
-                  <div key={i} className="rounded-2xl bg-slate-50 px-4 py-3">
-                    <p className="text-sm font-bold text-slate-800">
-                      {room.name || `部屋${i + 1}`}
-                      {room.workType && <span className="ml-2 text-xs font-normal text-slate-500">{room.workType}</span>}
-                    </p>
-                    {(room.size || room.condition.length > 0) && (
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {[room.size, ...room.condition].filter(Boolean).join(' · ')}
-                      </p>
-                    )}
-                  </div>
-                ))}
+          {(() => {
+            const rooms = job?.meta?.rooms ?? [];
+            if (rooms.length === 0) return null;
+            return (
+              <div className="mx-5 mb-3">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">
+                  部屋情報（{rooms.length}部屋）
+                </p>
+                <div className="space-y-2">
+                  {rooms.map((room, i) => {
+                    const conds = room.condition ?? [];
+                    return (
+                      <div key={i} className="rounded-2xl bg-slate-50 px-4 py-3">
+                        <p className="text-sm font-bold text-slate-800">
+                          {room.name || `部屋${i + 1}`}
+                          {room.workType && <span className="ml-2 text-xs font-normal text-slate-500">{room.workType}</span>}
+                        </p>
+                        {(room.size || conds.length > 0) && (
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {[room.size, ...conds].filter(Boolean).join(' · ')}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
           {/* 追加情報 */}
-          {job?.meta?.extra_info && (() => {
-            const ei = job.meta!.extra_info!;
+          {(() => {
+            const ei = job?.meta?.extra_info;
+            if (!ei) return null;
             const items = [
               ei.furniture && `家具: ${ei.furniture}`,
               ei.parking   && `駐車: ${ei.parking}`,
-              (ei.material?.length ?? 0) > 0 && `材料: ${ei.material!.join('・')}`,
+              (ei.material?.length ?? 0) > 0 && `材料: ${(ei.material ?? []).join('・')}`,
               ei.timing    && `時期: ${ei.timing}`,
               ei.memo      && `メモ: ${ei.memo}`,
             ].filter(Boolean) as string[];

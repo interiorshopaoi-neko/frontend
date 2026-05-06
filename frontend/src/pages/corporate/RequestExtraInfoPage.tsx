@@ -156,13 +156,21 @@ export default function RequestExtraInfoPage() {
   async function handleSave() {
     setSaving(true);
 
-    const payload = { extra_info: info };
-    console.log('[RequestExtraInfo] saving meta:', JSON.stringify(payload, null, 2));
+    console.log('[RequestExtraInfo] extra_info to save:', JSON.stringify(info, null, 2));
 
     if (!isDemo && id) {
+      // 既存 meta を読んで rooms 等を保持しつつ extra_info だけ更新
+      const { data: existing } = await supabase
+        .from('estimate_requests')
+        .select('meta')
+        .eq('id', id)
+        .single();
+      const existingMeta = (existing?.meta as Record<string, unknown> | null) ?? {};
+      const mergedMeta = { ...existingMeta, extra_info: info };
+
       const { error } = await supabase
         .from('estimate_requests')
-        .update({ meta: payload } as Record<string, unknown>)
+        .update({ meta: mergedMeta } as Record<string, unknown>)
         .eq('id', id);
       if (error) {
         console.warn('[RequestExtraInfo] meta save skipped (column may not exist):', error.message);

@@ -10,7 +10,7 @@ export type RoomInfo = {
   name: string;
   workType: string;
   size: string;
-  condition: string[];
+  condition?: string[];
 };
 
 export type JobMeta = {

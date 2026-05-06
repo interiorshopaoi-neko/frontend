@@ -140,7 +140,7 @@ export default function JobsListView({ jobs, loading }: Props) {
                     )}
                     {(job.meta?.rooms?.length ?? 0) > 1 && (
                       <span className="bg-violet-50 text-violet-700 text-xs font-bold px-2.5 py-1 rounded-full">
-                        🏠 {job.meta!.rooms!.length}部屋
+                        🏠 {job.meta?.rooms?.length}部屋
                       </span>
                     )}
                     {job.meta?.extra_info && (

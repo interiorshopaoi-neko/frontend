@@ -284,41 +284,41 @@ export default function AdminDashboardPage() {
           <SectionTitle>依頼一覧（直近{requests.length}件）</SectionTitle>
           <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="min-w-max w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100">
                     {['工事内容', 'エリア', '動画', '部屋', '追加情報', '応募数', 'ステータス', '日時'].map(h => (
-                      <th key={h} className="text-left text-[11px] font-bold text-slate-400 px-4 py-3">{h}</th>
+                      <th key={h} className="text-left text-[11px] font-bold text-slate-400 px-4 py-3 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {requests.slice(0, 20).map(r => (
                     <tr key={r.id} className="border-b border-slate-50 hover:bg-slate-50 transition">
-                      <td className="px-4 py-3 font-bold text-slate-800">{r.work_type || '—'}</td>
-                      <td className="px-4 py-3 text-slate-600">{r.city || '—'}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 font-bold text-slate-800 whitespace-nowrap">{r.work_type || '—'}</td>
+                      <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{r.city || '—'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {r.has_video
                           ? <span className="text-blue-600 font-bold text-xs">▶ あり</span>
                           : <span className="text-slate-300 text-xs">なし</span>}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {(r.meta?.rooms?.length ?? 0) > 0
-                          ? <span className="text-violet-600 font-bold text-xs">{r.meta!.rooms!.length}部屋</span>
+                          ? <span className="text-violet-600 font-bold text-xs">{r.meta?.rooms?.length}部屋</span>
                           : <span className="text-slate-300 text-xs">—</span>}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {r.meta?.extra_info
                           ? <span className="text-emerald-600 font-bold text-xs">✓ あり</span>
                           : <span className="text-slate-300 text-xs">—</span>}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span className="inline-block bg-slate-100 text-slate-700 font-extrabold text-xs px-2 py-0.5 rounded-full">
                           {appCountByRequest[r.id] ?? 0}件
                         </span>
                       </td>
-                      <td className="px-4 py-3">{statusBadge(r.status)}</td>
-                      <td className="px-4 py-3 text-slate-400 text-xs">{r.created_at.slice(0, 10)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{statusBadge(r.status)}</td>
+                      <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">{r.created_at.slice(0, 10)}</td>
                     </tr>
                   ))}
                 </tbody>
