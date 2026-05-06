@@ -1,6 +1,6 @@
 export const i18n = {
   jp: {
-    interior_estimate: '内装見積もり',
+    interior_estimate: 'PRO MATCH',
     tagline: '職人の目を、あなたの手に',
     dashboard_title: '見積もり一覧',
     new_estimate: '新規見積もり',
@@ -152,7 +152,7 @@ export const i18n = {
     craftsman_matching_note: '地元の職人があなたの案件を確認します',
   },
   en: {
-    interior_estimate: 'Interior Estimate',
+    interior_estimate: 'PRO MATCH',
     tagline: 'Professional Eyes, In Your Hands',
     dashboard_title: 'Estimates',
     new_estimate: 'New Estimate',
@@ -304,7 +304,7 @@ export const i18n = {
     craftsman_matching_note: 'A local craftsman will review your request',
   },
   zh: {
-    interior_estimate: '室内装修报价',
+    interior_estimate: 'PRO MATCH',
     tagline: '将专业带到您手中',
     dashboard_title: '报价列表',
     new_estimate: '新建报价',
@@ -456,7 +456,7 @@ export const i18n = {
     craftsman_matching_note: '当地工匠将确认您的需求',
   },
   ko: {
-    interior_estimate: '인테리어 견적',
+    interior_estimate: 'PRO MATCH',
     tagline: '전문가의 시선을 당신에게',
     dashboard_title: '견적 목록',
     new_estimate: '새 견적',
@@ -608,7 +608,7 @@ export const i18n = {
     craftsman_matching_note: '지역 장인이 의뢰를 확인합니다',
   },
   vi: {
-    interior_estimate: 'Báo giá nội thất',
+    interior_estimate: 'PRO MATCH',
     tagline: 'Mang góc nhìn chuyên gia đến bạn',
     dashboard_title: 'Danh sách báo giá',
     new_estimate: 'Báo giá mới',

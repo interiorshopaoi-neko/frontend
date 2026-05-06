@@ -5,6 +5,11 @@ import { calculateServiceFee } from '../../lib/serviceFee';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type RequestMeta = {
+  rooms?: { name: string; workType: string; size: string; condition: string[] }[];
+  extra_info?: Record<string, unknown>;
+};
+
 type Request = {
   id: string;
   created_at: string;
@@ -14,6 +19,7 @@ type Request = {
   has_video: boolean | null;
   has_photos: boolean | null;
   urgency: string | null;
+  meta?: RequestMeta | null;
 };
 
 type Craftsman = {
@@ -135,7 +141,7 @@ export default function AdminDashboardPage() {
     (async () => {
       try {
         const [{ data: reqs }, { data: crafts }, { data: apps }] = await Promise.all([
-          supabase.from('estimate_requests').select('id,created_at,work_type,city,status,has_video,has_photos,urgency').order('created_at', { ascending: false }).limit(100),
+          supabase.from('estimate_requests').select('id,created_at,work_type,city,status,has_video,has_photos,urgency,meta').order('created_at', { ascending: false }).limit(100),
           supabase.from('craftsmen').select('id,created_at,shop_name,full_name,service_area,work_types,experience_years').order('created_at', { ascending: false }).limit(100),
           supabase.from('job_applications').select('id,created_at,estimate_request_id,craftsman_id,status,price,service_fee,estimate_requests(work_type,city)').order('created_at', { ascending: false }).limit(200),
         ]);
@@ -281,7 +287,7 @@ export default function AdminDashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100">
-                    {['工事内容', 'エリア', '動画', '応募数', 'ステータス', '日時'].map(h => (
+                    {['工事内容', 'エリア', '動画', '部屋', '追加情報', '応募数', 'ステータス', '日時'].map(h => (
                       <th key={h} className="text-left text-[11px] font-bold text-slate-400 px-4 py-3">{h}</th>
                     ))}
                   </tr>
@@ -295,6 +301,16 @@ export default function AdminDashboardPage() {
                         {r.has_video
                           ? <span className="text-blue-600 font-bold text-xs">▶ あり</span>
                           : <span className="text-slate-300 text-xs">なし</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {(r.meta?.rooms?.length ?? 0) > 0
+                          ? <span className="text-violet-600 font-bold text-xs">{r.meta!.rooms!.length}部屋</span>
+                          : <span className="text-slate-300 text-xs">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {r.meta?.extra_info
+                          ? <span className="text-emerald-600 font-bold text-xs">✓ あり</span>
+                          : <span className="text-slate-300 text-xs">—</span>}
                       </td>
                       <td className="px-4 py-3">
                         <span className="inline-block bg-slate-100 text-slate-700 font-extrabold text-xs px-2 py-0.5 rounded-full">

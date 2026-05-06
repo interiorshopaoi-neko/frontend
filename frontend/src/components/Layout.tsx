@@ -6,8 +6,6 @@ import type { User } from '../types';
 import api from '../utils/api';
 import { useLangContext } from '../context/LangContext';
 import LangSwitcher from './LangSwitcher';
-import Logo from './Logo';
-
 interface Props {
   user: User;
   onLogout: () => void;
@@ -42,7 +40,7 @@ export default function Layout({ user, onLogout, children }: Props) {
           <button
             onClick={() => navigate(user.role === 'customer' ? '/customer' : '/craftsman')}
           >
-            <Logo size={26} />
+            <img src="/logo-icon.svg" alt="PRO MATCH" className="h-7 w-7 object-contain" />
           </button>
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500">

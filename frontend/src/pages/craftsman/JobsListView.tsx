@@ -138,6 +138,16 @@ export default function JobsListView({ jobs, loading }: Props) {
                         ▶ 動画あり
                       </span>
                     )}
+                    {(job.meta?.rooms?.length ?? 0) > 1 && (
+                      <span className="bg-violet-50 text-violet-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                        🏠 {job.meta!.rooms!.length}部屋
+                      </span>
+                    )}
+                    {job.meta?.extra_info && (
+                      <span className="bg-emerald-50 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                        ✓ 追加情報あり
+                      </span>
+                    )}
                   </div>
 
                   {/* ── タイトル・エリア ── */}
