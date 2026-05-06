@@ -221,7 +221,7 @@ function ContactButton({
   if (r.contact_method === 'メール') {
     const subject = encodeURIComponent('【内装工事のご相談】概算のご案内');
     const body = encodeURIComponent(
-      `はじめまして。Aoi Interior と申します。\nこの度はお問い合わせいただきありがとうございます。\n\n${r.work_type ?? '内装工事'}（${r.area ?? ''}）についてご連絡差し上げました。\n\n概算金額をお伝えしたく、ご都合のよい日時をお知らせいただけますでしょうか。`
+      `はじめまして。PRO MATCH と申します。\nこの度はお問い合わせいただきありがとうございます。\n\n${r.work_type ?? '内装工事'}（${r.area ?? ''}）についてご連絡差し上げました。\n\n概算金額をお伝えしたく、ご都合のよい日時をお知らせいただけますでしょうか。`
     );
     return (
       <a

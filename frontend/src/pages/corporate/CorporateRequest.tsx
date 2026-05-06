@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Video } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 // ── 定数 ─────────────────────────────────────────────────────────────────────
@@ -53,10 +52,7 @@ function PageHeader() {
   return (
     <div className="px-6 pt-8 pb-6 border-b border-slate-100 flex-shrink-0">
       <div className="flex items-center gap-2 mb-4">
-        <div className="w-8 h-8 rounded-xl bg-violet-600 flex items-center justify-center flex-shrink-0">
-          <Video size={14} className="text-white" />
-        </div>
-        <span className="text-sm font-bold text-slate-700 tracking-wide">Aoi Interior</span>
+        <img src="/logo-full.svg" alt="PRO MATCH" className="h-7 object-contain" />
       </div>
       <h1 className="text-2xl font-extrabold text-slate-900 leading-snug mb-1">
         内装工事の概算確認

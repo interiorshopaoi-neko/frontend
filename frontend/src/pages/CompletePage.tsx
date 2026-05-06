@@ -1,27 +1,26 @@
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Clock, MessageSquare, Hammer, CreditCard } from 'lucide-react';
-import Logo from '../components/Logo';
+import { CheckCircle, Clock, MessageSquare, PhoneCall, Hammer } from 'lucide-react';
 
 const NEXT_STEPS = [
   {
     icon: Clock,
-    title: '職人マッチング',
-    desc: '条件に合う職人候補を選定します（通常1〜2営業日）',
+    title: '職人が内容を確認',
+    desc: '動画・写真を確認した職人が概算金額を提示します（通常1〜2営業日）',
   },
   {
     icon: MessageSquare,
-    title: '職人からご連絡',
-    desc: '写真を確認した職人より正式な金額と日程をご提示します',
+    title: '職人から連絡',
+    desc: '条件が合えば、職人から直接ご連絡があります',
   },
   {
-    icon: CreditCard,
-    title: '予約確定（¥3,000）',
-    desc: '気に入った職人を選んで予約確定。¥3,000は工事代金に充当されます',
+    icon: PhoneCall,
+    title: '成約・連絡先の開示',
+    desc: '成約後に職人の詳細な連絡先をご確認いただけます',
   },
   {
     icon: Hammer,
-    title: '工事当日',
-    desc: '残りの工事代金は職人へ直接お支払いください',
+    title: '工事・直接お支払い',
+    desc: '工事代金は職人へ直接お支払いください。PRO MATCHは工事代金をお預かりしません',
   },
 ] as const;
 
@@ -34,13 +33,13 @@ export default function CompletePage() {
 
         {/* Logo */}
         <div className="mb-10">
-          <Logo size={28} />
+          <img src="/logo-full.svg" alt="PRO MATCH" className="h-8 object-contain" />
         </div>
 
         {/* Hero */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-50 mb-5">
-            <CheckCircle size={32} className="text-indigo-500" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 mb-5">
+            <CheckCircle size={32} className="text-blue-500" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 leading-snug">
             見積もり依頼を<br />受け付けました
@@ -51,13 +50,13 @@ export default function CompletePage() {
           </p>
         </div>
 
-        {/* 費用なしバナー */}
+        {/* 無料バナー */}
         <div className="mb-8 bg-emerald-50 border border-emerald-100 rounded-2xl px-5 py-4 text-center">
           <p className="text-sm font-bold text-emerald-800">
-            予約確定まで費用はかかりません
+            見積もり・相談・職人選びは完全無料
           </p>
           <p className="text-xs text-emerald-600 mt-1">
-            職人の紹介・見積もり確認はすべて無料です
+            工事代金は職人へ直接お支払い。PRO MATCHはお預かりしません。
           </p>
         </div>
 
@@ -72,10 +71,8 @@ export default function CompletePage() {
                 <Icon size={17} className="text-slate-500" />
               </div>
               <div>
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-[10px] font-bold text-slate-400">STEP {i + 1}</span>
-                </div>
-                <p className="text-sm font-bold text-slate-800">{title}</p>
+                <span className="text-[10px] font-bold text-slate-400">STEP {i + 1}</span>
+                <p className="text-sm font-bold text-slate-800 mt-0.5">{title}</p>
                 <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{desc}</p>
               </div>
             </div>
@@ -91,7 +88,11 @@ export default function CompletePage() {
         </button>
 
         <p className="text-center text-xs text-slate-400 mt-4 leading-relaxed">
-          ご不明な点は<span className="text-slate-600 font-semibold">サポート</span>までお問い合わせください
+          ご不明な点は
+          <a href="/support" className="text-slate-600 font-semibold hover:underline ml-0.5">
+            お問い合わせ
+          </a>
+          ください
         </p>
       </div>
     </div>

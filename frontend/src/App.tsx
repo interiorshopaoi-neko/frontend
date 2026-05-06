@@ -8,7 +8,6 @@ import NewEstimate from './pages/customer/NewEstimate';
 import EstimateDetail from './pages/customer/EstimateDetail';
 import CraftsmanDashboard from './pages/craftsman/CraftsmanDashboard';
 import ReviewEstimate from './pages/craftsman/ReviewEstimate';
-import LandingEstimate from './pages/LandingEstimate';
 import AdminDashboard from './pages/AdminDashboard';
 import DemoLauncher from './pages/DemoLauncher';
 import EstimateFlow from './pages/customer/EstimateFlow';

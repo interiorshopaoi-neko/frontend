@@ -1,13 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 
 const ROWS: { label: string; value: string }[] = [
-  { label: 'サービス名',     value: 'PRO MATCH' },
-  { label: '運営者',         value: '（運営者名・法人名を記載予定）' },
-  { label: '所在地',         value: '（住所を記載予定）' },
-  { label: '問い合わせ先',   value: 'サポートページよりお問い合わせください' },
-  { label: 'サービス料金',   value: 'お客様：無料 / 職人：成約時500円〜5,000円（概算金額により変動）' },
-  { label: '支払時期',       value: '成約確定後' },
-  { label: '支払方法',       value: '（決済方法は今後追加予定）' },
+  { label: 'サービス名',       value: 'PRO MATCH' },
+  { label: '運営者',           value: '正式公開前に記載予定' },
+  { label: '所在地',           value: '正式公開前に記載予定' },
+  { label: '問い合わせ先',     value: 'サポートページよりお問い合わせください（/support）' },
+  { label: 'サービス料金',     value: 'お客様：無料 / 職人：成約時¥500〜¥5,000（概算金額により変動）' },
+  { label: '支払時期',         value: '成約確定後' },
+  { label: '支払方法',         value: '正式公開前に記載予定' },
   { label: 'キャンセルについて', value: '成約前はキャンセル料なし。成約後は依頼者・職人間で直接ご相談ください。' },
   { label: '工事代金の取り扱い', value: 'PRO MATCHは工事代金を預かりません。工事代金は依頼者と職人が直接やり取りします。' },
 ];
