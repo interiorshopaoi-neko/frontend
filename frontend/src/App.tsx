@@ -31,6 +31,11 @@ import RequestApplicationsPage from './pages/customer/RequestApplicationsPage';
 import HomePage from './pages/HomePage';
 import ToolsPage from './pages/ToolsPage';
 import ReviewPage from './pages/customer/ReviewPage';
+import FaqPage     from './pages/FaqPage';
+import SupportPage from './pages/SupportPage';
+import TermsPage   from './pages/TermsPage';
+import PrivacyPage from './pages/PrivacyPage';
+import LegalPage   from './pages/LegalPage';
 
 function CraftsmanEstimateRoute({ user, logout }: { user: ReturnType<typeof useAuth>['user']; logout: () => void }) {
   const { id } = useParams();
@@ -105,6 +110,11 @@ export default function App() {
         <Route path="/complete"   element={<CompletePage />} />
         <Route path="/pro-signup" element={<ProSignupPage />} />
         <Route path="/policy"     element={<PolicyPage />} />
+        <Route path="/faq"        element={<FaqPage />} />
+        <Route path="/support"    element={<SupportPage />} />
+        <Route path="/terms"      element={<TermsPage />} />
+        <Route path="/privacy"    element={<PrivacyPage />} />
+        <Route path="/legal"      element={<LegalPage />} />
 
         {/* ランディング：未ログインなら新トップページ、ログイン済みはダッシュボードへ */}
         <Route path="/" element={

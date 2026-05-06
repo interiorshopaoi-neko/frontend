@@ -231,15 +231,17 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Footer：職人向け導線 ─────────────────────────────── */}
-      <footer className="py-8 px-5 pb-24 text-center border-t border-slate-100 bg-white">
-        <div className="flex justify-center gap-5">
-          <a href="/policy" className="text-xs text-slate-300 hover:text-slate-500 transition-colors">
-            料金・ポリシー
-          </a>
-          <a href="/pro-signup" className="text-xs text-slate-300 hover:text-slate-500 transition-colors">
-            職人登録
-          </a>
+      {/* ── Footer ───────────────────────────────────────────── */}
+      <footer className="py-6 px-5 pb-24 text-center border-t border-slate-100 bg-white space-y-2">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5">
+          <a href="/faq"     className="text-xs text-slate-400 hover:text-slate-600 transition-colors">よくある質問</a>
+          <a href="/support" className="text-xs text-slate-400 hover:text-slate-600 transition-colors">お問い合わせ</a>
+          <a href="/terms"   className="text-xs text-slate-400 hover:text-slate-600 transition-colors">利用規約</a>
+          <a href="/privacy" className="text-xs text-slate-400 hover:text-slate-600 transition-colors">プライバシーポリシー</a>
+        </div>
+        <div className="flex justify-center gap-4 pt-1">
+          <a href="/pro-signup" className="text-xs text-slate-300 hover:text-slate-500 transition-colors">職人登録</a>
+          <a href="/legal"      className="text-xs text-slate-300 hover:text-slate-500 transition-colors">特定商取引法</a>
         </div>
       </footer>
 

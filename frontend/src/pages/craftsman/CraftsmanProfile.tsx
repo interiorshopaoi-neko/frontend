@@ -557,6 +557,23 @@ export default function CraftsmanProfile() {
           </Field>
         </div>
 
+        {/* サポート */}
+        <div className="mt-2 rounded-2xl bg-slate-50 ring-1 ring-slate-200 px-4 py-3.5">
+          <p className="text-xs font-bold text-slate-600 mb-2.5">サポート</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+            {[
+              { label: 'よくある質問', href: '/faq' },
+              { label: 'お問い合わせ', href: '/support' },
+              { label: '通報する',     href: '/support?type=report' },
+              { label: '利用規約',     href: '/terms' },
+            ].map(({ label, href }) => (
+              <a key={label} href={href} className="text-xs text-blue-600 hover:underline font-medium">
+                {label}
+              </a>
+            ))}
+          </div>
+        </div>
+
         {/* 職人ツールへの導線 */}
         <div className="mt-2 rounded-2xl bg-slate-50 ring-1 ring-slate-200 px-4 py-3.5 flex items-center justify-between gap-3">
           <div>

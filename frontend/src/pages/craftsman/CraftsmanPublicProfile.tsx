@@ -268,6 +268,11 @@ export default function CraftsmanPublicProfile() {
             🔒 このページには電話番号・住所・メールアドレスなどの個人情報は表示されていません。<br />
             個人情報は成約後に当事者間で共有されます。
           </p>
+          <p className="text-center mt-2">
+            <a href="/support?type=report" className="text-[11px] text-slate-400 hover:text-red-500 transition-colors underline">
+              問題を報告
+            </a>
+          </p>
         </div>
       </div>
 
