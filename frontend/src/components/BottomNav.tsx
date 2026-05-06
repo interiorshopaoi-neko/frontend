@@ -80,12 +80,6 @@ const TABS = [
     match: (p: string) => p.startsWith('/craftsman/dashboard'),
   },
   {
-    href: '/tools',
-    label: 'ツール',
-    Icon: IconTools,
-    match: (p: string) => p.startsWith('/tools'),
-  },
-  {
     href: '/craftsman/help-list',
     label: '応援',
     Icon: IconHandshake,
@@ -127,7 +121,7 @@ export default function BottomNav({ variant = 'fixed', subtle = false }: Props) 
       className={`${outerClass} border-t ${subtle ? 'bg-white/80 backdrop-blur-sm border-slate-100' : 'bg-white border-slate-200'}`}
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="grid grid-cols-5 h-14 max-w-lg mx-auto">
+      <div className="grid grid-cols-4 h-14 max-w-lg mx-auto">
         {TABS.map(({ href, label, Icon, match }) => {
           const active = match(pathname);
           const activeColor  = subtle ? 'text-slate-600' : 'text-blue-600';

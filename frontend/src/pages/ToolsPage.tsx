@@ -1,11 +1,14 @@
 import { useState } from 'react';
 
-// ─── 定数 ────────────────────────────────────────────────────────────────────
+// ─── 型定義 ───────────────────────────────────────────────────────────────────
 
-const UNIT_PRICES = {
-  closs: 1100, // クロス（円/㎡）
-  cf:    5600, // 床CF（円/㎡）
-} as const;
+type EstimateToolInput = {
+  wallpaperQty:       number;
+  wallpaperUnitPrice: number;
+  floorQty:           number;
+  floorUnitPrice:     number;
+  materialCost:       number;
+};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,6 +31,26 @@ function numVal(s: string): number {
 
 function yen(n: number): string {
   return `¥${n.toLocaleString()}`;
+}
+
+/** クロス小計 + 床CF小計 */
+function calculateEstimate(input: EstimateToolInput): {
+  wallpaperTotal: number;
+  floorTotal:     number;
+  grandTotal:     number;
+} {
+  const wallpaperTotal = Math.round(
+    Math.max(0, input.wallpaperQty || 0) * Math.max(0, input.wallpaperUnitPrice || 0)
+  );
+  const floorTotal = Math.round(
+    Math.max(0, input.floorQty || 0) * Math.max(0, input.floorUnitPrice || 0)
+  );
+  return { wallpaperTotal, floorTotal, grandTotal: wallpaperTotal + floorTotal };
+}
+
+/** 利益目安 = 概算合計 - 材料費 */
+function calculateProfit(total: number, materialCost: number): number {
+  return Math.max(0, total || 0) - Math.max(0, materialCost || 0);
 }
 
 // ─── 記録モーダル ─────────────────────────────────────────────────────────────
@@ -164,87 +187,131 @@ function RecordModal({ onClose, onSave }: RecordModalProps) {
 
 // ─── 簡単見積カード ───────────────────────────────────────────────────────────
 
+function NumInput({
+  value, onChange, placeholder, step, unit,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  step?: string;
+  unit?: string;
+}) {
+  return (
+    <div className="relative">
+      <input
+        type="number"
+        inputMode="decimal"
+        min={0}
+        step={step ?? '1'}
+        placeholder={placeholder ?? '0'}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 pr-7 text-right text-sm font-extrabold text-slate-900 placeholder-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+      />
+      {unit && (
+        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] font-bold">
+          {unit}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function QuoteCalculator() {
-  const [crossQty, setCrossQty] = useState('');
-  const [cfQty,    setCfQty]    = useState('');
+  const [wpQty,   setWpQty]   = useState('');
+  const [wpPrice, setWpPrice] = useState('1100');
+  const [cfQty,   setCfQty]   = useState('');
+  const [cfPrice, setCfPrice] = useState('5600');
+  const [matCost, setMatCost] = useState('');
 
-  const crossTotal = numVal(crossQty) * UNIT_PRICES.closs;
-  const cfTotal    = numVal(cfQty)    * UNIT_PRICES.cf;
-  const grandTotal = crossTotal + cfTotal;
-
-  const hasAny = numVal(crossQty) > 0 || numVal(cfQty) > 0;
+  const input: EstimateToolInput = {
+    wallpaperQty:       numVal(wpQty),
+    wallpaperUnitPrice: numVal(wpPrice),
+    floorQty:           numVal(cfQty),
+    floorUnitPrice:     numVal(cfPrice),
+    materialCost:       numVal(matCost),
+  };
+  const { wallpaperTotal, floorTotal, grandTotal } = calculateEstimate(input);
+  const profit = calculateProfit(grandTotal, input.materialCost);
+  const hasAny = grandTotal > 0;
 
   return (
     <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm overflow-hidden">
-      <div className="px-4 pt-4 pb-3 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">🧮</span>
-          <div>
-            <p className="text-sm font-extrabold text-slate-900">簡単見積</p>
-            <p className="text-[11px] text-slate-400">数量を入力すると概算が出ます</p>
-          </div>
+      <div className="px-4 pt-4 pb-3 border-b border-slate-100 flex items-center gap-2">
+        <span className="text-xl">🧮</span>
+        <div>
+          <p className="text-sm font-extrabold text-slate-900">簡単見積</p>
+          <p className="text-[11px] text-slate-400">数量・単価を入力すると概算が出ます</p>
         </div>
       </div>
 
-      <div className="px-4 py-4 space-y-3">
+      <div className="px-4 py-4 space-y-4">
 
         {/* クロス */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1">
-            <p className="text-xs font-bold text-slate-700 mb-1">クロス</p>
-            <p className="text-[10px] text-slate-400">単価 ¥1,100 / ㎡</p>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="relative w-28">
-              <input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                placeholder="0"
-                value={crossQty}
-                onChange={e => setCrossQty(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 pr-8 text-right text-base font-extrabold text-slate-900 placeholder-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-              />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">㎡</span>
+        <div>
+          <p className="text-xs font-bold text-slate-700 mb-2">クロス（壁紙）</p>
+          <div className="grid grid-cols-2 gap-2 mb-1.5">
+            <div>
+              <p className="text-[10px] text-slate-400 mb-1">数量</p>
+              <NumInput value={wpQty} onChange={setWpQty} placeholder="0" step="0.1" unit="㎡" />
             </div>
-            <span className="text-slate-300 text-sm">=</span>
-            <p className="w-24 text-right text-sm font-extrabold text-slate-700">
-              {numVal(crossQty) > 0 ? yen(crossTotal) : '—'}
+            <div>
+              <p className="text-[10px] text-slate-400 mb-1">単価（編集可）</p>
+              <NumInput value={wpPrice} onChange={setWpPrice} placeholder="1100" unit="円" />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <p className="text-xs text-slate-500">
+              小計：<span className="font-extrabold text-slate-800">
+                {numVal(wpQty) > 0 ? yen(wallpaperTotal) : '—'}
+              </span>
             </p>
           </div>
         </div>
 
-        {/* CF */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1">
-            <p className="text-xs font-bold text-slate-700 mb-1">床CF</p>
-            <p className="text-[10px] text-slate-400">単価 ¥5,600 / ㎡</p>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="relative w-28">
-              <input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                placeholder="0"
-                value={cfQty}
-                onChange={e => setCfQty(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 pr-8 text-right text-base font-extrabold text-slate-900 placeholder-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-              />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">㎡</span>
+        {/* 床CF */}
+        <div>
+          <p className="text-xs font-bold text-slate-700 mb-2">床CF（クッションフロア）</p>
+          <div className="grid grid-cols-2 gap-2 mb-1.5">
+            <div>
+              <p className="text-[10px] text-slate-400 mb-1">数量</p>
+              <NumInput value={cfQty} onChange={setCfQty} placeholder="0" step="0.1" unit="㎡" />
             </div>
-            <span className="text-slate-300 text-sm">=</span>
-            <p className="w-24 text-right text-sm font-extrabold text-slate-700">
-              {numVal(cfQty) > 0 ? yen(cfTotal) : '—'}
+            <div>
+              <p className="text-[10px] text-slate-400 mb-1">単価（編集可）</p>
+              <NumInput value={cfPrice} onChange={setCfPrice} placeholder="5600" unit="円" />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <p className="text-xs text-slate-500">
+              小計：<span className="font-extrabold text-slate-800">
+                {numVal(cfQty) > 0 ? yen(floorTotal) : '—'}
+              </span>
             </p>
           </div>
         </div>
 
-        {/* 合計 */}
+        {/* 材料費 */}
+        <div>
+          <p className="text-xs font-bold text-slate-700 mb-2">材料費</p>
+          <NumInput value={matCost} onChange={setMatCost} placeholder="0" unit="円" />
+        </div>
+
+        {/* 結果 */}
         {hasAny && (
-          <div className="rounded-xl bg-blue-600 text-white px-4 py-3 flex items-center justify-between mt-1">
-            <p className="text-xs font-bold text-blue-200">概算合計</p>
-            <p className="text-xl font-extrabold">{yen(grandTotal)}</p>
+          <div className="space-y-2 pt-1">
+            <div className="rounded-xl bg-blue-600 text-white px-4 py-3 flex items-center justify-between">
+              <p className="text-xs font-bold text-blue-200">概算合計</p>
+              <p className="text-2xl font-extrabold">{yen(grandTotal)}</p>
+            </div>
+            <div className={`rounded-xl px-4 py-3 flex items-center justify-between ${
+              profit >= 0 ? 'bg-emerald-50' : 'bg-red-50'
+            }`}>
+              <p className="text-xs font-bold text-slate-500">利益目安（合計 − 材料費）</p>
+              <p className={`text-xl font-extrabold ${profit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                {profit >= 0 ? '+' : ''}{yen(profit)}
+              </p>
+            </div>
           </div>
         )}
       </div>

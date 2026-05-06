@@ -391,6 +391,20 @@ export default function CraftsmanDashboardPage() {
             🔒 依頼者の個人情報（電話・住所など）は成約後のやりとりでのみ開示されます
           </p>
         )}
+
+        {/* 利益記録への導線 */}
+        <div className="mt-5 mx-0 rounded-2xl bg-slate-50 ring-1 ring-slate-200 px-4 py-3.5 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold text-slate-700">工事後は利益を記録しましょう</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">売上・材料費・利益を現場ごとに管理</p>
+          </div>
+          <button
+            onClick={() => navigate('/tools')}
+            className="flex-shrink-0 bg-blue-600 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm shadow-blue-200 transition active:scale-95"
+          >
+            利益を記録する
+          </button>
+        </div>
       </div>
 
       <BottomNav />

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import BottomNav from '../../components/BottomNav';
 
@@ -105,6 +106,7 @@ function BoolToggle({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function CraftsmanProfile() {
+  const navigate = useNavigate();
   const [form,    setForm]    = useState<ProfileForm>(DEFAULT_FORM);
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
@@ -553,6 +555,20 @@ export default function CraftsmanProfile() {
               </p>
             )}
           </Field>
+        </div>
+
+        {/* 職人ツールへの導線 */}
+        <div className="mt-2 rounded-2xl bg-slate-50 ring-1 ring-slate-200 px-4 py-3.5 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold text-slate-700">🔧 職人ツール</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">利益管理・簡単見積・現場メモを使えます</p>
+          </div>
+          <button
+            onClick={() => navigate('/tools')}
+            className="flex-shrink-0 bg-blue-600 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm shadow-blue-200 transition active:scale-95"
+          >
+            ツールを開く
+          </button>
         </div>
 
         {/* 保存ボタン（固定フッター） */}
