@@ -239,6 +239,13 @@ export default function CraftsmanDashboardPage() {
           </div>
         )}
 
+        {/* 手数料ルールnotice */}
+        <div className="mx-4 mt-4 rounded-xl bg-slate-100 px-3 py-2.5 space-y-0.5">
+          <p className="text-[11px] text-slate-500">・サービス利用料は成約時点の概算金額を基準に確定します</p>
+          <p className="text-[11px] text-slate-500">・工事代金は依頼者と直接やり取りします。PRO MATCHは工事代金をお預かりしません</p>
+          <p className="text-[11px] text-slate-500">・成約後の外部誘導・虚偽申告が確認された場合、アカウント制限の対象となる場合があります</p>
+        </div>
+
         {/* サマリー */}
         <div className="grid grid-cols-3 gap-3 px-4 pt-4">
           <SummaryCard icon="📤" value={counts.active}     label="進行中" accent />
@@ -360,6 +367,19 @@ export default function CraftsmanDashboardPage() {
                       <p className="text-[11px] text-green-700 font-bold">
                         {app._status === '工事完了' ? '✅ 工事完了 — 実績として記録されました' : '🤝 成約済み — 詳細は直接やりとりしてください'}
                       </p>
+                    </div>
+                  )}
+
+                  {/* レビュー待ちバナー */}
+                  {app._status === '依頼者確認中' && app.review_requested_at && !app.reviewed_at && (
+                    <div className="border-t border-amber-100 bg-amber-50 px-4 py-2.5 flex items-center justify-between gap-2">
+                      <p className="text-[11px] text-amber-700 font-bold">⭐ 依頼者がレビューを入力できます</p>
+                      <button
+                        onClick={() => navigate(`/request/${app.estimate_request_id}/review`)}
+                        className="text-[11px] text-blue-600 font-bold underline"
+                      >
+                        レビュー画面
+                      </button>
                     </div>
                   )}
 

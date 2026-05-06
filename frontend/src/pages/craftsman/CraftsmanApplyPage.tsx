@@ -270,12 +270,25 @@ export default function CraftsmanApplyPage() {
               {submitting ? '送信中...' : 'この内容で送る'}
             </button>
 
-            <p className="text-center text-xs text-slate-400">応募・見積もり提出は無料です</p>
-            <p className="text-center text-xs text-slate-400">手数料は工事成立時のみ発生します</p>
-            <div className="rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 space-y-1">
-              <p className="text-[11px] text-slate-500 text-center">🔒 成約前は電話番号・住所は表示されません</p>
-              <p className="text-[11px] text-slate-500 text-center">✓ 成約後に依頼者の詳細情報を確認できます</p>
+            {/* 手数料ルール */}
+            <div className="rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 space-y-1.5">
+              <p className="text-[11px] font-bold text-slate-500">サービス利用料について</p>
+              <p className="text-[11px] text-slate-400 leading-relaxed">・サービス利用料は、成約時点の概算金額を基準に確定します</p>
+              <p className="text-[11px] text-slate-400 leading-relaxed">・成約後に工事金額が増減しても、原則として再計算は行いません</p>
+              <p className="text-[11px] text-slate-400 leading-relaxed">・工事代金は依頼者と直接やり取りします。PRO MATCHは工事代金をお預かりしません</p>
             </div>
+
+            {/* 連絡先開示 */}
+            <div className="rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 space-y-1">
+              <p className="text-[11px] text-slate-500 text-center">🔒 成約前は、住所・電話番号などの個人情報は表示されません</p>
+              <p className="text-[11px] text-slate-500 text-center">✓ 成約後に、詳細な連絡先を確認できます</p>
+            </div>
+
+            {/* 不正防止 */}
+            <p className="text-center text-[11px] text-slate-400 leading-relaxed px-2">
+              ⚠️ 成約後の外部誘導・虚偽申告が確認された場合、アカウント制限の対象となる場合があります
+            </p>
+
             <p className="text-center text-[11px] text-slate-300 leading-relaxed px-2">
               ※契約・施工は当事者間で行われます。当サービスはマッチングの場を提供するものであり、施工内容・品質・トラブルについては当事者間でご確認ください。
             </p>

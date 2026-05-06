@@ -30,6 +30,7 @@ import CraftsmanDashboardPage from './pages/craftsman/CraftsmanDashboardPage';
 import RequestApplicationsPage from './pages/customer/RequestApplicationsPage';
 import HomePage from './pages/HomePage';
 import ToolsPage from './pages/ToolsPage';
+import ReviewPage from './pages/customer/ReviewPage';
 
 function CraftsmanEstimateRoute({ user, logout }: { user: ReturnType<typeof useAuth>['user']; logout: () => void }) {
   const { id } = useParams();
@@ -91,6 +92,7 @@ export default function App() {
         <Route path="/craftsman/jobs"     element={<CraftsmanJobsPage />} />
         <Route path="/craftsman/dashboard"           element={<CraftsmanDashboardPage />} />
         <Route path="/request/:id/applications"    element={<RequestApplicationsPage />} />
+        <Route path="/request/:id/review"          element={<ReviewPage />} />
         <Route path="/craftsman/profile"          element={<CraftsmanProfile />} />
         <Route path="/craftsman/profile/:userId"   element={<CraftsmanPublicProfile />} />
         <Route path="/craftsman/help"      element={<HelpRequestPage />} />
