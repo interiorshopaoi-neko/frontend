@@ -17,6 +17,7 @@ import ProSignupPage from './pages/ProSignupPage';
 import PolicyPage from './pages/PolicyPage';
 import CorporateRequest from './pages/corporate/CorporateRequest';
 import AdminRequests from './pages/admin/AdminRequests';
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import ProJobs from './pages/pro/ProJobs';
 import CraftsmanJobsPage from './pages/craftsman/CraftsmanJobsPage';
 import CraftsmanProfile from './pages/craftsman/CraftsmanProfile';
@@ -78,8 +79,9 @@ export default function App() {
         } />
 
         {/* 管理・デモページ */}
-        <Route path="/admin"          element={<AdminDashboard />} />
-        <Route path="/admin/requests" element={<AdminRequests />} />
+        <Route path="/admin"           element={<AdminDashboard />} />
+        <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+        <Route path="/admin/requests"  element={<AdminRequests />} />
         <Route path="/demo"       element={<DemoLauncher />} />
         <Route path="/corporate"  element={<CorporateRequest />} />
 
