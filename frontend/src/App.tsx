@@ -29,6 +29,7 @@ import CraftsmanPublicProfile from './pages/craftsman/CraftsmanPublicProfile';
 import CraftsmanDashboardPage from './pages/craftsman/CraftsmanDashboardPage';
 import RequestApplicationsPage from './pages/customer/RequestApplicationsPage';
 import HomePage from './pages/HomePage';
+import ToolsPage from './pages/ToolsPage';
 
 function CraftsmanEstimateRoute({ user, logout }: { user: ReturnType<typeof useAuth>['user']; logout: () => void }) {
   const { id } = useParams();
@@ -96,6 +97,7 @@ export default function App() {
         <Route path="/craftsman/help-list" element={<HelpListPage />} />
         <Route path="/craftsman/apply/:id"    element={<CraftsmanApplyPage />} />
         <Route path="/craftsman/applications" element={<CraftsmanApplicationsPage />} />
+        <Route path="/tools" element={<ToolsPage />} />
 
         {/* 公開ページ */}
         <Route path="/complete"   element={<CompletePage />} />
