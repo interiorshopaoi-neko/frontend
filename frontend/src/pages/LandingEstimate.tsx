@@ -504,7 +504,6 @@ export default function LandingEstimate() {
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { value: 'LINE',  icon: '💬' },
                     { value: 'メール', icon: '📧' },
                     { value: '電話',   icon: '📞' },
                   ].map(({ value, icon }) => (
@@ -535,7 +534,7 @@ export default function LandingEstimate() {
                   required
                   value={contactValue}
                   onChange={e => setContactValue(e.target.value)}
-                  placeholder="LINE ID / メール / 電話番号"
+                  placeholder="例: example@mail.com または 090-0000-0000"
                   className="w-full border border-slate-200 bg-slate-50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all"
                 />
               </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { getFreshness, FRESHNESS_CLASS } from '../../lib/freshness';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -370,7 +371,17 @@ export default function RequestApplicationsPage() {
         {/* 依頼内容カード */}
         {request && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-4">
-            <p className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-3">依頼内容</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">依頼内容</p>
+              {request.created_at && (() => {
+                const f = getFreshness(request.created_at);
+                return (
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${FRESHNESS_CLASS[f.status]}`}>
+                    {f.label}
+                  </span>
+                );
+              })()}
+            </div>
             <div className="grid grid-cols-2 gap-2 mb-3">
               <div className="rounded-xl bg-slate-50 px-3 py-2">
                 <p className="text-[10px] text-slate-400">工事内容</p>

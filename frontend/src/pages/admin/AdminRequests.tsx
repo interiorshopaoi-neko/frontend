@@ -1,6 +1,20 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
+import { getFreshness, FRESHNESS_CLASS } from '../../lib/freshness';
+import { AdminNav } from './shared';
+
+const URL_FILTER_LABELS: Record<string, string> = {
+  new:         '新しい案件',
+  in_progress: '対応中',
+  done:        '完了',
+  stale:       '継続確認推奨',
+  neglected:   '長期放置',
+  fresh:       '募集中（0〜2日）',
+  warning:     'まもなく確認（3〜4日）',
+  today:       '今日の新着',
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -240,13 +254,13 @@ function ContactButton({
   if (r.contact_method === 'LINE') {
     return (
       <button
-        onClick={e => { e.stopPropagation(); onCopy(r.contact_value!, 'LINE ID をコピーしました'); }}
-        className="inline-flex items-center gap-1 text-xs font-bold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg px-3 py-1.5 transition-colors"
+        onClick={e => { e.stopPropagation(); onCopy(r.contact_value!, '連絡先をコピーしました'); }}
+        className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 transition-colors"
       >
-        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M20 2H4a2 2 0 00-2 2v18l4-4h14a2 2 0 002-2V4a2 2 0 00-2-2z"/>
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
         </svg>
-        LINE IDをコピー
+        連絡先をコピー
       </button>
     );
   }
@@ -529,74 +543,24 @@ function ModalItem({ label, value }: { label: string; value: string | null }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AdminLogin
-// ─────────────────────────────────────────────────────────────────────────────
-
-function AdminLogin() {
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
-  const [loading,  setLoading]  = useState(false);
-  const [errMsg,   setErrMsg]   = useState<string | null>(null);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true); setErrMsg(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setErrMsg(`[${error.name ?? 'AuthError'}] ${error.message}`);
-    setLoading(false);
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="inline-flex w-12 h-12 rounded-2xl bg-slate-900 items-center justify-center mb-4">
-            <span className="text-white text-xl">🔑</span>
-          </div>
-          <h1 className="text-xl font-bold text-slate-900">管理画面</h1>
-          <p className="text-sm text-slate-400 mt-1">ログインしてください</p>
-        </div>
-        <form onSubmit={handleLogin} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5">メールアドレス</label>
-            <input type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="admin@example.com"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"/>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5">パスワード</label>
-            <input type="password" required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"/>
-          </div>
-          <button type="submit" disabled={loading}
-            className={`w-full py-3 rounded-xl text-sm font-bold transition-all ${loading ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-700 active:scale-95'}`}>
-            {loading ? 'ログイン中...' : 'ログイン'}
-          </button>
-          {errMsg && (
-            <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3">
-              <pre className="text-xs text-red-500 whitespace-pre-wrap break-all">{errMsg}</pre>
-            </div>
-          )}
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // RequestsList
 // ─────────────────────────────────────────────────────────────────────────────
 
 function RequestsList({ session }: { session: Session }) {
+  const [searchParams] = useSearchParams();
+  const urlFilter = searchParams.get('filter') ?? '';
+
   const [rows,         setRows]         = useState<EstimateRequest[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [errMsg,       setErrMsg]       = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [sortOrder,    setSortOrder]    = useState<SortOrder>('desc');
+  const [filterStatus,  setFilterStatus]  = useState<string>('all');
+  const [filterStale,   setFilterStale]   = useState(false);
+  const [sortOrder,     setSortOrder]     = useState<SortOrder>('desc');
   const [modalRow,     setModalRow]     = useState<EstimateRequest | null>(null);
-  const [toast,        setToast]        = useState<string | null>(null);
-  const [videoUrl,     setVideoUrl]     = useState<string | null>(null);
+  const [toast,              setToast]              = useState<string | null>(null);
+  const [videoUrl,           setVideoUrl]           = useState<string | null>(null);
+  const [sendingFollowupId,  setSendingFollowupId]  = useState<string | null>(null);
+  const [followupSentMap,    setFollowupSentMap]    = useState<Record<string, string>>({});
 
   useEffect(() => {
     (async () => {
@@ -628,18 +592,58 @@ function RequestsList({ session }: { session: Session }) {
     catch { showToast('コピーできませんでした'); }
   }, [showToast]);
 
+  const handleSendFollowup = useCallback(async (r: EstimateRequest, email: string) => {
+    if (sendingFollowupId) return;
+    setSendingFollowupId(r.id);
+    try {
+      const { error } = await supabase.functions.invoke('send-request-followup-email', {
+        body: { email, requestId: r.id },
+      });
+      if (error) {
+        showToast('メール送信に失敗しました');
+      } else {
+        const sentTime = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        setFollowupSentMap(prev => ({ ...prev, [r.id]: sentTime }));
+        showToast('確認メールを送信しました');
+      }
+    } catch {
+      showToast('メール送信に失敗しました');
+    } finally {
+      setSendingFollowupId(null);
+    }
+  }, [sendingFollowupId, showToast]);
+
   // useMemo でスコアリング・フィルタ・並び替えを一括処理
   const enrichedRows = useMemo(() => rows.map(enrich), [rows]);
 
-  const displayRows = useMemo(() =>
-    enrichedRows
+  const staleCount = useMemo(
+    () => enrichedRows.filter(r => getFreshness(r.created_at).status === 'urgent').length,
+    [enrichedRows],
+  );
+
+  const displayRows = useMemo(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return enrichedRows
       .filter(r => filterStatus === 'all' || r.status === filterStatus)
+      .filter(r => !filterStale || getFreshness(r.created_at).status === 'urgent')
+      .filter(r => {
+        switch (urlFilter) {
+          case 'new':         return r.status === 'new';
+          case 'in_progress': return r.status === 'in_progress';
+          case 'done':        return r.status === 'done';
+          case 'stale':       return getFreshness(r.created_at).status === 'urgent';
+          case 'neglected':   return r._elapsedHours / 24 >= 14;
+          case 'fresh':       return getFreshness(r.created_at).status === 'fresh';
+          case 'warning':     return getFreshness(r.created_at).status === 'warning';
+          case 'today':       return r.created_at.startsWith(todayStr);
+          default:            return true;
+        }
+      })
       .sort((a, b) => {
         const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         return sortOrder === 'desc' ? -diff : diff;
-      }),
-    [enrichedRows, filterStatus, sortOrder]
-  );
+      });
+  }, [enrichedRows, filterStatus, filterStale, urlFilter, sortOrder]);
 
   // おすすめ案件：new のみ・スコア最高・同点なら新しい順
   const recommendedRow = useMemo(() => {
@@ -670,10 +674,16 @@ function RequestsList({ session }: { session: Session }) {
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="max-w-3xl mx-auto px-5 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <Link to="/admin/dashboard" className="text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors">← ダッシュボード</Link>
             <p className="text-sm font-bold text-slate-900">案件一覧</p>
             {!loading && (
-              <span className="text-xs text-slate-400">
-                新規 {rows.filter(r => r.status === 'new').length} / 全 {rows.length}件
+              <span className="flex items-center gap-2 text-xs text-slate-400">
+                <span>新規 {rows.filter(r => r.status === 'new').length} / 全 {rows.length}件</span>
+                {staleCount > 0 && (
+                  <span className="bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full">
+                    ⚠️ 継続確認待ち {staleCount}件
+                  </span>
+                )}
               </span>
             )}
           </div>
@@ -688,6 +698,14 @@ function RequestsList({ session }: { session: Session }) {
       </header>
 
       <div className="max-w-3xl mx-auto px-5 pt-5 pb-24">
+
+        {/* ── URLフィルタ バナー ── */}
+        {urlFilter && URL_FILTER_LABELS[urlFilter] && (
+          <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-blue-50 border border-blue-200 text-xs font-semibold text-blue-700">
+            <span>表示中：{URL_FILTER_LABELS[urlFilter]}</span>
+            <Link to="/admin/requests" className="ml-auto text-blue-500 hover:text-blue-700 underline">すべて表示に戻す</Link>
+          </div>
+        )}
 
         {/* ── フィルタバー ── */}
         {!loading && !errMsg && (
@@ -712,6 +730,17 @@ function RequestsList({ session }: { session: Session }) {
                 </button>
               ))}
             </div>
+            <button
+              onClick={() => setFilterStale(v => !v)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all flex items-center gap-1 ${
+                filterStale
+                  ? 'bg-orange-500 text-white border-orange-500'
+                  : 'bg-white text-orange-600 border-orange-300 hover:border-orange-500'
+              }`}
+            >
+              ⚠️ 継続確認待ち
+              {staleCount > 0 && <span className={filterStale ? 'opacity-80' : 'opacity-60'}>{staleCount}</span>}
+            </button>
             <div className="flex-1"/>
             <button onClick={() => setSortOrder(o => o === 'desc' ? 'asc' : 'desc')}
               className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-500 hover:border-slate-400 transition-all">
@@ -757,12 +786,33 @@ function RequestsList({ session }: { session: Session }) {
             <div className="space-y-3">
               <p className="text-xs text-slate-400">{displayRows.length}件</p>
 
-              {displayRows.map((r) => (
+              {displayRows.map((r) => {
+                const isStaleCard  = getFreshness(r.created_at).status === 'urgent';
+                const isNeglected  = r._elapsedHours / 24 >= 14;
+                const sentTime     = followupSentMap[r.id];
+                const cardBadge = sentTime
+                  ? { emoji: '🔵', label: '確認メール送信済み', cls: 'bg-blue-50 text-blue-700 border-b border-blue-100' }
+                  : isNeglected
+                  ? { emoji: '⚫', label: '長期放置', cls: 'bg-slate-100 text-slate-600 border-b border-slate-200' }
+                  : isStaleCard
+                  ? { emoji: '🟡', label: '継続確認推奨', cls: 'bg-orange-50 text-orange-700 border-b border-orange-100' }
+                  : { emoji: '🟢', label: '新しい案件', cls: 'bg-emerald-50 text-emerald-700 border-b border-emerald-100' };
+                return (
                 <div
                   key={r.id}
                   onClick={() => setModalRow(r)}
-                  className="rounded-2xl border border-slate-200 bg-white shadow-sm cursor-pointer hover:border-slate-300 hover:shadow-md transition-all active:scale-[0.99] overflow-hidden"
+                  className={`rounded-2xl border bg-white shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.99] overflow-hidden ${
+                    isStaleCard
+                      ? 'border-orange-300 hover:border-orange-400'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
                 >
+                  {/* ── 状態バッジストリップ ── */}
+                  <div className={`flex items-center gap-1.5 px-5 py-1.5 text-[11px] font-semibold ${cardBadge.cls}`}>
+                    <span>{cardBadge.emoji}</span>
+                    <span>{cardBadge.label}</span>
+                  </div>
+
                   {/* ── ① タグ行 ── */}
                   <div className="flex items-center justify-between gap-2 px-5 pt-4 pb-3 border-b border-slate-50">
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -839,11 +889,82 @@ function RequestsList({ session }: { session: Session }) {
                       </div>
                     )}
 
-                    {/* 受付日時 */}
-                    <p className="text-[10px] text-slate-300">
-                      {formatElapsed(r._elapsedHours)} ({formatDate(r.created_at)})
-                    </p>
+                    {/* 受付日時 + 鮮度 */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-[10px] text-slate-300">
+                        {formatElapsed(r._elapsedHours)} ({formatDate(r.created_at)})
+                      </p>
+                      {(() => {
+                        const f = getFreshness(r.created_at);
+                        return (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${FRESHNESS_CLASS[f.status]}`}>
+                            {f.label}
+                          </span>
+                        );
+                      })()}
+                    </div>
                   </div>
+
+                  {/* ── 継続確認待ちアクション案内 ── */}
+                  {isStaleCard && (
+                    <div
+                      className="mx-5 mb-3 rounded-xl bg-orange-50 border border-orange-200 px-4 py-3"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <p className="text-xs font-bold text-orange-700 mb-2">
+                        ⚠️ お客様へ募集継続の確認が必要です
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {(() => {
+                          // contact_value に @ が含まれていればメールアドレスとして使用
+                          // contact_method への依存を最小化し、将来フィールド追加にも対応
+                          const contactValue = r.contact_value?.trim() ?? '';
+                          const followupEmail = contactValue.includes('@') ? contactValue : null;
+                          return followupEmail ? (
+                          sentTime ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                              </svg>
+                              送信済み（{sentTime}）
+                            </span>
+                          ) : (
+                          <button
+                            onClick={() => handleSendFollowup(r, followupEmail)}
+                            disabled={sendingFollowupId === r.id}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-white hover:bg-blue-50 border border-blue-300 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                            {sendingFollowupId === r.id ? '送信中...' : '確認メールを送る'}
+                          </button>
+                          )
+                          ) : (
+                          <button
+                            disabled
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 bg-white border border-slate-200 rounded-lg px-3 py-1.5 cursor-not-allowed"
+                            title="メールアドレスの連絡先がある場合のみ送信できます"
+                          >
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                            確認メールを送る（メール連絡先なし）
+                          </button>
+                          );
+                        })()}
+                        <button
+                          disabled
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 bg-white border border-slate-200 rounded-lg px-3 py-1.5 cursor-not-allowed"
+                        >
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                          </svg>
+                          募集終了にする（準備中）
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* ── ④ アクションバー ── */}
                   <div
@@ -851,6 +972,40 @@ function RequestsList({ session }: { session: Session }) {
                     onClick={e => e.stopPropagation()}
                   >
                     <ContactButton r={r} onCopy={handleCopy} />
+                    {(() => {
+                      const contactValue = r.contact_value?.trim() ?? '';
+                      const followupEmail = contactValue.includes('@') ? contactValue : null;
+                      return sentTime ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                          </svg>
+                          送信済み（{sentTime}）
+                        </span>
+                      ) : followupEmail ? (
+                        <button
+                          onClick={() => handleSendFollowup(r, followupEmail)}
+                          disabled={sendingFollowupId === r.id}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-white hover:bg-blue-50 border border-blue-300 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                          </svg>
+                          {sendingFollowupId === r.id ? '送信中...' : '確認メールを送る'}
+                        </button>
+                      ) : (
+                        <button
+                          disabled
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 bg-white border border-slate-200 rounded-lg px-3 py-1.5 cursor-not-allowed"
+                          title="メールアドレスの連絡先がある場合のみ送信できます"
+                        >
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                          </svg>
+                          メールアドレスなし
+                        </button>
+                      );
+                    })()}
                     {r.video_url && (
                       <button onClick={() => setVideoUrl(r.video_url!)}
                         className="inline-flex items-center gap-1 text-xs font-semibold text-violet-700 bg-white hover:bg-violet-50 border border-violet-200 rounded-lg px-3 py-1.5 transition-colors">
@@ -873,7 +1028,8 @@ function RequestsList({ session }: { session: Session }) {
                     <span className="ml-auto text-[10px] text-slate-300">詳細 →</span>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

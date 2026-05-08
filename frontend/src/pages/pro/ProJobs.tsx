@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
+import { getFreshness, FRESHNESS_CLASS } from '../../lib/freshness';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -305,6 +306,14 @@ function JobCard({
                 </span>
               )}
               <span className="ml-auto text-[10px] text-slate-300">{formatElapsed(job.created_at)}</span>
+              {job.created_at && (() => {
+                const f = getFreshness(job.created_at);
+                return (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${FRESHNESS_CLASS[f.status]}`}>
+                    {f.label}
+                  </span>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -431,7 +440,7 @@ const DEMO_JOBS: Job[] = [
     created_at: new Date(Date.now() - 1_800_000).toISOString(),
     area: '渋谷区恵比寿',
     work_type: 'クロス張り替え',
-    contact_method: 'LINE',
+    contact_method: 'メール',
     status: 'new',
     video_url: 'https://sample.com/demo.mp4',
     room_type: 'リビング',

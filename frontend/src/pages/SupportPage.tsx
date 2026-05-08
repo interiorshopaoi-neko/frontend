@@ -86,7 +86,7 @@ export default function SupportPage() {
 
             {/* 連絡先 */}
             <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">メール / LINE名<span className="ml-1 text-slate-400 font-normal">（任意）</span></label>
+              <label className="block text-xs font-bold text-slate-600 mb-1">メールアドレス<span className="ml-1 text-slate-400 font-normal">（任意）</span></label>
               <input
                 type="text"
                 placeholder="例: example@mail.com"

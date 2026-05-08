@@ -1,67 +1,196 @@
 import { useNavigate } from 'react-router-dom';
-import Logo from '../components/Logo';
 import BottomNav from '../components/BottomNav';
 
-const TRUST_POINTS = [
-  { icon: '🔓', label: 'ログイン不要' },
-  { icon: '🙅', label: 'しつこい営業なし' },
-  { icon: '🔨', label: '近くの職人が確認' },
-];
-
-const STEPS = [
-  { num: '①', title: '部屋をぐるっと撮る', desc: '壁・天井・全体を一周するように撮影' },
-  { num: '②', title: '壁・床を映す',       desc: '施工する面をゆっくり映してください' },
-  { num: '③', title: '気になる所をアップ', desc: '傷・汚れなど問題箇所を近くで撮影' },
-];
-
-const GOOD_EXAMPLES = ['明るい場所で撮る', 'ゆっくり動かす', '気になる場所を近くで撮る'];
-const BAD_EXAMPLES  = ['暗い', 'ブレている', '遠すぎて見えない'];
+const TRUST_BADGES = ['ログイン不要', '住所入力不要', 'しつこい営業なし', '地元の職人と直接つながる'];
 
 export default function HomePage() {
   const navigate = useNavigate();
 
   const handleStartEstimate = () => navigate('/corporate');
 
-  const scrollToGuide = () => {
-    document.getElementById('guide')?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   return (
     <div className="min-h-screen bg-white">
+      <style>{`
+        @keyframes heroScene1 {
+          0%, 22%   { opacity: 1; }
+          27%, 97%  { opacity: 0; }
+          100%      { opacity: 0; }
+        }
+        @keyframes heroScene2 {
+          0%, 22%   { opacity: 0; }
+          27%, 47%  { opacity: 1; }
+          52%, 100% { opacity: 0; }
+        }
+        @keyframes heroScene3 {
+          0%, 47%   { opacity: 0; }
+          52%, 72%  { opacity: 1; }
+          77%, 100% { opacity: 0; }
+        }
+        @keyframes heroScene4 {
+          0%, 72%   { opacity: 0; }
+          77%, 97%  { opacity: 1; }
+          100%      { opacity: 0; }
+        }
+        @keyframes heroPan {
+          0%   { transform: translateX(0%); }
+          50%  { transform: translateX(-18%); }
+          100% { transform: translateX(0%); }
+        }
+        @keyframes heroZoom {
+          0%   { transform: scale(1); }
+          50%  { transform: scale(1.08); }
+          100% { transform: scale(1); }
+        }
+        @keyframes heroDots {
+          0%, 20%  { opacity: 0.3; }
+          40%      { opacity: 1; }
+          60%, 80% { opacity: 0.3; }
+          100%     { opacity: 0.3; }
+        }
+        @keyframes heroSlideUp {
+          0%   { transform: translateY(14px); opacity: 0; }
+          100% { transform: translateY(0px);  opacity: 1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .hero-scene   { animation: none !important; opacity: 0 !important; }
+          .hero-scene-1 { opacity: 1 !important; }
+          .hero-pan, .hero-zoom, .hero-slideup { animation: none !important; transform: none !important; }
+          .hero-dots span { animation: none !important; opacity: 1 !important; }
+        }
+      `}</style>
 
       {/* ── Hero ─────────────────────────────────────────────── */}
       <section className="px-5 pt-10 pb-14 max-w-md mx-auto">
 
         {/* ロゴ */}
         <div className="flex justify-center mb-8">
-          <Logo size={36} />
+          <img src="/logo-full.svg" alt="PRO MATCH" className="h-9 object-contain" />
         </div>
 
-        {/* スマホ撮影カード */}
-        <div className="mb-7 bg-slate-900 rounded-3xl overflow-hidden shadow-xl"
-          style={{ background: 'linear-gradient(160deg, #1e293b 0%, #0f172a 100%)' }}>
-          <div className="px-5 pt-5 pb-6 flex flex-col items-center gap-4">
-            {/* 録画インジケータ */}
-            <div className="self-end flex items-center gap-1.5 bg-black/60 rounded-full px-3 py-1.5">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-[10px] font-bold text-white tracking-wide">REC</span>
-            </div>
+        {/* 疑似体験アニメーション */}
+        <div className="mb-7 rounded-3xl overflow-hidden shadow-xl select-none"
+          style={{ height: 220, position: 'relative', background: '#f5f0eb' }}>
 
-            {/* 中央アイコン */}
-            <div className="flex flex-col items-center gap-3 select-none py-2">
-              <div className="w-20 h-20 rounded-3xl bg-white/10 border-2 border-white/20 flex items-center justify-center">
-                <span className="text-4xl">🎬</span>
+          {/* Scene 1: 撮影中（明るい室内カメラビュー） */}
+          <div className="hero-scene hero-scene-1" style={{
+            position: 'absolute', inset: 0,
+            animation: 'heroScene1 12s ease-in-out infinite',
+          }}>
+            {/* 部屋の背景パン */}
+            <div className="hero-pan" style={{
+              position: 'absolute', inset: 0, overflow: 'hidden',
+              background: '#f0ebe4',
+              animation: 'heroPan 12s ease-in-out infinite',
+            }}>
+              {/* 天井 */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '18%', background: '#fafaf8' }} />
+              {/* 壁（アイボリー） */}
+              <div style={{ position: 'absolute', top: '18%', left: 0, right: 0, bottom: '34%', background: '#f5f0e8' }} />
+              {/* 壁と床の境目（幅木） */}
+              <div style={{ position: 'absolute', bottom: '34%', left: 0, right: 0, height: 4, background: '#d6cfc4' }} />
+              {/* 床（明るい木目風） */}
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '34%', background: 'repeating-linear-gradient(90deg, #ddd0bb 0px, #ddd0bb 48px, #cfc1a8 48px, #cfc1a8 50px)' }} />
+
+              {/* 窓（左側） */}
+              <div style={{ position: 'absolute', top: '22%', left: '6%', width: 52, height: 72, background: '#d6eaf5', border: '3px solid #c8d8e4', borderRadius: 3, boxShadow: 'inset 0 0 12px rgba(180,220,255,0.4)' }}>
+                <div style={{ position: 'absolute', top: '48%', left: 0, right: 0, height: 2, background: '#b8cad4' }} />
+                <div style={{ position: 'absolute', left: '48%', top: 0, bottom: 0, width: 2, background: '#b8cad4' }} />
               </div>
-              <p className="text-white/60 text-xs font-medium text-center">
-                部屋をゆっくり一周するように撮影
-              </p>
+
+              {/* ソファ（中央） */}
+              <div style={{ position: 'absolute', bottom: '34%', left: '34%', width: 90, height: 36 }}>
+                {/* 背もたれ */}
+                <div style={{ position: 'absolute', top: 0, left: 4, right: 4, height: 22, background: '#c4a882', borderRadius: '6px 6px 0 0' }} />
+                {/* 座面 */}
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 16, background: '#b89a6e', borderRadius: '0 0 4px 4px' }} />
+                {/* 肘掛け */}
+                <div style={{ position: 'absolute', top: 4, left: 0, width: 10, height: 18, background: '#b89a6e', borderRadius: '4px 0 0 4px' }} />
+                <div style={{ position: 'absolute', top: 4, right: 0, width: 10, height: 18, background: '#b89a6e', borderRadius: '0 4px 4px 0' }} />
+              </div>
+
+              {/* 壁の染み・工事箇所（右壁） */}
+              <div style={{ position: 'absolute', top: '28%', right: '8%', width: 38, height: 30, background: 'rgba(180,160,130,0.35)', borderRadius: 6, border: '1.5px dashed rgba(160,140,110,0.6)' }} />
+              <div style={{ position: 'absolute', top: '24%', right: '12%', width: 16, height: 16, background: 'rgba(180,160,130,0.25)', borderRadius: '50%' }} />
             </div>
 
-            {/* カメラボタン */}
-            <div className="w-14 h-14 rounded-full border-4 border-white/80 flex items-center justify-center">
-              <div className="w-9 h-9 rounded-full bg-white/90" />
+            {/* ビューファインダー枠 */}
+            <div style={{ position: 'absolute', inset: 12, border: '1.5px solid rgba(255,255,255,0.55)', borderRadius: 16, pointerEvents: 'none' }}>
+              <div style={{ position: 'absolute', top: -1, left: -1, width: 18, height: 18, borderTop: '3px solid rgba(255,255,255,0.95)', borderLeft: '3px solid rgba(255,255,255,0.95)', borderRadius: '12px 0 0 0' }} />
+              <div style={{ position: 'absolute', top: -1, right: -1, width: 18, height: 18, borderTop: '3px solid rgba(255,255,255,0.95)', borderRight: '3px solid rgba(255,255,255,0.95)', borderRadius: '0 12px 0 0' }} />
+              <div style={{ position: 'absolute', bottom: -1, left: -1, width: 18, height: 18, borderBottom: '3px solid rgba(255,255,255,0.95)', borderLeft: '3px solid rgba(255,255,255,0.95)', borderRadius: '0 0 0 12px' }} />
+              <div style={{ position: 'absolute', bottom: -1, right: -1, width: 18, height: 18, borderBottom: '3px solid rgba(255,255,255,0.95)', borderRight: '3px solid rgba(255,255,255,0.95)', borderRadius: '0 0 12px 0' }} />
+            </div>
+            {/* RECインジケータ */}
+            <div style={{ position: 'absolute', top: 20, right: 22, display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,0.45)', borderRadius: 20, padding: '4px 10px' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block', animation: 'pulse 1.5s ease-in-out infinite' }} />
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', letterSpacing: '0.08em' }}>REC</span>
+            </div>
+            {/* ガイドラベル */}
+            <div style={{ position: 'absolute', bottom: 18, left: 0, right: 0, textAlign: 'center' }}>
+              <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.55)', fontWeight: 600, background: 'rgba(255,255,255,0.75)', borderRadius: 20, padding: '3px 10px' }}>部屋を一周しながら撮影中...</span>
             </div>
           </div>
+
+          {/* Scene 2: 送信完了（ズームアウト + チェック） */}
+          <div className="hero-scene" style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(160deg, #1e293b 0%, #0f172a 100%)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
+            animation: 'heroScene2 12s ease-in-out infinite',
+          }}>
+            <div className="hero-zoom" style={{ animation: 'heroZoom 3s ease-in-out infinite' }}>
+              <div style={{ width: 68, height: 68, borderRadius: 20, background: 'rgba(59,130,246,0.25)', border: '2px solid rgba(59,130,246,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: 32 }}>📤</span>
+              </div>
+            </div>
+            <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: 14, fontWeight: 700, margin: 0 }}>動画を送信しました</p>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, margin: 0 }}>職人が確認します</p>
+          </div>
+
+          {/* Scene 3: 職人が確認中 */}
+          <div className="hero-scene" style={{
+            position: 'absolute', inset: 0,
+            background: '#f8fafc',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12,
+            animation: 'heroScene3 12s ease-in-out infinite',
+          }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 26 }}>🔍</span>
+            </div>
+            <p style={{ color: '#0f172a', fontSize: 14, fontWeight: 700, margin: 0 }}>職人が動画を確認中</p>
+            <div className="hero-dots" style={{ display: 'flex', gap: 6 }}>
+              {[0, 0.35, 0.7].map((delay, i) => (
+                <span key={i} style={{
+                  width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', display: 'inline-block',
+                  animation: `heroDots 1.4s ease-in-out ${delay}s infinite`,
+                }} />
+              ))}
+            </div>
+          </div>
+
+          {/* Scene 4: 見積もり到着 */}
+          <div className="hero-scene" style={{
+            position: 'absolute', inset: 0,
+            background: '#f0fdf4',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0,
+            animation: 'heroScene4 12s ease-in-out infinite',
+          }}>
+            <div className="hero-slideup" style={{ animation: 'heroSlideUp 0.5s ease-out forwards', width: '80%' }}>
+              <div style={{
+                background: '#fff', borderRadius: 16, padding: '16px 18px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.10)', border: '1px solid #d1fae5',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 18 }}>✅</span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#065f46' }}>見積もりが届きました</span>
+                </div>
+                <p style={{ fontSize: 12, color: '#374151', margin: 0, lineHeight: 1.6 }}>
+                  対応できる職人から<br />連絡があります
+                </p>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         {/* バッジ */}
@@ -73,21 +202,22 @@ export default function HomePage() {
 
         {/* メインタイトル */}
         <h1 className="text-3xl font-bold text-slate-900 text-center leading-tight tracking-tight mb-3">
-          <span className="block">ショート動画で、</span>
-          <span className="block">すぐ見積もり</span>
+          <span className="block">職人から、</span>
+          <span className="block">直接見積もりが届く。</span>
         </h1>
 
         {/* サブコピー */}
-        <p className="text-slate-600 text-center mb-6">
-          部屋を撮るだけ。プロがすぐ確認。
+        <p className="text-sm text-slate-600 text-center mb-6 leading-relaxed">
+          部屋を30秒撮るだけ。<br />
+          現場を見た職人が、直接確認します。
         </p>
 
-        {/* 信頼要素 */}
-        <div className="flex flex-col gap-2 mb-6">
-          {TRUST_POINTS.map(({ icon, label }) => (
-            <div key={label} className="flex items-center justify-center gap-2 text-sm text-slate-700">
-              <span>{icon}</span>
-              <span>{label}</span>
+        {/* 信頼バッジ */}
+        <div className="grid grid-cols-2 gap-2 mb-6">
+          {TRUST_BADGES.map(label => (
+            <div key={label} className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5">
+              <span className="text-blue-500 font-bold text-xs leading-none flex-shrink-0">✓</span>
+              <span className="text-xs font-semibold text-slate-700 leading-tight">{label}</span>
             </div>
           ))}
         </div>
@@ -102,107 +232,41 @@ export default function HomePage() {
 
         {/* サブCTA */}
         <p className="text-center text-sm text-slate-500 mb-2">
-          今だけ無料（正式版は300円予定）
+          お客様は完全無料・ログイン不要
         </p>
 
-        {/* ソーシャルプルーフ */}
-        <p className="text-center text-xs text-slate-400">
-          ・今日すでに3件依頼されています
-        </p>
       </section>
 
-      {/* ── 撮影ガイド ──────────────────────────────────────── */}
-      <section id="guide" className="bg-slate-50 px-5 py-14">
+      {/* ── 利用の流れ ──────────────────────────────────────── */}
+      <section className="px-5 py-14 bg-blue-50">
         <div className="max-w-md mx-auto">
-
-          {/* 見出し */}
           <div className="text-center mb-6">
             <span className="inline-block bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full mb-3 tracking-wide">
-              GUIDE
+              FLOW
             </span>
-            <h2 className="text-xl font-extrabold text-slate-900 leading-snug mb-2">
-              撮り方はかんたん3ステップ
+            <h2 className="text-xl font-extrabold text-slate-900 leading-snug">
+              送ったあと、どうなるの？
             </h2>
-            <p className="text-sm text-slate-500 leading-relaxed">
-              この通りに撮るだけで、職人が内容を確認しやすくなります。
-            </p>
           </div>
-
-          {/* ガイド画像 */}
-          <img
-            src="/guide-short-video.jpg"
-            alt="撮影ガイド"
-            className="w-full rounded-2xl shadow-md mb-7 object-cover"
-          />
-
-          {/* 3ステップカード */}
-          <div className="space-y-3">
-            {STEPS.map(({ num, title, desc }) => (
-              <div
-                key={num}
-                className="bg-white rounded-2xl border border-blue-100 px-5 py-4 flex items-start gap-4 shadow-sm"
-              >
-                <span className="text-xl font-extrabold text-blue-600 flex-shrink-0 w-7 leading-none pt-0.5">
-                  {num}
-                </span>
-                <div>
-                  <p className="font-bold text-slate-900 text-sm">{title}</p>
-                  <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{desc}</p>
+          <div className="relative flex flex-col gap-0">
+            {([
+              { n: '01', title: '動画を送る',           desc: '部屋を1周撮影して送信。30秒でOK。' },
+              { n: '02', title: '職人から見積もりが届く', desc: '動画を確認した職人から、直接見積もりが届きます。' },
+              { n: '03', title: '気に入った職人を選ぶ',  desc: '複数の見積もりを比べて、職人を選ぶだけ。' },
+            ] as const).map(({ n, title, desc }, i) => (
+              <div key={n} className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-extrabold text-xs flex-shrink-0">
+                    {n}
+                  </div>
+                  {i < 2 && <div className="w-0.5 h-8 bg-blue-200 my-1" />}
+                </div>
+                <div className="pb-6">
+                  <p className="font-bold text-sm text-slate-900 mb-1">{title}</p>
+                  <p className="text-xs text-slate-500 leading-relaxed">{desc}</p>
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── 良い例・悪い例 ────────────────────────────────── */}
-      <section className="px-5 py-14 bg-white">
-        <div className="max-w-md mx-auto">
-
-          <h3 className="text-base font-extrabold text-slate-800 text-center mb-5">
-            撮影のポイント
-          </h3>
-
-          <div className="flex flex-col gap-3">
-            {/* 良い例 */}
-            <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 px-5 py-4">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                    <path d="M2 5l2.5 2.5 3.5-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-                <span className="text-sm font-extrabold text-emerald-800">良い例</span>
-              </div>
-              <div className="flex flex-col gap-2">
-                {GOOD_EXAMPLES.map((item) => (
-                  <div key={item} className="flex items-center gap-2.5">
-                    <span className="text-emerald-500 font-bold text-sm flex-shrink-0">✓</span>
-                    <span className="text-sm text-slate-700">{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 悪い例 */}
-            <div className="rounded-2xl border-2 border-red-100 bg-red-50 px-5 py-4">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-5 h-5 rounded-full bg-red-400 flex items-center justify-center flex-shrink-0">
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                    <path d="M3 3l4 4M7 3l-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
-                </div>
-                <span className="text-sm font-extrabold text-red-700">悪い例</span>
-              </div>
-              <div className="flex flex-col gap-2">
-                {BAD_EXAMPLES.map((item) => (
-                  <div key={item} className="flex items-center gap-2.5">
-                    <span className="text-red-400 font-bold text-sm flex-shrink-0">✗</span>
-                    <span className="text-sm text-slate-700">{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -243,6 +307,7 @@ export default function HomePage() {
           <a href="/pro-signup" className="text-xs text-slate-300 hover:text-slate-500 transition-colors">職人登録</a>
           <a href="/legal"      className="text-xs text-slate-300 hover:text-slate-500 transition-colors">特定商取引法</a>
         </div>
+        <p className="text-xs text-slate-300 pt-1">© 2026 PRO MATCH</p>
       </footer>
 
       <BottomNav subtle />

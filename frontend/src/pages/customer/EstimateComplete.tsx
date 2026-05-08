@@ -31,8 +31,8 @@ export default function EstimateComplete() {
       <div className="w-full bg-white rounded-3xl border border-slate-200 shadow-sm divide-y divide-gray-50">
         {[
           { icon: '✅', label: '職人に内容を送信済み',      sub: null                },
-          { icon: '⏱',  label: '通常30分〜数時間で返信',    sub: null                },
-          { icon: '📬', label: 'メールまたはLINEで連絡',    sub: '登録した連絡先に届きます' },
+          { icon: '⏱',  label: '通常2営業日以内にご連絡',    sub: null                },
+          { icon: '📬', label: 'メールでご連絡します',       sub: '迷惑メールフォルダもご確認ください' },
         ].map(({ icon, label, sub }) => (
           <div key={label} className="flex items-center gap-4 px-5 py-4">
             <span className="text-xl w-7 text-center flex-shrink-0">{icon}</span>

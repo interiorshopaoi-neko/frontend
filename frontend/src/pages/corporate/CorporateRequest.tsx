@@ -10,11 +10,6 @@ const WORK_OPTIONS = [
   { value: 'その他相談',     icon: '💬', desc: 'まずは相談したい' },
 ] as const;
 
-const CONTACT_OPTIONS = [
-  { value: 'LINE',  icon: '💬', desc: 'LINEのIDをお知らせください', placeholder: 'LINE ID を入力' },
-  { value: 'メール', icon: '📧', desc: 'メールアドレスを入力',       placeholder: 'example@mail.com' },
-  { value: '電話',   icon: '📞', desc: '折り返しご連絡します',       placeholder: '090-0000-0000' },
-] as const;
 
 // ── 詳細情報の選択肢 ──────────────────────────────────────────────────────────
 
@@ -32,7 +27,7 @@ const DESIRE_TYPE_OPTIONS = [
 
 const TRUST_ITEMS = ['ログイン不要', '住所入力不要', '概算確認のみ', 'しつこい営業なし'] as const;
 
-const TOTAL_STEPS = 6; // 動画・施工・エリア・詳細情報・連絡方法・連絡先
+const TOTAL_STEPS = 5; // 動画・施工・エリア・詳細情報・メール
 
 // ── PageShell ─────────────────────────────────────────────────────────────────
 
@@ -220,7 +215,7 @@ export default function CorporateRequest() {
   const [videoFile,     setVideoFile]     = useState<File | null>(null);
   const [workType,      setWorkType]      = useState('');
   const [area,          setArea]          = useState('');
-  const [contactMethod, setContactMethod] = useState('');
+  const [contactMethod] = useState('メール');
   const [contactValue,  setContactValue]  = useState('');
 
   // ── フォームデータ（詳細情報・すべて任意） ────────────────────────────────
@@ -233,6 +228,7 @@ export default function CorporateRequest() {
 
   // ── 送信状態 ───────────────────────────────────────────────────────────────
   const [submitState,    setSubmitState]    = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  const [requestId,      setRequestId]      = useState<string | null>(null);
   const [devErrorDetail, setDevErrorDetail] = useState<string | null>(null); // 開発確認用（本番非表示）
 
   // ── 詳細情報の入力有無（確認画面で使う） ──────────────────────────────────
@@ -301,6 +297,22 @@ export default function CorporateRequest() {
         console.error('[notify] メール通知エラー:', notifyErr);
       }
 
+      // 4. お客様へ自動返信メール（失敗しても送信完了扱い）
+      try {
+        await supabase.functions.invoke('send-customer-email', {
+          body: {
+              to:        contactValue,
+              area,
+              work_type: workType,
+              room_type: roomType  || undefined,
+              room_size: roomSize  || undefined,
+              timing:    timing    || undefined,
+            },
+        });
+      } catch (emailErr) {
+        console.error('[email] 自動返信エラー:', emailErr);
+      }
+
       setSubmitState('success');
     } catch (err) {
       // 予期しないエラーもコンソールのみ
@@ -315,32 +327,93 @@ export default function CorporateRequest() {
 
   // ── 送信完了画面 ───────────────────────────────────────────────────────────
   if (submitState === 'success') {
+    const TIMELINE = [
+      { when: '今日',          done: true,  text: '依頼を受け付けました' },
+      { when: '2営業日以内',   done: false, text: '対応できる職人からメールで連絡があります' },
+      { when: '5日後を目安',   done: false, text: '反応がない場合、募集を続けるかご確認します' },
+    ] as const;
+
+    const ASSURANCES = [
+      'お客様のご利用は完全無料です',
+      'ご連絡はメールのみです',
+      'しつこい営業連絡はありません',
+      '工事代金は職人と直接お支払いください',
+    ] as const;
+
     return (
       <div
-        className="min-h-screen flex flex-col items-center justify-center px-6 text-center"
+        className="min-h-screen flex flex-col items-center justify-center px-5 py-12"
         style={{ background: 'linear-gradient(160deg, #ecfdf5 0%, #f0fdf4 60%, #dcfce7 100%)' }}
       >
-        <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mb-6 shadow-lg shadow-emerald-100">
-          <svg className="w-10 h-10 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <h2 className="text-2xl font-extrabold text-slate-900 mb-3">受付が完了しました</h2>
-        <p className="text-sm text-slate-600 leading-relaxed max-w-xs mb-8">
-          内容を確認し、対応可能な職人から<br />
-          <strong>2営業日以内</strong>にご連絡いたします。
-        </p>
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-emerald-100 px-6 py-5 text-left max-w-xs w-full space-y-3 shadow-sm">
-          {[
-            '費用が確定するまで料金は発生しません',
-            '断っても一切費用はかかりません',
-            'しつこい営業電話はいたしません',
-          ].map(msg => (
-            <div key={msg} className="flex items-start gap-2.5">
-              <span className="text-emerald-500 font-extrabold text-xs mt-0.5 flex-shrink-0">✓</span>
-              <span className="text-xs text-slate-600 font-medium">{msg}</span>
+        <div className="w-full max-w-sm">
+
+          {/* アイコン */}
+          <div className="flex justify-center mb-5">
+            <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center shadow-lg shadow-emerald-100">
+              <svg className="w-10 h-10 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
             </div>
-          ))}
+          </div>
+
+          {/* タイトル */}
+          <h2 className="text-2xl font-extrabold text-slate-900 text-center mb-1">受付が完了しました</h2>
+          <p className="text-sm text-slate-500 text-center mb-8">内容確認のメールをお送りしました</p>
+
+          {/* タイムライン */}
+          <div className="bg-white rounded-3xl border border-emerald-100 shadow-sm px-5 py-5 mb-5">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">今後の流れ</p>
+            <div className="flex flex-col gap-0">
+              {TIMELINE.map(({ when, done, text }, i) => (
+                <div key={when} className="flex gap-3">
+                  {/* 縦線 + ドット */}
+                  <div className="flex flex-col items-center flex-shrink-0" style={{ width: 20 }}>
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${done ? 'bg-emerald-500' : 'bg-slate-200'}`}>
+                      {done
+                        ? <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        : <span className="w-2 h-2 rounded-full bg-white block" />
+                      }
+                    </div>
+                    {i < TIMELINE.length - 1 && (
+                      <div className="w-px flex-1 bg-slate-200 my-1" style={{ minHeight: 20 }} />
+                    )}
+                  </div>
+                  {/* テキスト */}
+                  <div className="pb-5">
+                    <p className={`text-[11px] font-bold mb-0.5 ${done ? 'text-emerald-600' : 'text-slate-400'}`}>{when}</p>
+                    <p className={`text-sm leading-snug ${done ? 'text-slate-800 font-semibold' : 'text-slate-600'}`}>{text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 安心メッセージ */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-emerald-100 px-5 py-4 shadow-sm mb-4 space-y-2.5">
+            {ASSURANCES.map(msg => (
+              <div key={msg} className="flex items-start gap-2.5">
+                <span className="text-emerald-500 font-extrabold text-xs mt-0.5 flex-shrink-0">✓</span>
+                <span className="text-xs text-slate-600 font-medium leading-snug">{msg}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* 迷惑メール注記 */}
+          <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-3.5 mb-8">
+            <div className="flex items-start gap-2.5">
+              <span className="text-amber-400 text-xs mt-0.5 flex-shrink-0">📬</span>
+              <span className="text-xs text-amber-700 leading-snug font-medium">迷惑メールフォルダもご確認ください</span>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <a
+            href="/"
+            className="block w-full text-center py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-base shadow-lg shadow-emerald-200 active:scale-95 transition-all"
+          >
+            トップへ戻る
+          </a>
+
         </div>
       </div>
     );
@@ -384,9 +457,28 @@ export default function CorporateRequest() {
       <PageShell>
         <PageHeader />
         <StepProgress step={1} />
-        <StepContent title="お部屋の動画を撮影してください" sub="10〜30秒でOK。壁・床・気になる箇所をゆっくり撮るだけ">
+        <StepContent title="お部屋の動画を撮影してください" sub="10〜15秒でOK。家具があっても大丈夫です">
+          {/* CSS keyframes（STEP 1 内でのみ使用） */}
+          <style>{`
+            @keyframes roomPan {
+              0%,  8%  { transform: translateX(0%); }
+              20%, 33% { transform: translateX(-25%); }
+              45%, 58% { transform: translateX(-50%); }
+              70%, 83% { transform: translateX(-75%); }
+              94%,100% { transform: translateX(0%); }
+            }
+            @keyframes recBlink {
+              0%,100% { opacity: 1; }
+              50%     { opacity: 0.2; }
+            }
+            @media (prefers-reduced-motion: reduce) {
+              .room-pan { animation: none !important; transform: translateX(-25%); }
+              .rec-dot  { animation: none !important; }
+            }
+          `}</style>
+
           <label
-            className={`flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-2xl px-6 py-10 cursor-pointer transition-all ${
+            className={`flex flex-col items-center justify-center gap-2.5 border-2 border-dashed rounded-2xl px-3 py-3 cursor-pointer transition-all ${
               videoFile
                 ? 'border-violet-400 bg-violet-50'
                 : 'border-slate-200 hover:border-violet-300 hover:bg-violet-50/50'
@@ -400,28 +492,171 @@ export default function CorporateRequest() {
               </>
             ) : (
               <>
-                <span className="text-4xl">📹</span>
+                {/* ビューファインダー：スマホで部屋を1周撮影しているイメージ */}
+                <div style={{ position: 'relative', width: '100%', height: '148px', borderRadius: '10px', overflow: 'hidden', background: '#111827', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+
+                  {/* 部屋パノラマ（左壁→正面→右壁→入口側をパン） */}
+                  <div className="room-pan" style={{ display: 'flex', width: '400%', height: '100%', animation: 'roomPan 10s ease-in-out infinite' }}>
+
+                    {/* ── 左壁：ソファ + フロアランプ */}
+                    <div style={{ width: '25%', height: '100%', position: 'relative', flexShrink: 0, background: '#f5f1ea' }}>
+                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '12%', background: '#e6e1d6' }} />
+                      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '28%', background: '#c5a87e' }}>
+                        <div style={{ position: 'absolute', top: '33%', left: 0, right: 0, height: '1px', background: 'rgba(170,122,68,0.45)' }} />
+                        <div style={{ position: 'absolute', top: '66%', left: 0, right: 0, height: '1px', background: 'rgba(170,122,68,0.45)' }} />
+                      </div>
+                      <div style={{ position: 'absolute', bottom: '28%', left: 0, right: 0, height: '1.5%', background: '#ddd5c4' }} />
+                      {/* ソファ */}
+                      <div style={{ position: 'absolute', bottom: '29.5%', left: '8%', width: '57%' }}>
+                        <div style={{ height: '26px', background: '#8e8a9f', borderRadius: '3px 3px 0 0', position: 'relative' }}>
+                          <div style={{ position: 'absolute', top: '18%', left: '4%', width: '26%', height: '64%', background: '#a09ab0', borderRadius: '2px' }} />
+                          <div style={{ position: 'absolute', top: '18%', left: '37%', width: '26%', height: '64%', background: '#a09ab0', borderRadius: '2px' }} />
+                          <div style={{ position: 'absolute', top: '18%', right: '4%', width: '23%', height: '64%', background: '#a09ab0', borderRadius: '2px' }} />
+                        </div>
+                        <div style={{ height: '14px', background: '#7d7990' }} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 6%' }}>
+                          <div style={{ width: '5px', height: '5px', background: '#5a5468', borderRadius: '0 0 2px 2px' }} />
+                          <div style={{ width: '5px', height: '5px', background: '#5a5468', borderRadius: '0 0 2px 2px' }} />
+                        </div>
+                      </div>
+                      {/* フロアランプ */}
+                      <div style={{ position: 'absolute', bottom: '29.5%', right: '13%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ width: '18px', height: '11px', background: '#e8d98c', borderRadius: '4px 4px 1px 1px' }} />
+                        <div style={{ width: '2px', height: '48px', background: '#a8a090' }} />
+                        <div style={{ width: '11px', height: '4px', background: '#8a8070', borderRadius: '2px' }} />
+                      </div>
+                    </div>
+
+                    {/* ── 正面：窓 + コンソール + 観葉植物 */}
+                    <div style={{ width: '25%', height: '100%', position: 'relative', flexShrink: 0, background: '#f2ede5' }}>
+                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '12%', background: '#e8e3d8' }} />
+                      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '28%', background: '#c5a87e' }}>
+                        <div style={{ position: 'absolute', top: '33%', left: 0, right: 0, height: '1px', background: 'rgba(170,122,68,0.45)' }} />
+                        <div style={{ position: 'absolute', top: '66%', left: 0, right: 0, height: '1px', background: 'rgba(170,122,68,0.45)' }} />
+                      </div>
+                      <div style={{ position: 'absolute', bottom: '28%', left: 0, right: 0, height: '1.5%', background: '#ddd5c4' }} />
+                      {/* 窓 */}
+                      <div style={{ position: 'absolute', top: '14%', left: '18%', width: '64%', height: '48%' }}>
+                        <div style={{ position: 'absolute', top: 0, left: '-9%', width: '18%', height: '100%', background: '#e0d8cc', borderRadius: '2px 0 0 0' }} />
+                        <div style={{ position: 'absolute', top: 0, right: '-9%', width: '18%', height: '100%', background: '#e0d8cc', borderRadius: '0 2px 0 0' }} />
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(to bottom, #9ec8e0 0%, #b8d8ec 55%, #cce8cc 100%)', borderRadius: '1px' }}>
+                          <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '1.5px', background: 'rgba(170,195,180,0.8)' }} />
+                          <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '1.5px', background: 'rgba(170,195,180,0.8)' }} />
+                        </div>
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, border: '2px solid #d0c8b8', borderRadius: '1px', pointerEvents: 'none' }} />
+                      </div>
+                      {/* コンソール */}
+                      <div style={{ position: 'absolute', bottom: '29.5%', left: '20%', width: '60%' }}>
+                        <div style={{ height: '7px', background: '#9b8a78', borderRadius: '2px 2px 0 0' }} />
+                        <div style={{ height: '13px', background: '#7a6855' }} />
+                      </div>
+                      {/* 観葉植物 */}
+                      <div style={{ position: 'absolute', bottom: '49%', right: '22%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ width: '16px', height: '12px', background: '#7a9e6b', borderRadius: '50% 50% 10% 50%', marginLeft: '-4px' }} />
+                        <div style={{ width: '14px', height: '10px', background: '#6b8f5a', borderRadius: '50% 10% 50% 50%', marginTop: '-6px', marginLeft: '4px' }} />
+                        <div style={{ width: '2px', height: '8px', background: '#6a8a5a', marginTop: '-2px' }} />
+                        <div style={{ width: '10px', height: '7px', background: '#8b6b55', borderRadius: '1px 1px 3px 3px' }} />
+                      </div>
+                    </div>
+
+                    {/* ── 右壁：テレビ + メディアボード */}
+                    <div style={{ width: '25%', height: '100%', position: 'relative', flexShrink: 0, background: '#f0ece3' }}>
+                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '12%', background: '#e4dfd4' }} />
+                      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '28%', background: '#c5a87e' }}>
+                        <div style={{ position: 'absolute', top: '33%', left: 0, right: 0, height: '1px', background: 'rgba(170,122,68,0.45)' }} />
+                        <div style={{ position: 'absolute', top: '66%', left: 0, right: 0, height: '1px', background: 'rgba(170,122,68,0.45)' }} />
+                      </div>
+                      <div style={{ position: 'absolute', bottom: '28%', left: 0, right: 0, height: '1.5%', background: '#ddd5c4' }} />
+                      {/* TVボード */}
+                      <div style={{ position: 'absolute', bottom: '29.5%', left: '8%', width: '75%', height: '12px', background: '#6b5c4e', borderRadius: '2px 2px 0 0' }} />
+                      {/* テレビ */}
+                      <div style={{ position: 'absolute', bottom: '41.5%', left: '12%', width: '66%', height: '26%', background: '#1a1f28', borderRadius: '3px', boxShadow: '0 2px 8px rgba(0,0,0,0.25)' }}>
+                        <div style={{ position: 'absolute', top: '5px', left: '5px', right: '5px', bottom: '5px', background: 'linear-gradient(135deg, #1e3040 0%, #0f1c28 60%, #182535 100%)', borderRadius: '2px' }} />
+                        <div style={{ position: 'absolute', top: '5px', left: '5px', width: '28%', height: '32%', background: 'rgba(255,255,255,0.04)', borderRadius: '1px 0 0 0' }} />
+                      </div>
+                      {/* TV脚 */}
+                      <div style={{ position: 'absolute', bottom: '41.5%', left: '44%', width: '2px', height: '12%', background: '#2a2828' }} />
+                    </div>
+
+                    {/* ── 入口側：扉 + 傘立て */}
+                    <div style={{ width: '25%', height: '100%', position: 'relative', flexShrink: 0, background: '#f4f0e8' }}>
+                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '12%', background: '#e8e3d8' }} />
+                      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '28%', background: '#c5a87e' }}>
+                        <div style={{ position: 'absolute', top: '33%', left: 0, right: 0, height: '1px', background: 'rgba(170,122,68,0.45)' }} />
+                        <div style={{ position: 'absolute', top: '66%', left: 0, right: 0, height: '1px', background: 'rgba(170,122,68,0.45)' }} />
+                      </div>
+                      <div style={{ position: 'absolute', bottom: '28%', left: 0, right: 0, height: '1.5%', background: '#ddd5c4' }} />
+                      {/* 扉フレーム + 本体 */}
+                      <div style={{ position: 'absolute', bottom: '29.5%', left: '27%', width: '34%', height: '58%', background: '#b8a88a', borderRadius: '2px' }}>
+                        <div style={{ position: 'absolute', top: '2px', left: '2px', right: '2px', bottom: 0, background: '#d4c5a8', borderRadius: '1px' }}>
+                          <div style={{ position: 'absolute', top: '7%', left: '10%', right: '10%', height: '34%', border: '1.5px solid #c0b098', borderRadius: '1px' }} />
+                          <div style={{ position: 'absolute', top: '48%', left: '10%', right: '10%', height: '38%', border: '1.5px solid #c0b098', borderRadius: '1px' }} />
+                          <div style={{ position: 'absolute', top: '44%', right: '10%', width: '7px', height: '7px', background: '#c09060', borderRadius: '50%' }} />
+                        </div>
+                      </div>
+                      {/* 傘立て */}
+                      <div style={{ position: 'absolute', bottom: '29.5%', right: '12%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ width: '12px', height: '3px', background: '#888080', borderRadius: '1px', marginLeft: '-2px' }} />
+                        <div style={{ width: '8px', height: '22px', background: '#9a9898', borderRadius: '1px 1px 0 0' }} />
+                        <div style={{ width: '12px', height: '4px', background: '#7a7878', borderRadius: '2px' }} />
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* カメラUI オーバーレイ */}
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.38) 100%)', pointerEvents: 'none' }} />
+                  <div style={{ position: 'absolute', top: 8, left: 10, display: 'flex', alignItems: 'center', gap: '5px', pointerEvents: 'none' }}>
+                    <div className="rec-dot" style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', animation: 'recBlink 1.2s ease-in-out infinite' }} />
+                    <span style={{ color: 'white', fontSize: '9px', fontWeight: 700, letterSpacing: '1px', textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>REC</span>
+                  </div>
+                  <div style={{ position: 'absolute', top: 8, right: 10, color: 'rgba(255,255,255,0.75)', fontSize: '9px', fontWeight: 600, letterSpacing: '0.5px', textShadow: '0 1px 3px rgba(0,0,0,0.6)', pointerEvents: 'none' }}>00:12</div>
+                  <div style={{ position: 'absolute', top: 6, left: 6, width: 14, height: 14, borderTop: '2px solid rgba(255,255,255,0.65)', borderLeft: '2px solid rgba(255,255,255,0.65)', pointerEvents: 'none' }} />
+                  <div style={{ position: 'absolute', top: 6, right: 6, width: 14, height: 14, borderTop: '2px solid rgba(255,255,255,0.65)', borderRight: '2px solid rgba(255,255,255,0.65)', pointerEvents: 'none' }} />
+                  <div style={{ position: 'absolute', bottom: 6, left: 6, width: 14, height: 14, borderBottom: '2px solid rgba(255,255,255,0.65)', borderLeft: '2px solid rgba(255,255,255,0.65)', pointerEvents: 'none' }} />
+                  <div style={{ position: 'absolute', bottom: 6, right: 6, width: 14, height: 14, borderBottom: '2px solid rgba(255,255,255,0.65)', borderRight: '2px solid rgba(255,255,255,0.65)', pointerEvents: 'none' }} />
+                </div>
                 <div className="text-center">
                   <p className="text-sm font-bold text-slate-700">動画を選択する</p>
-                  <p className="text-xs text-slate-400 mt-1">壁・床・気になる箇所をゆっくり撮影してください</p>
+                  <p className="text-xs text-slate-400 mt-0.5">部屋を1周撮るだけでOK</p>
                 </div>
-                <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">MP4 / MOV / その他動画形式</span>
               </>
             )}
             <input type="file" accept="video/*" className="hidden" onChange={e => setVideoFile(e.target.files?.[0] ?? null)} />
           </label>
 
           {!videoFile && (
-            <div className="mt-5 rounded-2xl bg-slate-50 border border-slate-100 px-4 py-4">
-              <p className="text-xs font-bold text-slate-500 mb-2">📌 撮影のポイント</p>
-              <ul className="space-y-1.5">
-                {['部屋の四隅から全体を撮る', '傷や剥がれなどの気になる箇所はアップで', '明るい時間帯に撮影すると伝わりやすい'].map(tip => (
-                  <li key={tip} className="flex items-start gap-2">
-                    <span className="text-violet-400 text-xs mt-0.5">•</span>
-                    <span className="text-xs text-slate-500">{tip}</span>
-                  </li>
-                ))}
-              </ul>
+            <div className="mt-3 space-y-2.5">
+              {/* 撮影のポイント */}
+              <div className="rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-2.5">
+                <p className="text-[11px] font-bold text-slate-500 mb-1.5">📌 撮影のポイント</p>
+                <ul className="space-y-1">
+                  {['4つの壁を順番にぐるっと1周映してください', '床・気になる箇所もさっと映してOK'].map(tip => (
+                    <li key={tip} className="flex items-start gap-1.5">
+                      <span className="text-violet-400 text-[11px] mt-0.5 flex-shrink-0">•</span>
+                      <span className="text-[11px] text-slate-500">{tip}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* アップロード前チェックリスト */}
+              <div className="rounded-xl bg-amber-50 border border-amber-100 px-3.5 py-2.5">
+                <p className="text-[11px] font-bold text-amber-600 mb-1.5">🔒 映り込みに注意してください</p>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                  {[
+                    '郵便物・書類・請求書',
+                    '顔・車のナンバー',
+                    '表札・住所が分かるもの',
+                    '見せたくないもの',
+                  ].map(item => (
+                    <div key={item} className="flex items-start gap-1.5">
+                      <span className="text-amber-400 text-[11px] mt-0.5 flex-shrink-0">✓</span>
+                      <span className="text-[11px] text-slate-500 leading-tight">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </StepContent>
@@ -482,7 +717,7 @@ export default function CorporateRequest() {
               className="w-full border-2 border-slate-200 rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-violet-400 transition-colors placeholder:text-slate-300"
             />
             <div className="flex flex-wrap gap-2 pt-1">
-              {['東京都', '神奈川県', '埼玉県', '千葉県'].map(example => (
+              {['東京都', '神奈川県', '埼玉県', '千葉県', '群馬県'].map(example => (
                 <button
                   key={example}
                   onClick={() => setArea(example)}
@@ -596,67 +831,37 @@ export default function CorporateRequest() {
     );
   }
 
-  // ── STEP 5：連絡方法 ────────────────────────────────────────────────────────
+  // ── STEP 5：メールアドレス入力 ─────────────────────────────────────────────
   if (step === 5) {
     return (
       <PageShell>
         <PageHeader />
         <StepProgress step={5} />
-        <StepContent title="ご連絡方法を選んでください" sub="職人からのご案内に使用します。迷惑な連絡はしません">
-          <div className="space-y-3">
-            {CONTACT_OPTIONS.map(({ value, icon, desc }) => (
-              <button
-                key={value}
-                onClick={() => { setContactMethod(value); setStep(6); }}
-                className={`w-full flex items-center gap-4 rounded-2xl border-2 px-5 py-4 text-left transition-all active:scale-95 ${
-                  contactMethod === value
-                    ? 'border-violet-500 bg-violet-50 shadow-sm shadow-violet-100'
-                    : 'border-slate-200 bg-white hover:border-violet-300 hover:bg-violet-50/30'
-                }`}
-              >
-                <span className="text-2xl w-8 flex-shrink-0">{icon}</span>
-                <div className="flex-1">
-                  <p className="text-sm font-extrabold text-slate-800">{value}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
-                </div>
-                {contactMethod === value && (
-                  <span className="text-xs font-bold text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full flex-shrink-0">選択中</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </StepContent>
-        <BottomNav onBack={() => setStep(4)} onNext={() => contactMethod && setStep(6)} nextDisabled={!contactMethod} nextLabel="次へ →" />
-      </PageShell>
-    );
-  }
-
-  // ── STEP 6：連絡先入力 ──────────────────────────────────────────────────────
-  if (step === 6) {
-    const contactOpt = CONTACT_OPTIONS.find(o => o.value === contactMethod);
-    return (
-      <PageShell>
-        <PageHeader />
-        <StepProgress step={6} />
-        <StepContent title={`${contactMethod}を入力してください`} sub="職人のみが確認します。第三者への提供は一切行いません">
+        <StepContent title="メールアドレスを入力してください" sub="職人からの見積もりは、このメールアドレスに届きます">
           <div className="space-y-3">
             <input
-              type={contactMethod === 'メール' ? 'email' : contactMethod === '電話' ? 'tel' : 'text'}
+              type="email"
               autoFocus
               value={contactValue}
               onChange={e => setContactValue(e.target.value)}
-              placeholder={contactOpt?.placeholder ?? '入力してください'}
+              placeholder="example@mail.com"
               className="w-full border-2 border-slate-200 rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-violet-400 transition-colors placeholder:text-slate-300"
             />
             <div className="flex items-start gap-2 bg-slate-50 rounded-xl px-4 py-3">
               <span className="text-slate-400 text-xs mt-0.5 flex-shrink-0">🔒</span>
               <p className="text-xs text-slate-400 leading-relaxed">
-                入力した連絡先は見積もり対応にのみ使用します。マーケティング目的での使用や第三者への提供は行いません。
+                入力したメールアドレスは見積もり対応にのみ使用します。第三者への提供やマーケティング目的での使用は行いません。
+              </p>
+            </div>
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+              <span className="text-amber-400 text-xs mt-0.5 flex-shrink-0">📬</span>
+              <p className="text-xs text-amber-700 leading-relaxed">
+                迷惑メールフォルダに届く場合があります。送信後はご確認ください。
               </p>
             </div>
           </div>
         </StepContent>
-        <BottomNav onBack={() => setStep(5)} onNext={() => setStep(7)} nextDisabled={contactValue.trim() === ''} nextLabel="確認画面へ →" />
+        <BottomNav onBack={() => setStep(4)} onNext={() => setStep(7)} nextDisabled={contactValue.trim() === ''} nextLabel="確認画面へ →" />
       </PageShell>
     );
   }
@@ -665,17 +870,16 @@ export default function CorporateRequest() {
   return (
     <PageShell>
       <PageHeader />
-      <StepProgress step={6} />
-      <StepContent title="内容をご確認ください" sub="送信後に担当職人よりご連絡します" scrollable>
+      <StepProgress step={5} />
+      <StepContent title="内容をご確認ください" sub="送信後に担当職人よりメールでご連絡します" scrollable>
 
         {/* 基本情報 */}
         <div className="rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden mb-4">
           {[
-            { label: '動画',     value: videoFile?.name ?? 'なし（スキップ）' },
-            { label: '施工内容', value: workType },
-            { label: 'エリア',   value: area },
-            { label: '連絡方法', value: contactMethod },
-            { label: '連絡先',   value: contactValue },
+            { label: '動画',           value: videoFile?.name ?? 'なし（スキップ）' },
+            { label: '施工内容',       value: workType },
+            { label: 'エリア',         value: area },
+            { label: 'メールアドレス', value: contactValue },
           ].map(({ label, value }) => (
             <div key={label} className="flex items-start gap-4 px-5 py-3.5 bg-white hover:bg-slate-50 transition-colors">
               <p className="text-xs font-bold text-slate-400 w-20 flex-shrink-0 pt-0.5">{label}</p>
@@ -716,7 +920,7 @@ export default function CorporateRequest() {
         <div className="rounded-2xl bg-violet-50 border border-violet-100 px-4 py-4 mb-2">
           <p className="text-xs font-bold text-violet-700 mb-2">📋 送信後の流れ</p>
           <ol className="space-y-1.5">
-            {['担当職人が内容を確認します（2営業日以内）', '入力した連絡先にご連絡します', '概算金額をご案内します（無料）'].map((item, i) => (
+            {['担当職人が内容を確認します（2営業日以内）', '入力したメールアドレスにご連絡します', '概算金額をご案内します（無料）'].map((item, i) => (
               <li key={i} className="flex items-start gap-2">
                 <span className="text-xs font-extrabold text-violet-400 flex-shrink-0 w-4">{i + 1}.</span>
                 <span className="text-xs text-violet-700">{item}</span>
@@ -728,7 +932,7 @@ export default function CorporateRequest() {
       </StepContent>
 
       <BottomNav
-        onBack={() => setStep(6)}
+        onBack={() => setStep(5)}
         onNext={handleSubmit}
         nextLabel="この内容で送信する ✓"
         loading={submitState === 'sending'}

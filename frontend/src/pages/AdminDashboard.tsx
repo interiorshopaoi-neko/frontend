@@ -1,55 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { TrendingUp, TrendingDown, DollarSign, Users, Star, Lightbulb, Bell } from 'lucide-react';
-
-// ── Admin password gate ───────────────────────────────────────────────────────
-
-const ADMIN_KEY = 'admin_authed';
-const ADMIN_PASS = 'aoi2026';
-
-function AdminGate({ children }: { children: React.ReactNode }) {
-  const [authed, setAuthed] = useState(() =>
-    sessionStorage.getItem(ADMIN_KEY) === '1' ||
-    new URLSearchParams(window.location.search).get('demo') === 'auto'
-  );
-  const [input, setInput]   = useState('');
-  const [error, setError]   = useState(false);
-
-  if (authed) return <>{children}</>;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (input === ADMIN_PASS) {
-      sessionStorage.setItem(ADMIN_KEY, '1');
-      setAuthed(true);
-    } else {
-      setError(true);
-      setInput('');
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 shadow-md p-8 w-full max-w-xs space-y-4">
-        <p className="text-base font-bold text-gray-800 text-center">管理者ログイン</p>
-        <input
-          type="password"
-          value={input}
-          onChange={e => { setInput(e.target.value); setError(false); }}
-          placeholder="パスワード"
-          autoFocus
-          className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 ${error ? 'border-rose-300 focus:ring-rose-200' : 'border-gray-200 focus:ring-indigo-200'}`}
-        />
-        {error && <p className="text-xs text-rose-500 text-center">パスワードが違います</p>}
-        <button
-          type="submit"
-          className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-colors"
-        >
-          入室
-        </button>
-      </form>
-    </div>
-  );
-}
+import { supabase } from '../lib/supabase';
+import { AdminLogin, AdminNav } from './admin/shared';
 
 // ── Types (DB連携時はAPIレスポンスをこの型にマップする) ───────────────────────
 
@@ -223,11 +176,12 @@ function useAutoAlerts(analytics: AnalyticsData): string[] {
   }, [analytics]);
 }
 
-export default function AdminDashboard() {
+function AdminDashboardContent() {
   const alerts = useAutoAlerts(DEMO_ANALYTICS);
 
   return (
-    <AdminGate>
+    <div>
+    <AdminNav />
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
 
       <div>
@@ -462,6 +416,19 @@ export default function AdminDashboard() {
       </section>
 
     </div>
-    </AdminGate>
+    </div>
   );
+}
+
+export default function AdminDashboard() {
+  const [session,   setSession]   = useState<Session | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => subscription.unsubscribe();
+  }, []);
+  if (!authReady) return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><p className="text-sm text-slate-400 animate-pulse">確認中...</p></div>;
+  if (!session) return <AdminLogin />;
+  return <AdminDashboardContent />;
 }
