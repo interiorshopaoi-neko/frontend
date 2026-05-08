@@ -552,10 +552,13 @@ export default function HomePage() {
               textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6,
             }}>HOW TO SHOOT</p>
             <h2 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', margin: '0 0 4px' }}>
-              撮り方はかんたん。<span style={{ color: '#3b82f6' }}>横動画</span>で一周するだけ。
+              撮り方はかんたん。<span style={{ color: '#3b82f6' }}>横向き撮影</span>がおすすめです。
             </h2>
-            <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 28px', lineHeight: 1.6 }}>
+            <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 4px', lineHeight: 1.6 }}>
               スマホを横にして、部屋をゆっくり歩きながら撮るだけ。難しい操作は一切ありません。
+            </p>
+            <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 28px', lineHeight: 1.6 }}>
+              部屋の4つの面が映るように、ゆっくり一周しながら撮影してください。
             </p>
 
             <div className="lg:grid lg:gap-10" style={{ gridTemplateColumns: '3fr 2fr' }}>
@@ -578,6 +581,25 @@ export default function HomePage() {
                   }} />
                   {/* Viewfinder corners */}
                   <Corners size={22} offset={16} color="rgba(255,255,255,.8)" />
+                  {/* 一周撮影アイコン – center of frame */}
+                  <div style={{
+                    position: 'absolute', top: '50%', left: '50%', zIndex: 3,
+                    transform: 'translate(-50%, -50%)',
+                    width: 64, height: 64, borderRadius: '50%',
+                    background: 'rgba(255,255,255,.18)',
+                    backdropFilter: 'blur(2px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexDirection: 'column', gap: 2,
+                  }}>
+                    <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+                      <path d="M18 6C11.37 6 6 11.37 6 18c0 3.72 1.67 7.04 4.3 9.28"
+                        stroke="white" strokeWidth="2.4" strokeLinecap="round"/>
+                      <path d="M18 6C24.63 6 30 11.37 30 18c0 3.72-1.67 7.04-4.3 9.28"
+                        stroke="rgba(255,255,255,.55)" strokeWidth="2.4" strokeLinecap="round"/>
+                      <path d="M7.5 26.5L10.3 27.28L9.5 30" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: 'white', letterSpacing: '0.04em', opacity: 0.9 }}>一周撮影</span>
+                  </div>
                   {/* REC + timer – top left */}
                   <div style={{
                     position: 'absolute', top: 16, left: 16, zIndex: 3,
@@ -615,15 +637,15 @@ export default function HomePage() {
 
                 {/* 横画面推奨バッジ */}
                 <div style={{
-                  marginTop: 12, display: 'flex', alignItems: 'center', gap: 8,
-                  background: '#eff6ff', borderRadius: 10, padding: '10px 14px',
+                  marginTop: 12, display: 'flex', alignItems: 'center', gap: 10,
+                  background: '#eff6ff', borderRadius: 12, padding: '13px 18px',
                 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
                     stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="6" width="20" height="12" rx="2"/>
                     <path d="M12 2v4M12 18v4"/>
                   </svg>
-                  <span style={{ fontSize: 12, color: '#1d4ed8', fontWeight: 600 }}>
+                  <span style={{ fontSize: 15, color: '#1d4ed8', fontWeight: 700 }}>
                     横画面で撮ると、部屋全体が伝わりやすい
                   </span>
                 </div>
@@ -654,7 +676,7 @@ export default function HomePage() {
                 boxShadow: '0 1px 6px rgba(0,0,0,.07)',
                 alignSelf: 'start',
               }}>
-                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: '0 0 16px' }}>キレイに撮るコツ</h3>
+                <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', margin: '0 0 16px' }}>キレイに撮るコツ</h3>
 
                 {/* Good */}
                 <div style={{ marginBottom: 20 }}>
@@ -667,17 +689,17 @@ export default function HomePage() {
                         <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </div>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Good</span>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Good</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {GOOD_TIPS.map(({ label, desc, imgKey, filter, focusBrackets }) => (
                       <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                        <div style={{ width: 90, flexShrink: 0 }}>
+                        <div style={{ width: 100, flexShrink: 0 }}>
                           <TipThumb imgKey={imgKey} filter={filter} focusBrackets={focusBrackets} />
                         </div>
                         <div>
-                          <p style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', margin: '0 0 3px', lineHeight: 1.35 }}>{label}</p>
-                          <p style={{ fontSize: 11, color: '#64748b', margin: 0, lineHeight: 1.45 }}>{desc}</p>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', margin: '0 0 3px', lineHeight: 1.35 }}>{label}</p>
+                          <p style={{ fontSize: 12, color: '#64748b', margin: 0, lineHeight: 1.45 }}>{desc}</p>
                         </div>
                       </div>
                     ))}
@@ -695,17 +717,17 @@ export default function HomePage() {
                         <path d="M3 3l6 6M9 3l-6 6" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
                       </svg>
                     </div>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Bad</span>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Bad</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {BAD_TIPS.map(({ label, desc, imgKey, filter }) => (
                       <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                        <div style={{ width: 90, flexShrink: 0 }}>
+                        <div style={{ width: 100, flexShrink: 0 }}>
                           <TipThumb imgKey={imgKey} filter={filter} />
                         </div>
                         <div>
-                          <p style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', margin: '0 0 3px', lineHeight: 1.35 }}>{label}</p>
-                          <p style={{ fontSize: 11, color: '#64748b', margin: 0, lineHeight: 1.45 }}>{desc}</p>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: '#ef4444', margin: '0 0 3px', lineHeight: 1.35 }}>{label}</p>
+                          <p style={{ fontSize: 12, color: '#64748b', margin: 0, lineHeight: 1.45 }}>{desc}</p>
                         </div>
                       </div>
                     ))}
