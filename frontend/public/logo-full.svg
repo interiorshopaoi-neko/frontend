@@ -1,46 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 46" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 48" fill="none">
   <defs>
-    <linearGradient id="grad" x1="2" y1="9" x2="44" y2="43" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#06b6d4"/>
-      <stop offset="60%" stop-color="#6366f1"/>
-      <stop offset="100%" stop-color="#7c3aed"/>
-    </linearGradient>
-    <linearGradient id="play" x1="14" y1="26" x2="34" y2="40" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#06b6d4"/>
+    <linearGradient id="g" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="55%" stop-color="#6366f1"/>
       <stop offset="100%" stop-color="#7c3aed"/>
     </linearGradient>
   </defs>
-
-  <!-- House: roof (flatter, wider) -->
-  <path
-    d="M2,21 L23,9 L44,21"
-    stroke="url(#grad)"
-    stroke-width="3.2"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
-  <!-- House: walls (wider) -->
-  <path
-    d="M7,21 L7,43 L39,43 L39,21"
-    stroke="url(#grad)"
-    stroke-width="3.2"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
-
-  <!-- Play button centered in house body -->
-  <path
-    d="M13,25.5 L13,38.5 L33,32 Z"
-    fill="url(#play)"
-  />
-
-  <!-- PRO MATCH text -->
+  <!-- Roof -->
+  <polyline points="2,22 24,4 46,22"
+    stroke="url(#g)" stroke-width="3.5"
+    stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- Walls -->
+  <polyline points="8,22 8,44 40,44 40,22"
+    stroke="url(#g)" stroke-width="3.5"
+    stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- Play triangle — visual center: x=24, y=33 -->
+  <polygon points="15,27 15,39 33,33" fill="url(#g)"/>
+  <!-- PRO MATCH — baseline y=33 aligns vertically with play triangle center -->
   <text
-    x="55"
-    y="32"
+    x="58" y="33"
     font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif"
     font-weight="800"
-    font-size="24"
+    font-size="21"
     letter-spacing="1"
     fill="#0f172a"
   >PRO MATCH</text>
