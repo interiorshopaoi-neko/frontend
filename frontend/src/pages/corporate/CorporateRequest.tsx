@@ -564,6 +564,33 @@ export default function CorporateRequest() {
         <PageHeader />
         <StepProgress step={1} />
         <StepContent title="お部屋の動画を撮影してください" sub="10〜30秒でOK。壁・床・気になる箇所をゆっくり撮るだけ">
+
+          {/* ── 撮影前チェックリスト ── */}
+          <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+            <p className="text-xs font-bold text-amber-800 mb-1">撮影前に軽くご確認ください</p>
+            <p className="text-[11px] text-amber-700 mb-3 leading-relaxed">
+              動画は職人が内容確認に使います。個人情報が映らないよう、撮影前に少し片付けていただけると安心です。
+            </p>
+            <ul className="space-y-2">
+              {[
+                '郵便物・書類が映っていない',
+                '表札・住所が映っていない',
+                '顔や家族の姿が映っていない',
+                '車のナンバーが映っていない',
+                '貴重品など個人情報がわかる物を片付けた',
+              ].map(item => (
+                <li key={item} className="flex items-center gap-2.5">
+                  <span className="w-4 h-4 rounded border border-amber-300 bg-white flex-shrink-0 flex items-center justify-center">
+                    <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+                      <path d="M2 5l2.5 2.5 3.5-4" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </span>
+                  <span className="text-xs text-amber-900">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
           <label
             className={`flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-2xl px-6 py-10 cursor-pointer transition-all ${
               videoFile

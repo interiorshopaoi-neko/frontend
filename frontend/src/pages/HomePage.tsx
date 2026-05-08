@@ -7,20 +7,31 @@ const CSS = `
 `;
 
 /*
-  ── 画像素材リスト（public/homepage/ に配置して差し替えてください） ──
-  room-bright.jpg  明るい室内（白い壁・ソファ・窓・自然光）
-  room-wall.jpg    壁クロスのアップ（シミ・色変わり・剥がれ）
-  room-floor.jpg   木の床クローズアップ
-  craftsman.jpg    職人がスマホを確認している写真
-  ※ 現在は Unsplash プレースホルダーを使用中
-*/
+  ── 画像素材リスト ────────────────────────────────────────────────────────
+  public/homepage/ に以下のファイルを配置してください（JPEG推奨、800px以上）:
+
+  room-wide.jpg        部屋全体の明るい写真（白い壁・ソファ・窓・自然光）
+  wall-damage.jpg      壁紙クロスのアップ（汚れ・色変わり・剥がれが分かる）
+  floor.jpg            床のクローズアップ（フローリング・CF の質感が分かる）
+  craftsman-young.jpg  職人がスマホで動画確認している写真（正面〜斜め）
+
+  ファイルがない場合はfallback色で表示されます。
+  ─────────────────────────────────────────────────────────────────────── */
 const IMG = {
-  room:      'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800&h=1200&fit=crop&auto=format&q=80',
-  wall:      'https://images.unsplash.com/photo-1560185127-6ed189af22d3?w=800&h=600&fit=crop&auto=format&q=80',
-  floor:     'https://images.unsplash.com/photo-1562663474-6cbb3eaa4d14?w=800&h=600&fit=crop&auto=format&q=80',
-  craftsman: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=1200&fit=crop&auto=format&q=80',
+  roomWide:   '/homepage/room-wide.jpg',
+  wallDamage: '/homepage/wall-damage.jpg',
+  floor:      '/homepage/floor.jpg',
+  craftsman:  '/homepage/craftsman-young.jpg',
 } as const;
 type ImgKey = keyof typeof IMG;
+
+/* 画像が存在しない間のfallback背景色 */
+const IMG_FALLBACK: Record<ImgKey, string> = {
+  roomWide:   'linear-gradient(135deg,#e8f0fe 0%,#c7d7f8 100%)',
+  wallDamage: 'linear-gradient(135deg,#f5f0e8 0%,#e8dcc8 100%)',
+  floor:      'linear-gradient(135deg,#f0e8d8 0%,#d4b896 100%)',
+  craftsman:  'linear-gradient(135deg,#1e2a3a 0%,#2d3f55 100%)',
+};
 
 /* ── 共通コンポーネント ──────────────────────────── */
 
@@ -86,7 +97,8 @@ function FlowArrow() {
 function PhoneRoom() {
   return (
     <>
-      <img src={IMG.room} alt="室内撮影中" style={{
+      <div style={{ position: 'absolute', inset: 0, background: IMG_FALLBACK.roomWide }} />
+      <img src={IMG.roomWide} alt="部屋全体の撮影イメージ" style={{
         position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
       }} />
       <Corners />
@@ -162,7 +174,8 @@ function PhoneUpload() {
 function PhoneCraftsman() {
   return (
     <>
-      <img src={IMG.craftsman} alt="職人が確認中" style={{
+      <div style={{ position: 'absolute', inset: 0, background: IMG_FALLBACK.craftsman }} />
+      <img src={IMG.craftsman} alt="職人が動画を確認している様子" style={{
         position: 'absolute', inset: 0, width: '100%', height: '100%',
         objectFit: 'cover', objectPosition: 'center top',
       }} />
@@ -257,7 +270,7 @@ function LandscapeThumb({ imgKey, showZoom = false, showRec = false }: {
   imgKey: ImgKey; showZoom?: boolean; showRec?: boolean;
 }) {
   return (
-    <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', aspectRatio: '16 / 9' }}>
+    <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', aspectRatio: '16 / 9', background: IMG_FALLBACK[imgKey] }}>
       <img src={IMG[imgKey]} alt="" style={{
         position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
       }} />
@@ -304,7 +317,7 @@ function TipThumb({ imgKey, filter, focusBrackets = false }: {
   imgKey: ImgKey; filter?: string; focusBrackets?: boolean;
 }) {
   return (
-    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 8, aspectRatio: '4 / 3' }}>
+    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 8, aspectRatio: '4 / 3', background: IMG_FALLBACK[imgKey] }}>
       <img src={IMG[imgKey]} alt="" style={{
         position: 'absolute', inset: 0, width: '100%', height: '100%',
         objectFit: 'cover', filter: filter || undefined,
@@ -336,35 +349,35 @@ function TipThumb({ imgKey, filter, focusBrackets = false }: {
 
 const SHOOT_STEPS = [
   {
-    n: 1, title: '部屋を一周ゆっくり撮影',
+    n: 1, title: '部屋全体をゆっくり撮影',
     desc: '部屋全体が映るようにゆっくり横に動かします',
     point: '壁・床・天井・ドアが見えるように一周してください',
-    imgKey: 'room' as ImgKey, showZoom: false, showRec: true,
+    imgKey: 'roomWide' as ImgKey, showZoom: false, showRec: true,
   },
   {
-    n: 2, title: '気になる箇所を近くで撮影',
-    desc: '傷・汚れ・剥がれなど気になる部分をアップで',
+    n: 2, title: '壁紙の汚れ・剥がれを撮影',
+    desc: '気になる壁紙の汚れや剥がれをアップで撮ります',
     point: '補修が必要な箇所はしっかり近づいて撮りましょう',
-    imgKey: 'wall' as ImgKey, showZoom: true, showRec: false,
+    imgKey: 'wallDamage' as ImgKey, showZoom: true, showRec: false,
   },
   {
     n: 3, title: '床の状態も撮影',
-    desc: '床材の種類や状態がわかるように撮ります',
+    desc: 'フローリングやCFの状態がわかるように撮ります',
     point: '床全体と、特に気になる箇所を映してください',
     imgKey: 'floor' as ImgKey, showZoom: false, showRec: false,
   },
 ];
 
 const GOOD_TIPS = [
-  { label: '明るい場所で撮る',   desc: '自然光が入る場所がおすすめ', imgKey: 'room' as ImgKey, filter: '', focusBrackets: false },
-  { label: 'ゆっくり動かす',     desc: '急な動きは避けましょう',     imgKey: 'room' as ImgKey, filter: 'saturate(0.75) brightness(0.92)', focusBrackets: false },
-  { label: '気になる箇所を映す', desc: '傷や汚れをしっかりと',       imgKey: 'wall' as ImgKey, filter: '', focusBrackets: true },
+  { label: '明るい場所で撮る',   desc: '自然光が入る場所がおすすめ', imgKey: 'roomWide' as ImgKey,   filter: '', focusBrackets: false },
+  { label: 'ゆっくり動かす',     desc: '急な動きは避けましょう',     imgKey: 'roomWide' as ImgKey,   filter: 'saturate(0.75) brightness(0.92)', focusBrackets: false },
+  { label: '壁紙の傷を映す',     desc: '汚れ・剥がれはしっかりと',  imgKey: 'wallDamage' as ImgKey, filter: '', focusBrackets: true },
 ];
 
 const BAD_TIPS = [
-  { label: '暗すぎる',         desc: '見えにくくなります', imgKey: 'room' as ImgKey, filter: 'brightness(0.12) saturate(0.2)' },
-  { label: '速く動きすぎ',     desc: 'ブレてしまいます',   imgKey: 'room' as ImgKey, filter: 'blur(5px) brightness(1.05)' },
-  { label: '近すぎ・ぼやける', desc: '全体がわかりません', imgKey: 'wall' as ImgKey, filter: 'blur(8px)' },
+  { label: '暗すぎる',         desc: '見えにくくなります', imgKey: 'roomWide' as ImgKey,   filter: 'brightness(0.12) saturate(0.2)' },
+  { label: '速く動きすぎ',     desc: 'ブレてしまいます',   imgKey: 'roomWide' as ImgKey,   filter: 'blur(5px) brightness(1.05)' },
+  { label: '近すぎ・ぼやける', desc: '全体がわかりません', imgKey: 'wallDamage' as ImgKey, filter: 'blur(8px)' },
 ];
 
 const FEATURES = [
