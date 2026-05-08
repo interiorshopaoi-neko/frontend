@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { calculateServiceFee } from '../../lib/serviceFee';
+import { getFreshness, FRESHNESS_CLASS } from '../../lib/freshness';
+import { AdminLogin, AdminNav } from './shared';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -100,14 +103,15 @@ function calculateLowResponseRequests(requests: Request[], applications: Applica
 
 // ─── UI Helpers ───────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
-  return (
-    <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm px-5 py-4">
+function StatCard({ label, value, sub, to }: { label: string; value: string | number; sub?: string; to?: string }) {
+  const inner = (
+    <div className={`bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm px-5 py-4 ${to ? 'hover:ring-blue-300 hover:shadow-md transition-all cursor-pointer' : ''}`}>
       <p className="text-xs font-bold text-slate-400 mb-1">{label}</p>
       <p className="text-3xl font-extrabold text-slate-900 leading-none">{value}</p>
       {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
     </div>
   );
+  return to ? <Link to={to} className="block">{inner}</Link> : inner;
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -128,7 +132,7 @@ function statusBadge(status: string | null) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function AdminDashboardPage() {
+function AdminDashboardPageContent({ session }: { session: Session }) {
   const [requests, setRequests] = useState<Request[]>([]);
   const [craftsmen, setCraftsmen] = useState<Craftsman[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
@@ -180,6 +184,20 @@ export default function AdminDashboardPage() {
   const appCountByRequest: Record<string, number> = {};
   applications.forEach(a => { appCountByRequest[a.estimate_request_id] = (appCountByRequest[a.estimate_request_id] ?? 0) + 1; });
 
+  const freshnessCounts = useMemo(() => {
+    let fresh = 0, warning = 0, stale = 0;
+    requests.forEach(r => {
+      const s = getFreshness(r.created_at).status;
+      if (s === 'fresh') fresh++;
+      else if (s === 'warning') warning++;
+      else stale++;
+    });
+    return { fresh, warning, stale };
+  }, [requests]);
+
+  const withVideoCount = requests.filter(r => r.has_video).length;
+  const withAppCount   = requests.filter(r => (appCountByRequest[r.id] ?? 0) > 0).length;
+
   const insufficientData = requests.length < 3 && craftsmen.length < 2;
 
   if (loading) {
@@ -192,8 +210,9 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <AdminNav email={session.user.email} />
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img src="/logo-full.svg" alt="PRO MATCH" className="h-7 object-contain" />
           <span className="text-xs font-bold text-slate-400 border border-slate-200 rounded-full px-2.5 py-0.5">管理画面</span>
@@ -204,11 +223,6 @@ export default function AdminDashboardPage() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-8">
-
-        {/* Security notice */}
-        <p className="text-[11px] text-slate-400 text-center">
-          ⚠️ この管理画面は運営者専用です。公開前に認証制御を追加してください。
-        </p>
 
         {/* Demo badge */}
         {isDemo && (
@@ -221,12 +235,57 @@ export default function AdminDashboardPage() {
         <section>
           <SectionTitle>サマリー</SectionTitle>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <StatCard label="見積もり依頼数" value={requests.length} sub="累計" />
+            <StatCard label="見積もり依頼数" value={requests.length} sub="累計" to="/admin/requests" />
             <StatCard label="職人登録数" value={craftsmen.length} sub="累計" />
             <StatCard label="応募数" value={applications.length} sub="累計" />
             <StatCard label="成約見込み" value={matchedApps.length} sub="matched" />
             <StatCard label="見込み手数料" value={`¥${expectedRevenue.toLocaleString()}`} sub="成約分" />
-            <StatCard label="今日の新規依頼" value={todayRequests.length} sub={today} />
+            <StatCard label="今日の新規依頼" value={todayRequests.length} sub={today} to="/admin/requests?filter=today" />
+          </div>
+        </section>
+
+        {/* Listing status cards */}
+        <section>
+          <SectionTitle>案件ステータス（鮮度別）</SectionTitle>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <Link to="/admin/requests?filter=today" className="block hover:opacity-80 transition-opacity">
+              <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm px-5 py-4 hover:ring-blue-300 hover:shadow-md transition-all cursor-pointer">
+                <p className="text-xs font-bold text-slate-400 mb-1">新着依頼</p>
+                <p className="text-3xl font-extrabold text-blue-600 leading-none">{todayRequests.length}</p>
+                <p className="text-xs text-slate-400 mt-1">本日</p>
+              </div>
+            </Link>
+            <Link to="/admin/requests?filter=fresh" className="block hover:opacity-80 transition-opacity">
+              <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm px-5 py-4 hover:ring-blue-300 hover:shadow-md transition-all cursor-pointer">
+                <p className="text-xs font-bold text-slate-400 mb-1">募集中</p>
+                <p className="text-3xl font-extrabold text-slate-900 leading-none">{freshnessCounts.fresh}</p>
+                <p className={`text-[10px] font-bold mt-1 px-2 py-0.5 rounded-full inline-block ${FRESHNESS_CLASS.fresh}`}>0〜2日</p>
+              </div>
+            </Link>
+            <Link to="/admin/requests?filter=warning" className="block hover:opacity-80 transition-opacity">
+              <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm px-5 py-4 hover:ring-blue-300 hover:shadow-md transition-all cursor-pointer">
+                <p className="text-xs font-bold text-slate-400 mb-1">まもなく確認</p>
+                <p className={`text-3xl font-extrabold leading-none ${freshnessCounts.warning > 0 ? 'text-yellow-600' : 'text-slate-900'}`}>{freshnessCounts.warning}</p>
+                <p className={`text-[10px] font-bold mt-1 px-2 py-0.5 rounded-full inline-block ${FRESHNESS_CLASS.warning}`}>3〜4日</p>
+              </div>
+            </Link>
+            <Link to="/admin/requests?filter=stale" className="block hover:opacity-80 transition-opacity">
+              <div className={`rounded-2xl ring-1 shadow-sm px-5 py-4 hover:shadow-md transition-all cursor-pointer ${freshnessCounts.stale > 0 ? 'bg-orange-50 ring-orange-200 hover:ring-orange-400' : 'bg-white ring-slate-200 hover:ring-blue-300'}`}>
+                <p className="text-xs font-bold text-slate-400 mb-1">継続確認待ち</p>
+                <p className={`text-3xl font-extrabold leading-none ${freshnessCounts.stale > 0 ? 'text-orange-600' : 'text-slate-900'}`}>{freshnessCounts.stale}</p>
+                <p className={`text-[10px] font-bold mt-1 px-2 py-0.5 rounded-full inline-block ${FRESHNESS_CLASS.urgent}`}>5日以上</p>
+              </div>
+            </Link>
+            <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm px-5 py-4">
+              <p className="text-xs font-bold text-slate-400 mb-1">動画あり</p>
+              <p className="text-3xl font-extrabold text-blue-600 leading-none">{withVideoCount}</p>
+              <p className="text-xs text-slate-400 mt-1">▶ 動画付き案件</p>
+            </div>
+            <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm px-5 py-4">
+              <p className="text-xs font-bold text-slate-400 mb-1">応募あり</p>
+              <p className="text-3xl font-extrabold text-emerald-600 leading-none">{withAppCount}</p>
+              <p className="text-xs text-slate-400 mt-1">1件以上の応募</p>
+            </div>
           </div>
         </section>
 
@@ -287,40 +346,49 @@ export default function AdminDashboardPage() {
               <table className="min-w-max w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100">
-                    {['工事内容', 'エリア', '動画', '部屋', '追加情報', '応募数', 'ステータス', '日時'].map(h => (
+                    {['工事内容', 'エリア', '動画', '部屋', '追加情報', '応募数', 'ステータス', '鮮度', '日時'].map(h => (
                       <th key={h} className="text-left text-[11px] font-bold text-slate-400 px-4 py-3 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {requests.slice(0, 20).map(r => (
-                    <tr key={r.id} className="border-b border-slate-50 hover:bg-slate-50 transition">
-                      <td className="px-4 py-3 font-bold text-slate-800 whitespace-nowrap">{r.work_type || '—'}</td>
-                      <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{r.city || '—'}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {r.has_video
-                          ? <span className="text-blue-600 font-bold text-xs">▶ あり</span>
-                          : <span className="text-slate-300 text-xs">なし</span>}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {(r.meta?.rooms?.length ?? 0) > 0
-                          ? <span className="text-violet-600 font-bold text-xs">{r.meta?.rooms?.length}部屋</span>
-                          : <span className="text-slate-300 text-xs">—</span>}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {r.meta?.extra_info
-                          ? <span className="text-emerald-600 font-bold text-xs">✓ あり</span>
-                          : <span className="text-slate-300 text-xs">—</span>}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="inline-block bg-slate-100 text-slate-700 font-extrabold text-xs px-2 py-0.5 rounded-full">
-                          {appCountByRequest[r.id] ?? 0}件
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">{statusBadge(r.status)}</td>
-                      <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">{r.created_at.slice(0, 10)}</td>
-                    </tr>
-                  ))}
+                  {requests.slice(0, 20).map(r => {
+                    const f = getFreshness(r.created_at);
+                    const isStale = f.status === 'urgent';
+                    return (
+                      <tr key={r.id} className={`border-b transition ${isStale ? 'bg-orange-50 border-orange-100 hover:bg-orange-100' : 'border-slate-50 hover:bg-slate-50'}`}>
+                        <td className="px-4 py-3 font-bold text-slate-800 whitespace-nowrap">{r.work_type || '—'}</td>
+                        <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{r.city || '—'}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {r.has_video
+                            ? <span className="text-blue-600 font-bold text-xs">▶ あり</span>
+                            : <span className="text-slate-300 text-xs">なし</span>}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {(r.meta?.rooms?.length ?? 0) > 0
+                            ? <span className="text-violet-600 font-bold text-xs">{r.meta?.rooms?.length}部屋</span>
+                            : <span className="text-slate-300 text-xs">—</span>}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {r.meta?.extra_info
+                            ? <span className="text-emerald-600 font-bold text-xs">✓ あり</span>
+                            : <span className="text-slate-300 text-xs">—</span>}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="inline-block bg-slate-100 text-slate-700 font-extrabold text-xs px-2 py-0.5 rounded-full">
+                            {appCountByRequest[r.id] ?? 0}件
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">{statusBadge(r.status)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${FRESHNESS_CLASS[f.status]}`}>
+                            {f.label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">{r.created_at.slice(0, 10)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -421,4 +489,19 @@ export default function AdminDashboardPage() {
       </div>
     </div>
   );
+}
+
+export default function AdminDashboardPage() {
+  const [session,   setSession]   = useState<Session | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (!authReady) return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><p className="text-sm text-slate-400 animate-pulse">確認中...</p></div>;
+  if (!session) return <AdminLogin />;
+  return <AdminDashboardPageContent session={session} />;
 }
