@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 const CSS = `
 @keyframes recBlink{0%,100%{opacity:1}50%{opacity:.2}}
 @keyframes dots{0%,80%,100%{opacity:0;transform:scale(.5)}40%{opacity:1;transform:scale(1)}}
-@keyframes panRoom{0%{transform:translateX(-8%)}100%{transform:translateX(-42%)}}
 `;
 
 /*
@@ -101,10 +100,7 @@ function PhoneRoom() {
     <>
       <div style={{ position: 'absolute', inset: 0, background: IMG_FALLBACK.panorama }} />
       <img src={IMG.panorama} alt="部屋全体の撮影イメージ" style={{
-        position: 'absolute', top: 0, bottom: 0, left: 0,
-        width: '200%', height: '100%', objectFit: 'cover',
-        animation: 'panRoom 5s ease-in-out infinite alternate',
-        willChange: 'transform',
+        position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
       }} />
       <Corners />
       <div style={{
@@ -562,7 +558,7 @@ export default function HomePage() {
               スマホを横にして、部屋をゆっくり歩きながら撮るだけ。難しい操作は一切ありません。
             </p>
 
-            <div className="lg:grid lg:gap-12" style={{ gridTemplateColumns: '1fr 340px' }}>
+            <div className="lg:grid lg:gap-10" style={{ gridTemplateColumns: '3fr 2fr' }}>
 
               {/* ── 左：横動画撮影デモ ── */}
               <div className="mb-10 lg:mb-0">
@@ -574,14 +570,11 @@ export default function HomePage() {
                   background: '#0a0f1e',
                   boxShadow: '0 8px 48px rgba(0,0,0,.22)',
                 }}>
-                  {/* fallback – dark so any edge artifact matches frame */}
-                  <div style={{ position: 'absolute', inset: 0, background: '#0a0f1e' }} />
-                  {/* panorama with safe-range pan: never reaches element edges */}
+                  {/* fallback */}
+                  <div style={{ position: 'absolute', inset: 0, background: IMG_FALLBACK.panorama }} />
+                  {/* static panorama – no animation, no overflow */}
                   <img src={IMG.panorama} alt="部屋全体の横動画撮影イメージ" style={{
-                    position: 'absolute', top: 0, bottom: 0, left: 0,
-                    width: '200%', height: '100%', objectFit: 'cover',
-                    animation: 'panRoom 6s ease-in-out infinite alternate',
-                    willChange: 'transform',
+                    position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
                   }} />
                   {/* Viewfinder corners */}
                   <Corners size={22} offset={16} color="rgba(255,255,255,.8)" />
@@ -656,7 +649,11 @@ export default function HomePage() {
               </div>
 
               {/* ── 右：Good / Bad 縦積み ── */}
-              <div>
+              <div style={{
+                background: 'white', borderRadius: 16, padding: '20px 20px 16px',
+                boxShadow: '0 1px 6px rgba(0,0,0,.07)',
+                alignSelf: 'start',
+              }}>
                 <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: '0 0 16px' }}>キレイに撮るコツ</h3>
 
                 {/* Good */}
