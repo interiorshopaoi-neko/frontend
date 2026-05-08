@@ -566,71 +566,85 @@ export default function HomePage() {
               {/* ── 左：横動画撮影デモ ── */}
               <div className="mb-10 lg:mb-0">
 
-                {/* 16:9 横動画フレーム */}
+                {/* iPhone横向きフレーム */}
                 <div style={{
-                  position: 'relative', borderRadius: 16, overflow: 'hidden',
-                  aspectRatio: '16 / 9',
-                  background: '#0a0f1e',
-                  boxShadow: '0 8px 48px rgba(0,0,0,.22)',
+                  position: 'relative',
+                  padding: 7,
+                  borderRadius: 26,
+                  background: '#1a1a1e',
+                  boxShadow: '0 14px 52px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.06)',
                 }}>
-                  {/* fallback */}
-                  <div style={{ position: 'absolute', inset: 0, background: IMG_FALLBACK.panorama }} />
-                  {/* static panorama – no animation, no overflow */}
-                  <img src={IMG.panorama} alt="部屋全体の横動画撮影イメージ" style={{
-                    position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                  {/* 左側スピーカー風ノッチ */}
+                  <div style={{
+                    position: 'absolute', left: -1, top: '50%', transform: 'translateY(-50%)',
+                    width: 3, height: 26, background: '#111', borderRadius: '3px 0 0 3px',
+                    zIndex: 5,
                   }} />
-                  {/* Viewfinder corners */}
-                  <Corners size={22} offset={16} color="rgba(255,255,255,.8)" />
-                  {/* 一周撮影アイコン – center of frame */}
+                  {/* 16:9 コンテンツ */}
                   <div style={{
-                    position: 'absolute', top: '50%', left: '50%', zIndex: 3,
-                    transform: 'translate(-50%, -50%)',
-                    width: 64, height: 64, borderRadius: '50%',
-                    background: 'rgba(255,255,255,.18)',
-                    backdropFilter: 'blur(2px)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexDirection: 'column', gap: 2,
+                    position: 'relative', borderRadius: 19, overflow: 'hidden',
+                    aspectRatio: '16 / 9',
+                    background: '#0a0f1e',
                   }}>
-                    <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-                      <path d="M18 6C11.37 6 6 11.37 6 18c0 3.72 1.67 7.04 4.3 9.28"
-                        stroke="white" strokeWidth="2.4" strokeLinecap="round"/>
-                      <path d="M18 6C24.63 6 30 11.37 30 18c0 3.72-1.67 7.04-4.3 9.28"
-                        stroke="rgba(255,255,255,.55)" strokeWidth="2.4" strokeLinecap="round"/>
-                      <path d="M7.5 26.5L10.3 27.28L9.5 30" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: 'white', letterSpacing: '0.04em', opacity: 0.9 }}>一周撮影</span>
-                  </div>
-                  {/* REC + timer – top left */}
-                  <div style={{
-                    position: 'absolute', top: 16, left: 16, zIndex: 3,
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    background: 'rgba(0,0,0,.52)', borderRadius: 20, padding: '5px 12px',
-                  }}>
-                    <span style={{
-                      width: 8, height: 8, borderRadius: '50%', background: '#ef4444',
-                      display: 'inline-block', animation: 'recBlink 1.4s ease-in-out infinite',
+                    {/* fallback */}
+                    <div style={{ position: 'absolute', inset: 0, background: IMG_FALLBACK.panorama }} />
+                    {/* static panorama */}
+                    <img src={IMG.panorama} alt="部屋全体の横動画撮影イメージ" style={{
+                      position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
                     }} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', letterSpacing: '0.05em' }}>REC</span>
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,.55)', marginLeft: 2 }}>00:24</span>
-                  </div>
-                  {/* Bottom gradient overlay + label + record button */}
-                  <div style={{
-                    position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 2,
-                    background: 'linear-gradient(0deg,rgba(0,0,0,.6) 0%,transparent 100%)',
-                    padding: '28px 18px 16px',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
-                  }}>
-                    <span style={{
-                      background: 'rgba(255,255,255,.92)', borderRadius: 20,
-                      padding: '5px 14px', fontSize: 12, fontWeight: 600, color: '#0f172a',
-                    }}>部屋を一周しながら撮影中...</span>
+                    {/* Viewfinder corners */}
+                    <Corners size={22} offset={16} color="rgba(255,255,255,.8)" />
+                    {/* 楕円一周矢印 – center */}
                     <div style={{
-                      width: 40, height: 40, borderRadius: '50%',
-                      border: '3px solid rgba(255,255,255,.8)', background: 'rgba(239,68,68,.9)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0,
+                      position: 'absolute', top: '50%', left: '50%', zIndex: 3,
+                      transform: 'translate(-50%, -50%)',
+                      filter: 'drop-shadow(0 2px 6px rgba(0,0,0,.55))',
                     }}>
-                      <div style={{ width: 14, height: 14, borderRadius: 2, background: 'white' }} />
+                      <svg width="96" height="52" viewBox="0 0 96 52" fill="none">
+                        <path d="M 83 25
+                                 C 83 12 67 4 48 4
+                                 C 29 4 13 12 13 26
+                                 C 13 40 29 48 48 48
+                                 C 67 48 83 40 83 34"
+                          stroke="white" strokeWidth="3" strokeLinecap="round" opacity="0.88"/>
+                        <path d="M 78 29 L 84 36 L 90 30"
+                          stroke="white" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.88"/>
+                      </svg>
+                    </div>
+                    {/* REC + timer – top left */}
+                    <div style={{
+                      position: 'absolute', top: 16, left: 16, zIndex: 3,
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      background: 'rgba(0,0,0,.52)', borderRadius: 20, padding: '5px 12px',
+                    }}>
+                      <span style={{
+                        width: 8, height: 8, borderRadius: '50%', background: '#ef4444',
+                        display: 'inline-block', animation: 'recBlink 1.4s ease-in-out infinite',
+                      }} />
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', letterSpacing: '0.05em' }}>REC</span>
+                      <span style={{ fontSize: 10, color: 'rgba(255,255,255,.55)', marginLeft: 2 }}>00:24</span>
+                    </div>
+                    {/* Bottom gradient + label */}
+                    <div style={{
+                      position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 2,
+                      background: 'linear-gradient(0deg,rgba(0,0,0,.6) 0%,transparent 100%)',
+                      padding: '28px 18px 16px',
+                    }}>
+                      <span style={{
+                        background: 'rgba(255,255,255,.92)', borderRadius: 20,
+                        padding: '5px 14px', fontSize: 12, fontWeight: 600, color: '#0f172a',
+                      }}>部屋を一周しながら撮影中...</span>
+                    </div>
+                    {/* 録画ボタン – 右中央 */}
+                    <div style={{
+                      position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)',
+                      zIndex: 4,
+                      width: 44, height: 44, borderRadius: '50%',
+                      background: 'rgba(255,255,255,.95)',
+                      boxShadow: '0 2px 10px rgba(0,0,0,.35), 0 0 0 2px rgba(255,255,255,.3)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <div style={{ width: 16, height: 16, borderRadius: 3, background: '#ef4444' }} />
                     </div>
                   </div>
                 </div>
@@ -640,12 +654,12 @@ export default function HomePage() {
                   marginTop: 12, display: 'flex', alignItems: 'center', gap: 10,
                   background: '#eff6ff', borderRadius: 12, padding: '13px 18px',
                 }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
                     stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="6" width="20" height="12" rx="2"/>
                     <path d="M12 2v4M12 18v4"/>
                   </svg>
-                  <span style={{ fontSize: 15, color: '#1d4ed8', fontWeight: 700 }}>
+                  <span style={{ fontSize: 16, color: '#1d4ed8', fontWeight: 700 }}>
                     横画面で撮ると、部屋全体が伝わりやすい
                   </span>
                 </div>
