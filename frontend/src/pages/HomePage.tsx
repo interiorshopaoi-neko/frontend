@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom';
-import BottomNav from '../components/BottomNav';
 
 const CSS = `
 @keyframes recBlink{0%,100%{opacity:1}50%{opacity:.2}}
@@ -400,7 +399,7 @@ export default function HomePage() {
     <>
       <style>{CSS}</style>
 
-      <div style={{ minHeight: '100vh', background: 'white', paddingBottom: 80 }}>
+      <div style={{ minHeight: '100vh', background: 'white' }}>
 
         {/* Header */}
         <header style={{
@@ -682,7 +681,6 @@ export default function HomePage() {
 
       </div>
 
-      <BottomNav subtle />
     </>
   );
 }
