@@ -4,6 +4,13 @@ import { supabase } from '../../lib/supabase';
 
 // ── 型定義 ────────────────────────────────────────────────────────────────────
 
+export type RoomInfo = {
+  name: string;
+  workType: string;
+  furniture: string;
+  memo: string;
+};
+
 export type ExtraInfo = {
   furniture: string;
   parking: string;
@@ -11,6 +18,9 @@ export type ExtraInfo = {
   condition: string[];
   timing: string;
   memo: string;
+  roomCount: string;
+  rooms: RoomInfo[];
+  attachmentFlags: string[];
 };
 
 // ── 選択肢 ────────────────────────────────────────────────────────────────────
@@ -47,6 +57,18 @@ const CONDITION_OPTIONS = [
   '特になし',
   '不明',
 ] as const;
+
+const ROOM_COUNT_OPTIONS = [
+  '1部屋',
+  '2部屋',
+  '3部屋以上',
+  'まだ決まっていない',
+] as const;
+
+const ROOM_NAME_OPTIONS = ['LDK', '洋室', '和室', '廊下', 'その他'] as const;
+const WORK_TYPE_OPTIONS = ['壁紙', '床', '両方'] as const;
+const ROOM_FURNITURE_OPTIONS = ['少ない', '普通', '多い'] as const;
+const ATTACHMENT_OPTIONS = ['写真', '間取り図', '品番メモ', '施工指示書'] as const;
 
 const TIMING_OPTIONS = [
   'できるだけ早く',
@@ -133,15 +155,31 @@ export default function RequestExtraInfoPage() {
   const isDemo = !id || id.startsWith('demo');
 
   const [info, setInfo] = useState<ExtraInfo>({
-    furniture: '',
-    parking:   '',
-    material:  [],
-    condition: [],
-    timing:    '',
-    memo:      '',
+    furniture:       '',
+    parking:         '',
+    material:        [],
+    condition:       [],
+    timing:          '',
+    memo:            '',
+    roomCount:       '',
+    rooms:           [{ name: '', workType: '', furniture: '', memo: '' }],
+    attachmentFlags: [],
   });
   const [saving, setSaving] = useState(false);
   const [done,   setDone]   = useState(false);
+
+  function updateRoom(idx: number, field: keyof RoomInfo, val: string) {
+    setInfo(prev => ({
+      ...prev,
+      rooms: prev.rooms.map((r, i) => i === idx ? { ...r, [field]: val } : r),
+    }));
+  }
+  function addRoom() {
+    setInfo(prev => ({ ...prev, rooms: [...prev.rooms, { name: '', workType: '', furniture: '', memo: '' }] }));
+  }
+  function removeRoom(idx: number) {
+    setInfo(prev => ({ ...prev, rooms: prev.rooms.filter((_, i) => i !== idx) }));
+  }
 
   function toggleMulti(key: 'material' | 'condition', val: string) {
     setInfo(prev => {
@@ -247,6 +285,75 @@ export default function RequestExtraInfoPage() {
           </div>
         )}
 
+        {/* 職人への価値説明 */}
+        <div className="bg-indigo-50 rounded-2xl px-5 py-4 border border-indigo-100">
+          <p className="text-xs font-bold text-indigo-700 mb-1">入力は任意です</p>
+          <p className="text-xs text-indigo-500 leading-relaxed">
+            部屋数・家具量・希望時期があると、職人が見積もりを出しやすくなります。分かる範囲だけで大丈夫です。
+          </p>
+        </div>
+
+        {/* 0. 部屋数 */}
+        <Section label="部屋数">
+          <ChipSingle
+            options={ROOM_COUNT_OPTIONS}
+            value={info.roomCount}
+            onSelect={v => setInfo(prev => ({ ...prev, roomCount: v }))}
+          />
+        </Section>
+
+        {/* 複数部屋の内訳 */}
+        {(info.roomCount === '2部屋' || info.roomCount === '3部屋以上') && (
+          <Section label="部屋ごとの情報（任意）">
+            <div className="space-y-4">
+              {info.rooms.map((room, i) => (
+                <div key={i} className="border border-slate-100 rounded-2xl p-4 bg-slate-50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-slate-700">部屋 {i + 1}</p>
+                    {i > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => removeRoom(i)}
+                        className="text-[11px] text-red-400 hover:text-red-600 font-semibold"
+                      >
+                        削除
+                      </button>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-500 mb-1.5">部屋名</p>
+                    <ChipSingle options={ROOM_NAME_OPTIONS} value={room.name} onSelect={v => updateRoom(i, 'name', v)} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-500 mb-1.5">工事内容</p>
+                    <ChipSingle options={WORK_TYPE_OPTIONS} value={room.workType} onSelect={v => updateRoom(i, 'workType', v)} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-500 mb-1.5">家具量</p>
+                    <ChipSingle options={ROOM_FURNITURE_OPTIONS} value={room.furniture} onSelect={v => updateRoom(i, 'furniture', v)} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-500 mb-1.5">気になる箇所（任意）</p>
+                    <input
+                      value={room.memo}
+                      onChange={e => updateRoom(i, 'memo', e.target.value)}
+                      placeholder="例：窓の下が汚れている"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-300 bg-white"
+                    />
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addRoom}
+                className="w-full py-2.5 rounded-xl border border-dashed border-blue-300 text-xs font-semibold text-blue-500 hover:bg-blue-50 transition"
+              >
+                ＋ 部屋を追加
+              </button>
+            </div>
+          </Section>
+        )}
+
         {/* A. 家具移動 */}
         <Section label="A. 家具の移動について">
           <ChipSingle
@@ -304,6 +411,23 @@ export default function RequestExtraInfoPage() {
           <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
             ※ 個人情報（電話番号・住所・LINE ID等）は入力しないでください。成約後に別途開示します。
           </p>
+        </Section>
+
+        {/* G. 追加資料 */}
+        <Section label="G. 追加資料（任意・複数選択可）">
+          <p className="text-[11px] text-slate-400 mb-2 leading-relaxed">
+            お持ちの場合は後からチャットでお送りいただけます。
+          </p>
+          <ChipMulti
+            options={ATTACHMENT_OPTIONS}
+            selected={info.attachmentFlags}
+            onToggle={v => setInfo(prev => ({
+              ...prev,
+              attachmentFlags: prev.attachmentFlags.includes(v)
+                ? prev.attachmentFlags.filter(x => x !== v)
+                : [...prev.attachmentFlags, v],
+            }))}
+          />
         </Section>
 
         {/* 送信 */}

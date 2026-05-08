@@ -64,6 +64,26 @@ export default function EstimateComplete() {
         </div>
       </div>
 
+      {/* ── Extra info nudge ──────────────────────────────────────────── */}
+      <div className="w-full bg-blue-50 rounded-3xl border border-blue-100 p-5 text-left space-y-3">
+        <div className="flex items-start gap-3">
+          <span className="text-xl mt-0.5 flex-shrink-0">💡</span>
+          <div>
+            <p className="text-sm font-extrabold text-blue-900">より正確な見積もりにできます</p>
+            <p className="text-xs text-blue-600 mt-1 leading-relaxed">
+              部屋数・家具量・希望時期を伝えると、職人が見積もりを出しやすくなります。
+              <span className="font-semibold"> 後からでもOK・入力は完全任意です。</span>
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => navigate('/request/demo/extra-info')}
+          className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm active:scale-95 transition-all"
+        >
+          追加情報を入力する（任意）→
+        </button>
+      </div>
+
       {/* ── CTA ───────────────────────────────────────────────────────── */}
       <div className="w-full pt-2">
         <button
