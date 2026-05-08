@@ -69,9 +69,9 @@ export default function EstimateComplete() {
         <div className="flex items-start gap-3">
           <span className="text-xl mt-0.5 flex-shrink-0">💡</span>
           <div>
-            <p className="text-sm font-extrabold text-blue-900">より正確な見積もりにできます</p>
+            <p className="text-sm font-extrabold text-blue-900">さらに正確な見積もりにできます</p>
             <p className="text-xs text-blue-600 mt-1 leading-relaxed">
-              部屋数・家具量・希望時期を伝えると、職人が見積もりを出しやすくなります。
+              部屋ごとの情報（広さ・状態・家具量など）を追加すると、職人がより正確な概算を出せます。
               <span className="font-semibold"> 後からでもOK・入力は完全任意です。</span>
             </p>
           </div>
@@ -80,7 +80,7 @@ export default function EstimateComplete() {
           onClick={() => navigate('/request/demo/extra-info')}
           className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm active:scale-95 transition-all"
         >
-          追加情報を入力する（任意）→
+          部屋ごとの情報を追加する（任意）→
         </button>
       </div>
 

@@ -378,7 +378,7 @@ export default function CorporateRequest() {
   const [devErrorDetail, setDevErrorDetail] = useState<string | null>(null);
   const [newRequestId,   setNewRequestId]   = useState<string | null>(null);
 
-  const hasDetail = !!(roomType || roomSize || timing || siteCondition || desireType || memo);
+  const hasDetail = !!(timing || desireType || memo);
   const hasRoomInfo = rooms.some(r => r.workType || r.size);
 
   // ── Supabase 送信処理 ──────────────────────────────────────────────────────
@@ -502,14 +502,14 @@ export default function CorporateRequest() {
         {/* 追加情報CTA */}
         <div className="max-w-xs w-full space-y-3">
           <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-left">
-            <p className="text-xs font-bold text-blue-800 mb-0.5">見積もり精度を上げませんか？</p>
-            <p className="text-[11px] text-blue-600 leading-relaxed">あと少しだけ情報をいただくと、職人がより正確な概算を出せます。</p>
+            <p className="text-xs font-bold text-blue-800 mb-0.5">さらに正確な見積もりにできます</p>
+            <p className="text-[11px] text-blue-600 leading-relaxed">部屋ごとの情報（広さ・状態・家具量など）を追加すると、職人がより正確な概算を出せます。</p>
           </div>
           <button
             onClick={() => navigate(`/request/${extraId}/extra-info`)}
             className="w-full py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-sm transition-all shadow-sm"
           >
-            追加情報を入力する
+            部屋ごとの情報を追加する →
           </button>
           <button
             onClick={() => navigate('/')}
@@ -758,15 +758,12 @@ export default function CorporateRequest() {
         <PageHeader />
         <StepProgress step={5} />
         <StepContent
-          title="現場の詳細を教えてください"
-          sub="すべて任意です。わからない場合はスキップできます"
+          title="ご希望を少しだけ教えてください"
+          sub="任意です。わかる範囲だけで大丈夫です"
           scrollable
         >
           <div className="space-y-6 pb-2">
-            <ChipGroup label="部屋の種類"   options={ROOM_TYPE_OPTIONS}  value={roomType}      onChange={setRoomType} />
-            <ChipGroup label="だいたいの広さ" options={ROOM_SIZE_OPTIONS}  value={roomSize}      onChange={setRoomSize} />
-            <ChipGroup label="希望時期"     options={TIMING_OPTIONS}     value={timing}        onChange={setTiming} />
-            <ChipGroup label="現場状況"     options={SITE_COND_OPTIONS}  value={siteCondition} onChange={setSiteCondition} />
+            <ChipGroup label="希望時期" options={TIMING_OPTIONS} value={timing} onChange={setTiming} />
 
             <div>
               <p className="text-xs font-bold text-slate-600 mb-0.5">

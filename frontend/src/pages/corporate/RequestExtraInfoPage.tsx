@@ -7,6 +7,8 @@ import { supabase } from '../../lib/supabase';
 export type RoomInfo = {
   name: string;
   workType: string;
+  size: string;
+  condition: string[];
   furniture: string;
   memo: string;
 };
@@ -67,6 +69,8 @@ const ROOM_COUNT_OPTIONS = [
 
 const ROOM_NAME_OPTIONS = ['LDK', '洋室', '和室', '廊下', 'その他'] as const;
 const WORK_TYPE_OPTIONS = ['壁紙', '床', '両方'] as const;
+const ROOM_SIZE_OPTIONS = ['6畳以下', '6〜8畳', '8〜10畳', '10畳以上', '不明'] as const;
+const ROOM_COND_OPTIONS = ['汚れ', 'めくれ', '傷', 'カビ', 'ペット臭', '不明'] as const;
 const ROOM_FURNITURE_OPTIONS = ['少ない', '普通', '多い'] as const;
 const ATTACHMENT_OPTIONS = ['写真', '間取り図', '品番メモ', '施工指示書'] as const;
 
@@ -162,7 +166,7 @@ export default function RequestExtraInfoPage() {
     timing:          '',
     memo:            '',
     roomCount:       '',
-    rooms:           [{ name: '', workType: '', furniture: '', memo: '' }],
+    rooms:           [{ name: '', workType: '', size: '', condition: [], furniture: '', memo: '' }],
     attachmentFlags: [],
   });
   const [saving, setSaving] = useState(false);
@@ -174,8 +178,18 @@ export default function RequestExtraInfoPage() {
       rooms: prev.rooms.map((r, i) => i === idx ? { ...r, [field]: val } : r),
     }));
   }
+  function toggleRoomCond(idx: number, val: string) {
+    setInfo(prev => ({
+      ...prev,
+      rooms: prev.rooms.map((r, i) => {
+        if (i !== idx) return r;
+        const has = r.condition.includes(val);
+        return { ...r, condition: has ? r.condition.filter(c => c !== val) : [...r.condition, val] };
+      }),
+    }));
+  }
   function addRoom() {
-    setInfo(prev => ({ ...prev, rooms: [...prev.rooms, { name: '', workType: '', furniture: '', memo: '' }] }));
+    setInfo(prev => ({ ...prev, rooms: [...prev.rooms, { name: '', workType: '', size: '', condition: [], furniture: '', memo: '' }] }));
   }
   function removeRoom(idx: number) {
     setInfo(prev => ({ ...prev, rooms: prev.rooms.filter((_, i) => i !== idx) }));
@@ -258,8 +272,8 @@ export default function RequestExtraInfoPage() {
           </svg>
         </button>
         <div className="flex-1">
-          <h1 className="text-base font-extrabold text-slate-900 leading-tight">追加情報（任意）</h1>
-          <p className="text-[11px] text-slate-400 mt-0.5">入力すると見積もり精度が上がります</p>
+          <h1 className="text-base font-extrabold text-slate-900 leading-tight">部屋ごとの詳細を追加できます</h1>
+          <p className="text-[11px] text-slate-400 mt-0.5">任意です。複数部屋ある場合は部屋ごとに分けると職人が判断しやすくなります</p>
         </div>
         <button
           onClick={() => navigate('/')}
@@ -327,6 +341,23 @@ export default function RequestExtraInfoPage() {
                   <div>
                     <p className="text-[11px] font-semibold text-slate-500 mb-1.5">工事内容</p>
                     <ChipSingle options={WORK_TYPE_OPTIONS} value={room.workType} onSelect={v => updateRoom(i, 'workType', v)} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-500 mb-1.5">だいたいの広さ</p>
+                    <ChipSingle options={ROOM_SIZE_OPTIONS} value={room.size} onSelect={v => updateRoom(i, 'size', v)} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-500 mb-1.5">状態（複数選択可）</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {ROOM_COND_OPTIONS.map(c => (
+                        <button key={c} type="button" onClick={() => toggleRoomCond(i, c)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                            room.condition.includes(c)
+                              ? 'bg-orange-500 text-white border-orange-500'
+                              : 'bg-white text-slate-600 border-slate-200 hover:border-orange-300'
+                          }`}>{c}</button>
+                      ))}
+                    </div>
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold text-slate-500 mb-1.5">家具量</p>
