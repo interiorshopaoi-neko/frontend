@@ -390,26 +390,17 @@ export default function RequestExtraInfoPage() {
           />
         </Section>
 
-        {/* E. 希望時期 */}
-        <Section label="E. 希望時期">
-          <ChipSingle
-            options={TIMING_OPTIONS}
-            value={info.timing}
-            onSelect={v => setInfo(prev => ({ ...prev, timing: v }))}
-          />
-        </Section>
-
         {/* F. 追加メモ */}
         <Section label="F. 追加メモ（任意）">
           <textarea
             value={info.memo}
             onChange={e => setInfo(prev => ({ ...prev, memo: e.target.value }))}
             rows={3}
-            placeholder="電話番号・住所・LINE IDは書かないでください"
+            placeholder="気になる箇所、希望、職人に伝えたいことなど"
             className="w-full border-2 border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-blue-400 resize-none leading-relaxed"
           />
           <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
-            ※ 個人情報（電話番号・住所・LINE ID等）は入力しないでください。成約後に別途開示します。
+            ※ 個人情報（電話番号・住所等）は入力しないでください。成約後に別途メールにてご案内します。
           </p>
         </Section>
 

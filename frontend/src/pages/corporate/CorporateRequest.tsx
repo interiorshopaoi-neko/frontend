@@ -1,21 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Layers, Scissors, LayoutGrid, MessageSquare, Mail } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 // ── 定数 ─────────────────────────────────────────────────────────────────────
 
-const WORK_OPTIONS = [
-  { value: 'クロス張り替え', icon: '🧱', desc: '壁紙を新しく張り替え' },
-  { value: 'クロス補修',     icon: '🔧', desc: '傷・破れなど部分補修' },
-  { value: '床工事',         icon: '🪵', desc: 'フローリング・CF張替' },
-  { value: 'その他相談',     icon: '💬', desc: 'まずは相談したい' },
-] as const;
-
-const CONTACT_OPTIONS = [
-  { value: 'LINE',  icon: '💬', desc: 'LINEのIDをお知らせください', placeholder: 'LINE ID を入力' },
-  { value: 'メール', icon: '📧', desc: 'メールアドレスを入力',       placeholder: 'example@mail.com' },
-  { value: '電話',   icon: '📞', desc: '折り返しご連絡します',       placeholder: '090-0000-0000' },
-] as const;
+type WorkOption = { value: string; Icon: React.FC<{ size?: number; className?: string }>; desc: string };
+const WORK_OPTIONS: WorkOption[] = [
+  { value: 'クロス張り替え', Icon: Layers,      desc: '壁紙を新しく張り替え' },
+  { value: 'クロス補修',     Icon: Scissors,    desc: '傷・破れなど部分補修' },
+  { value: '床工事',         Icon: LayoutGrid,  desc: 'フローリング・CF張替' },
+  { value: 'その他相談',     Icon: MessageSquare, desc: 'まずは相談したい' },
+];
 
 const ROOM_TYPE_OPTIONS  = ['リビング', '洋室', '寝室', '廊下', 'その他', '不明'] as const;
 const ROOM_SIZE_OPTIONS  = ['6畳以下', '6〜8畳', '8〜10畳', '10畳以上', '不明'] as const;
@@ -45,7 +41,7 @@ const ROOM_WORKS = ['壁紙・クロス', 'クッションフロア', '両方'] 
 const ROOM_SIZES = ['6畳', '8畳', '12畳', '不明'] as const;
 const ROOM_CONDS = ['汚れ', 'めくれ', '傷', 'カビ', 'ペット臭', '不明'] as const;
 
-const TOTAL_STEPS = 7; // 動画/部屋/施工/エリア/詳細/連絡方法/連絡先
+const TOTAL_STEPS = 6; // 動画/部屋/施工/エリア/詳細/メール
 
 // ── PageShell ─────────────────────────────────────────────────────────────────
 
@@ -65,7 +61,7 @@ function PageHeader() {
   return (
     <div className="px-6 pt-8 pb-6 border-b border-slate-100 flex-shrink-0">
       <div className="flex items-center gap-2 mb-4">
-        <img src="/logo-full.svg" alt="PRO MATCH" className="h-7 object-contain" />
+        <img src="/logo-full.png" alt="PRO MATCH" className="h-7 object-contain" />
       </div>
       <h1 className="text-2xl font-extrabold text-slate-900 leading-snug mb-1">
         内装工事の概算確認
@@ -348,11 +344,11 @@ export default function CorporateRequest() {
   const [step, setStep] = useState(1);
 
   // フォームデータ（基本）
-  const [videoFile,     setVideoFile]     = useState<File | null>(null);
-  const [workType,      setWorkType]      = useState('');
-  const [area,          setArea]          = useState('');
-  const [contactMethod, setContactMethod] = useState('');
-  const [contactValue,  setContactValue]  = useState('');
+  const [videoFile,    setVideoFile]    = useState<File | null>(null);
+  const [workType,     setWorkType]     = useState('');
+  const [area,         setArea]         = useState('');
+  const [contactValue, setContactValue] = useState('');
+  const contactMethod = 'メール'; // メールアドレスに統一
 
   // フォームデータ（詳細情報・すべて任意）
   const [roomType,      setRoomType]      = useState('');
@@ -494,7 +490,7 @@ export default function CorporateRequest() {
           {[
             '費用が確定するまで料金は発生しません',
             '断っても一切費用はかかりません',
-            'しつこい営業電話はいたしません',
+            'しつこい営業メールはいたしません',
           ].map(msg => (
             <div key={msg} className="flex items-start gap-2.5">
               <span className="text-emerald-500 font-extrabold text-xs mt-0.5 flex-shrink-0">✓</span>
@@ -692,7 +688,7 @@ export default function CorporateRequest() {
         <StepProgress step={3} />
         <StepContent title="ご希望の施工内容を選んでください" sub="当てはまるものをひとつ選択してください">
           <div className="grid grid-cols-2 gap-3">
-            {WORK_OPTIONS.map(({ value, icon, desc }) => (
+            {WORK_OPTIONS.map(({ value, Icon, desc }) => (
               <button
                 key={value}
                 onClick={() => { setWorkType(value); setStep(4); }}
@@ -702,7 +698,9 @@ export default function CorporateRequest() {
                     : 'border-slate-200 bg-white hover:border-violet-300 hover:bg-violet-50/30'
                 }`}
               >
-                <span className="text-3xl">{icon}</span>
+                <span className={`${workType === value ? 'text-violet-500' : 'text-slate-400'}`}>
+                  <Icon size={26} />
+                </span>
                 <div>
                   <p className="text-sm font-extrabold text-slate-800">{value}</p>
                   <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{desc}</p>
@@ -811,74 +809,44 @@ export default function CorporateRequest() {
         </StepContent>
         <BottomNav
           onBack={() => setStep(4)}
-          onNext={() => setStep(6)}
+          onNext={() => setStep(7)}
           nextLabel={hasDetail ? '次へ →' : 'スキップ →'}
         />
       </PageShell>
     );
   }
 
-  // ── STEP 6：連絡方法 ────────────────────────────────────────────────────────
-  if (step === 6) {
+  // ── STEP 7（= 旧 STEP 7）：メールアドレス入力 ────────────────────────────────
+  if (step === 7) {
     return (
       <PageShell>
         <PageHeader />
         <StepProgress step={6} />
-        <StepContent title="ご連絡方法を選んでください" sub="職人からのご案内に使用します。迷惑な連絡はしません">
+        <StepContent title="メールアドレスを入力してください" sub="見積もりのご案内をメールでお送りします">
           <div className="space-y-3">
-            {CONTACT_OPTIONS.map(({ value, icon, desc }) => (
-              <button
-                key={value}
-                onClick={() => { setContactMethod(value); setStep(7); }}
-                className={`w-full flex items-center gap-4 rounded-2xl border-2 px-5 py-4 text-left transition-all active:scale-95 ${
-                  contactMethod === value
-                    ? 'border-violet-500 bg-violet-50 shadow-sm shadow-violet-100'
-                    : 'border-slate-200 bg-white hover:border-violet-300 hover:bg-violet-50/30'
-                }`}
-              >
-                <span className="text-2xl w-8 flex-shrink-0">{icon}</span>
-                <div className="flex-1">
-                  <p className="text-sm font-extrabold text-slate-800">{value}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
-                </div>
-                {contactMethod === value && (
-                  <span className="text-xs font-bold text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full flex-shrink-0">選択中</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </StepContent>
-        <BottomNav onBack={() => setStep(5)} onNext={() => contactMethod && setStep(7)} nextDisabled={!contactMethod} nextLabel="次へ →" />
-      </PageShell>
-    );
-  }
-
-  // ── STEP 7：連絡先入力 ──────────────────────────────────────────────────────
-  if (step === 7) {
-    const contactOpt = CONTACT_OPTIONS.find(o => o.value === contactMethod);
-    return (
-      <PageShell>
-        <PageHeader />
-        <StepProgress step={7} />
-        <StepContent title={`${contactMethod}を入力してください`} sub="職人のみが確認します。第三者への提供は一切行いません">
-          <div className="space-y-3">
+            <div className="flex items-center gap-3 bg-violet-50 border border-violet-100 rounded-2xl px-4 py-3 mb-1">
+              <Mail size={18} className="text-violet-500 flex-shrink-0" />
+              <p className="text-xs font-semibold text-violet-700">
+                職人からのご連絡はメールでお届けします
+              </p>
+            </div>
             <input
-              type={contactMethod === 'メール' ? 'email' : contactMethod === '電話' ? 'tel' : 'text'}
+              type="email"
               autoFocus
               value={contactValue}
               onChange={e => setContactValue(e.target.value)}
-              placeholder={contactOpt?.placeholder ?? '入力してください'}
+              placeholder="example@mail.com"
               className="w-full border-2 border-slate-200 rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-violet-400 transition-colors placeholder:text-slate-300"
             />
             <div className="flex items-start gap-2 bg-slate-50 rounded-xl px-4 py-3">
               <span className="text-slate-400 text-xs mt-0.5 flex-shrink-0">🔒</span>
               <p className="text-xs text-slate-400 leading-relaxed">
-                入力した連絡先は見積もり対応にのみ使用します。マーケティング目的での使用や第三者への提供は行いません。
+                入力したメールアドレスは見積もり対応にのみ使用します。マーケティング目的での使用や第三者への提供は行いません。
               </p>
             </div>
           </div>
         </StepContent>
-        <BottomNav onBack={() => setStep(6)} onNext={() => setStep(8)} nextDisabled={contactValue.trim() === ''} nextLabel="確認画面へ →" />
+        <BottomNav onBack={() => setStep(5)} onNext={() => setStep(8)} nextDisabled={contactValue.trim() === ''} nextLabel="確認画面へ →" />
       </PageShell>
     );
   }
@@ -896,7 +864,7 @@ export default function CorporateRequest() {
             { label: '動画',     value: videoFile?.name ?? 'なし（スキップ）' },
             { label: '施工内容', value: workType },
             { label: 'エリア',   value: area },
-            { label: '連絡方法', value: contactMethod },
+            { label: '連絡先',   value: 'メール' },
             { label: '連絡先',   value: contactValue },
           ].map(({ label, value }) => (
             <div key={label} className="flex items-start gap-4 px-5 py-3.5 bg-white hover:bg-slate-50 transition-colors">
@@ -955,7 +923,7 @@ export default function CorporateRequest() {
         <div className="rounded-2xl bg-violet-50 border border-violet-100 px-4 py-4 mb-2">
           <p className="text-xs font-bold text-violet-700 mb-2">📋 送信後の流れ</p>
           <ol className="space-y-1.5">
-            {['担当職人が内容を確認します（2営業日以内）', '入力した連絡先にご連絡します', '概算金額をご案内します（無料）'].map((item, i) => (
+            {['担当職人が内容を確認します（2営業日以内）', '登録のメールアドレスにご連絡します', '概算金額をご案内します（無料）'].map((item, i) => (
               <li key={i} className="flex items-start gap-2">
                 <span className="text-xs font-extrabold text-violet-400 flex-shrink-0 w-4">{i + 1}.</span>
                 <span className="text-xs text-violet-700">{item}</span>

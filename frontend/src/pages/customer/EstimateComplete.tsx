@@ -32,7 +32,7 @@ export default function EstimateComplete() {
         {[
           { icon: '✅', label: '職人に内容を送信済み',      sub: null                },
           { icon: '⏱',  label: '通常30分〜数時間で返信',    sub: null                },
-          { icon: '📬', label: 'メールまたはLINEで連絡',    sub: '登録した連絡先に届きます' },
+          { icon: '📧', label: 'メールでご連絡します',        sub: '登録したメールアドレスに届きます' },
         ].map(({ icon, label, sub }) => (
           <div key={label} className="flex items-center gap-4 px-5 py-4">
             <span className="text-xl w-7 text-center flex-shrink-0">{icon}</span>
