@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 const CSS = `
 @keyframes recBlink{0%,100%{opacity:1}50%{opacity:.2}}
 @keyframes dots{0%,80%,100%{opacity:0;transform:scale(.5)}40%{opacity:1;transform:scale(1)}}
-@keyframes panRoom{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+@keyframes panRoom{0%{transform:translateX(-8%)}100%{transform:translateX(-42%)}}
 `;
 
 /*
@@ -548,116 +548,196 @@ export default function HomePage() {
 
         {/* HOW TO SHOOT + Good/Bad */}
         <section style={{ background: '#f8fafc', padding: '56px 20px' }}>
-          <div style={{ maxWidth: 1200, margin: '0 auto' }} className="lg:grid lg:grid-cols-2 lg:gap-14">
+          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
 
-            {/* HOW TO SHOOT */}
-            <div className="mb-12 lg:mb-0">
-              <p style={{
-                fontSize: 11, fontWeight: 700, color: '#3b82f6',
-                textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6,
-              }}>HOW TO SHOOT</p>
-              <h2 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', margin: '0 0 4px' }}>
-                撮り方はかんたん <span style={{ color: '#3b82f6' }}>3ステップ</span>
-              </h2>
-              <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 24px' }}>スマホで撮るだけ。難しい操作はありません。</p>
+            {/* Section header */}
+            <p style={{
+              fontSize: 11, fontWeight: 700, color: '#3b82f6',
+              textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6,
+            }}>HOW TO SHOOT</p>
+            <h2 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', margin: '0 0 4px' }}>
+              撮り方はかんたん。<span style={{ color: '#3b82f6' }}>横動画</span>で一周するだけ。
+            </h2>
+            <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 28px', lineHeight: 1.6 }}>
+              スマホを横にして、部屋をゆっくり歩きながら撮るだけ。難しい操作は一切ありません。
+            </p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {SHOOT_STEPS.map(({ n, title, desc, point, imgKey, showZoom, showRec }) => (
-                  <div key={n} style={{
-                    background: 'white', borderRadius: 12, padding: '14px 16px',
-                    boxShadow: '0 1px 4px rgba(0,0,0,.06)',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                      <span style={{
-                        width: 22, height: 22, borderRadius: '50%',
-                        background: '#3b82f6', color: 'white',
-                        fontSize: 11, fontWeight: 800,
-                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                      }}>{n}</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{title}</span>
-                    </div>
-                    <LandscapeThumb imgKey={imgKey} showZoom={showZoom} showRec={showRec} />
-                    <p style={{ fontSize: 12, color: '#374151', margin: '10px 0 4px', lineHeight: 1.55 }}>{desc}</p>
-                    <p style={{ fontSize: 11, fontWeight: 600, color: '#3b82f6', margin: '0 0 2px' }}>ポイント</p>
-                    <p style={{ fontSize: 11, color: '#64748b', margin: 0, lineHeight: 1.5 }}>{point}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <div className="lg:grid lg:gap-12" style={{ gridTemplateColumns: '1fr 340px' }}>
 
-            {/* キレイに撮るコツ */}
-            <div>
-              <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', margin: '0 0 20px' }}>キレイに撮るコツ</h2>
+              {/* ── 左：横動画撮影デモ ── */}
+              <div className="mb-10 lg:mb-0">
 
-              {/* Good */}
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                  <div style={{
-                    width: 22, height: 22, borderRadius: '50%', background: '#22c55e',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                      <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Good</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
-                  {GOOD_TIPS.map(({ label, desc, imgKey, filter, focusBrackets }) => (
-                    <div key={label}>
-                      <TipThumb imgKey={imgKey} filter={filter} focusBrackets={focusBrackets} />
-                      <p style={{ fontSize: 11, fontWeight: 700, color: '#0f172a', margin: '6px 0 2px', lineHeight: 1.35 }}>{label}</p>
-                      <p style={{ fontSize: 10, color: '#94a3b8', margin: 0, lineHeight: 1.4 }}>{desc}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Bad */}
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                  <div style={{
-                    width: 22, height: 22, borderRadius: '50%', background: '#ef4444',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                      <path d="M3 3l6 6M9 3l-6 6" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-                    </svg>
-                  </div>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Bad</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
-                  {BAD_TIPS.map(({ label, desc, imgKey, filter }) => (
-                    <div key={label}>
-                      <TipThumb imgKey={imgKey} filter={filter} />
-                      <p style={{ fontSize: 11, fontWeight: 700, color: '#0f172a', margin: '6px 0 2px', lineHeight: 1.35 }}>{label}</p>
-                      <p style={{ fontSize: 10, color: '#94a3b8', margin: 0, lineHeight: 1.4 }}>{desc}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* info bar */}
-              <div style={{
-                background: '#eff6ff', borderRadius: 10, padding: '12px 14px',
-                display: 'flex', alignItems: 'flex-start', gap: 10,
-              }}>
+                {/* 16:9 横動画フレーム */}
                 <div style={{
-                  width: 28, height: 28, borderRadius: '50%', background: '#3b82f6', flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  position: 'relative', borderRadius: 16, overflow: 'hidden',
+                  aspectRatio: '16 / 9',
+                  background: '#0a0f1e',
+                  boxShadow: '0 8px 48px rgba(0,0,0,.22)',
                 }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                    stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="5 3 19 12 5 21 5 3"/>
-                  </svg>
+                  {/* fallback – dark so any edge artifact matches frame */}
+                  <div style={{ position: 'absolute', inset: 0, background: '#0a0f1e' }} />
+                  {/* panorama with safe-range pan: never reaches element edges */}
+                  <img src={IMG.panorama} alt="部屋全体の横動画撮影イメージ" style={{
+                    position: 'absolute', top: 0, bottom: 0, left: 0,
+                    width: '200%', height: '100%', objectFit: 'cover',
+                    animation: 'panRoom 6s ease-in-out infinite alternate',
+                    willChange: 'transform',
+                  }} />
+                  {/* Viewfinder corners */}
+                  <Corners size={22} offset={16} color="rgba(255,255,255,.8)" />
+                  {/* REC + timer – top left */}
+                  <div style={{
+                    position: 'absolute', top: 16, left: 16, zIndex: 3,
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    background: 'rgba(0,0,0,.52)', borderRadius: 20, padding: '5px 12px',
+                  }}>
+                    <span style={{
+                      width: 8, height: 8, borderRadius: '50%', background: '#ef4444',
+                      display: 'inline-block', animation: 'recBlink 1.4s ease-in-out infinite',
+                    }} />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', letterSpacing: '0.05em' }}>REC</span>
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,.55)', marginLeft: 2 }}>00:24</span>
+                  </div>
+                  {/* Bottom gradient overlay + label + record button */}
+                  <div style={{
+                    position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 2,
+                    background: 'linear-gradient(0deg,rgba(0,0,0,.6) 0%,transparent 100%)',
+                    padding: '28px 18px 16px',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
+                  }}>
+                    <span style={{
+                      background: 'rgba(255,255,255,.92)', borderRadius: 20,
+                      padding: '5px 14px', fontSize: 12, fontWeight: 600, color: '#0f172a',
+                    }}>部屋を一周しながら撮影中...</span>
+                    <div style={{
+                      width: 40, height: 40, borderRadius: '50%',
+                      border: '3px solid rgba(255,255,255,.8)', background: 'rgba(239,68,68,.9)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                    }}>
+                      <div style={{ width: 14, height: 14, borderRadius: 2, background: 'white' }} />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', margin: '0 0 3px' }}>動画だから、伝わりやすい！</p>
-                  <p style={{ fontSize: 11, color: '#3b82f6', margin: 0, lineHeight: 1.5 }}>
-                    職人は動画を見ることで、現場の状況を正確に把握でき、精度の高い見積もりをお届けできます。
-                  </p>
+
+                {/* 横画面推奨バッジ */}
+                <div style={{
+                  marginTop: 12, display: 'flex', alignItems: 'center', gap: 8,
+                  background: '#eff6ff', borderRadius: 10, padding: '10px 14px',
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="6" width="20" height="12" rx="2"/>
+                    <path d="M12 2v4M12 18v4"/>
+                  </svg>
+                  <span style={{ fontSize: 12, color: '#1d4ed8', fontWeight: 600 }}>
+                    横画面で撮ると、部屋全体が伝わりやすい
+                  </span>
+                </div>
+
+                {/* 3ステップ テキスト bullets */}
+                <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {SHOOT_STEPS.map(({ n, title, desc, point }) => (
+                    <div key={n} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      <span style={{
+                        width: 24, height: 24, borderRadius: '50%',
+                        background: '#3b82f6', color: 'white',
+                        fontSize: 11, fontWeight: 800, flexShrink: 0,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      }}>{n}</span>
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', margin: '0 0 2px', lineHeight: 1.4 }}>{title}</p>
+                        <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 1px', lineHeight: 1.5 }}>{desc}</p>
+                        <p style={{ fontSize: 11, color: '#3b82f6', fontWeight: 600, margin: 0 }}>ポイント: {point}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
+
+              {/* ── 右：Good / Bad 縦積み ── */}
+              <div>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: '0 0 16px' }}>キレイに撮るコツ</h3>
+
+                {/* Good */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: '50%', background: '#22c55e',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Good</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {GOOD_TIPS.map(({ label, desc, imgKey, filter, focusBrackets }) => (
+                      <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <div style={{ width: 90, flexShrink: 0 }}>
+                          <TipThumb imgKey={imgKey} filter={filter} focusBrackets={focusBrackets} />
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', margin: '0 0 3px', lineHeight: 1.35 }}>{label}</p>
+                          <p style={{ fontSize: 11, color: '#64748b', margin: 0, lineHeight: 1.45 }}>{desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Bad */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: '50%', background: '#ef4444',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                        <path d="M3 3l6 6M9 3l-6 6" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+                      </svg>
+                    </div>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Bad</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {BAD_TIPS.map(({ label, desc, imgKey, filter }) => (
+                      <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <div style={{ width: 90, flexShrink: 0 }}>
+                          <TipThumb imgKey={imgKey} filter={filter} />
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', margin: '0 0 3px', lineHeight: 1.35 }}>{label}</p>
+                          <p style={{ fontSize: 11, color: '#64748b', margin: 0, lineHeight: 1.45 }}>{desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* info bar */}
+                <div style={{
+                  background: '#eff6ff', borderRadius: 10, padding: '12px 14px',
+                  display: 'flex', alignItems: 'flex-start', gap: 10,
+                }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: '50%', background: '#3b82f6', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                      stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', margin: '0 0 3px' }}>動画だから、伝わりやすい！</p>
+                    <p style={{ fontSize: 11, color: '#3b82f6', margin: 0, lineHeight: 1.5 }}>
+                      職人は動画を見ることで現場の状況を正確に把握でき、精度の高い見積もりをお届けできます。
+                    </p>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
         </section>
