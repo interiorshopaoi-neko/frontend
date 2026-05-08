@@ -411,7 +411,7 @@ export default function HomePage() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <img src="/logo-full.svg" alt="PRO MATCH" style={{ height: 30, display: 'block' }} />
+            <img src="/logo-full.png" alt="PRO MATCH" style={{ height: 30, width: 'auto', objectFit: 'contain', display: 'block' }} />
           </div>
           <div style={{
             background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 20,
