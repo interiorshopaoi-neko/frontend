@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 const CSS = `
 @keyframes recBlink{0%,100%{opacity:1}50%{opacity:.2}}
 @keyframes dots{0%,80%,100%{opacity:0;transform:scale(.5)}40%{opacity:1;transform:scale(1)}}
+@keyframes panRoom{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 `;
 
 /*
@@ -18,6 +19,7 @@ const CSS = `
   ─────────────────────────────────────────────────────────────────────── */
 const IMG = {
   roomWide:   '/homepage/room-wide.jpg',
+  panorama:   '/homepage/guide-panorama-room.png',
   wallDamage: '/homepage/wall-damage.jpg',
   floor:      '/homepage/floor.jpg',
   craftsman:  '/homepage/craftsman-young.jpg',
@@ -27,6 +29,7 @@ type ImgKey = keyof typeof IMG;
 /* 画像が存在しない間のfallback背景色 */
 const IMG_FALLBACK: Record<ImgKey, string> = {
   roomWide:   'linear-gradient(135deg,#e8f0fe 0%,#c7d7f8 100%)',
+  panorama:   'linear-gradient(90deg,#e8f0fe 0%,#d4e4f8 50%,#e2edfa 100%)',
   wallDamage: 'linear-gradient(135deg,#f5f0e8 0%,#e8dcc8 100%)',
   floor:      'linear-gradient(135deg,#f0e8d8 0%,#d4b896 100%)',
   craftsman:  'linear-gradient(135deg,#1e2a3a 0%,#2d3f55 100%)',
@@ -96,9 +99,12 @@ function FlowArrow() {
 function PhoneRoom() {
   return (
     <>
-      <div style={{ position: 'absolute', inset: 0, background: IMG_FALLBACK.roomWide }} />
-      <img src={IMG.roomWide} alt="部屋全体の撮影イメージ" style={{
-        position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+      <div style={{ position: 'absolute', inset: 0, background: IMG_FALLBACK.panorama }} />
+      <img src={IMG.panorama} alt="部屋全体の撮影イメージ" style={{
+        position: 'absolute', top: 0, bottom: 0, left: 0,
+        width: '200%', height: '100%', objectFit: 'cover',
+        animation: 'panRoom 5s ease-in-out infinite alternate',
+        willChange: 'transform',
       }} />
       <Corners />
       <div style={{
@@ -374,9 +380,9 @@ const GOOD_TIPS = [
 ];
 
 const BAD_TIPS = [
-  { label: '暗すぎる',         desc: '見えにくくなります', imgKey: 'roomWide' as ImgKey,   filter: 'brightness(0.12) saturate(0.2)' },
-  { label: '速く動きすぎ',     desc: 'ブレてしまいます',   imgKey: 'roomWide' as ImgKey,   filter: 'blur(5px) brightness(1.05)' },
-  { label: '近すぎ・ぼやける', desc: '全体がわかりません', imgKey: 'wallDamage' as ImgKey, filter: 'blur(8px)' },
+  { label: '暗すぎる',     desc: '照明をつけて明るい場所で撮りましょう', imgKey: 'roomWide' as ImgKey,   filter: 'brightness(0.42) saturate(0.55)' },
+  { label: '速く動かしすぎ', desc: 'ゆっくり一定のスピードで動かして',   imgKey: 'roomWide' as ImgKey,   filter: 'blur(3px) brightness(1.1) saturate(0.75)' },
+  { label: '近すぎる',     desc: '2〜3歩下がって全体を映して',         imgKey: 'wallDamage' as ImgKey, filter: 'blur(5px) brightness(0.9)' },
 ];
 
 const FEATURES = [
