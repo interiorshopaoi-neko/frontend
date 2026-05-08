@@ -410,17 +410,8 @@ export default function HomePage() {
           padding: '0 20px', height: 56,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: 8,
-              background: 'linear-gradient(135deg,#3b82f6,#6366f1)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="white">
-                <path d="M13 3H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h1v2l2.5-2H13a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1z"/>
-              </svg>
-            </div>
-            <span style={{ fontWeight: 800, fontSize: 15, color: '#0f172a', letterSpacing: '-0.3px' }}>PRO MATCH</span>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <img src="/logo-full.svg" alt="PRO MATCH" style={{ height: 30, display: 'block' }} />
           </div>
           <div style={{
             background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 20,
@@ -507,16 +498,16 @@ export default function HomePage() {
                   { n:4, title:'見積もりが届く', sub:'最短即日でお届け' },
                 ].map(({ n, title, sub }) => (
                   <div key={n} style={{ textAlign: 'center' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
                       <span style={{
-                        width: 18, height: 18, borderRadius: '50%',
+                        width: 22, height: 22, borderRadius: '50%',
                         background: '#3b82f6', color: 'white',
-                        fontSize: 10, fontWeight: 800,
+                        fontSize: 11, fontWeight: 800, flexShrink: 0,
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                       }}>{n}</span>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#0f172a' }}>{title}</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>{title}</span>
                     </div>
-                    <p style={{ fontSize: 9, color: '#94a3b8', margin: 0 }}>{sub}</p>
+                    <p style={{ fontSize: 10.5, color: '#64748b', margin: 0 }}>{sub}</p>
                   </div>
                 ))}
               </div>

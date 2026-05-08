@@ -26,7 +26,7 @@
 
   <!-- Play button -->
   <path
-    d="M14,27 L14,40 L34,33.5 Z"
+    d="M13,25.5 L13,38.5 L33,32 Z"
     fill="url(#g)"
   />
 </svg>
