@@ -255,157 +255,191 @@ function TipIllust({ tipKey }: { tipKey: TipKey }) {
   );
 }
 
-/* ─────────────── Heroの4ステップ小モック ─────────────── */
+/* ─────────────── Heroの4ステップ大型モック ─────────────── */
 function HeroPhoneContent({ step }: { step: 1 | 2 | 3 | 4 }) {
   if (step === 1) return (
     <div style={{ position:'absolute', inset:0, overflow:'hidden' }}>
-      <RoomScene scale={0.55} panAnim />
+      <RoomScene scale={0.9} panAnim />
       {/* ビューファインダー */}
       {(['tl','tr','bl','br'] as const).map(c => (
         <div key={c} style={{
           position:'absolute',
-          top:    c[0]==='t' ? 5 : undefined,
-          bottom: c[0]==='b' ? 5 : undefined,
-          left:   c[1]==='l' ? 5 : undefined,
-          right:  c[1]==='r' ? 5 : undefined,
-          width:9, height:9,
-          borderTop:    c[0]==='t' ? '1.5px solid rgba(255,255,255,0.9)' : undefined,
-          borderBottom: c[0]==='b' ? '1.5px solid rgba(255,255,255,0.9)' : undefined,
-          borderLeft:   c[1]==='l' ? '1.5px solid rgba(255,255,255,0.9)' : undefined,
-          borderRight:  c[1]==='r' ? '1.5px solid rgba(255,255,255,0.9)' : undefined,
+          top:    c[0]==='t' ? 8 : undefined,
+          bottom: c[0]==='b' ? 8 : undefined,
+          left:   c[1]==='l' ? 8 : undefined,
+          right:  c[1]==='r' ? 8 : undefined,
+          width:14, height:14,
+          borderTop:    c[0]==='t' ? '2px solid rgba(255,255,255,0.92)' : undefined,
+          borderBottom: c[0]==='b' ? '2px solid rgba(255,255,255,0.92)' : undefined,
+          borderLeft:   c[1]==='l' ? '2px solid rgba(255,255,255,0.92)' : undefined,
+          borderRight:  c[1]==='r' ? '2px solid rgba(255,255,255,0.92)' : undefined,
         }}/>
       ))}
       {/* REC */}
-      <div style={{ position:'absolute', top:6, right:7, display:'flex', alignItems:'center', gap:2,
-        background:'rgba(0,0,0,0.48)', borderRadius:8, padding:'2px 5px' }}>
-        <span style={{ width:4, height:4, borderRadius:'50%', background:'#ef4444', display:'inline-block',
+      <div style={{ position:'absolute', top:10, right:10, display:'flex', alignItems:'center', gap:3,
+        background:'rgba(0,0,0,0.52)', borderRadius:10, padding:'3px 8px' }}>
+        <span style={{ width:6, height:6, borderRadius:'50%', background:'#ef4444', display:'inline-block',
           animation:'recBlink 1.4s ease-in-out infinite' }}/>
-        <span style={{ fontSize:5, fontWeight:700, color:'#fff', letterSpacing:'0.06em' }}>REC</span>
+        <span style={{ fontSize:7, fontWeight:700, color:'#fff', letterSpacing:'0.06em' }}>REC</span>
       </div>
       {/* ラベル */}
-      <div style={{ position:'absolute', bottom:6, left:0, right:0, textAlign:'center' }}>
-        <span style={{ fontSize:5, color:'rgba(0,0,0,0.65)', fontWeight:600,
-          background:'rgba(255,255,255,0.82)', borderRadius:8, padding:'1.5px 6px', backdropFilter:'blur(4px)' }}>撮影中...</span>
+      <div style={{ position:'absolute', bottom:10, left:0, right:0, textAlign:'center' }}>
+        <span style={{ fontSize:7, color:'rgba(0,0,0,0.7)', fontWeight:600,
+          background:'rgba(255,255,255,0.88)', borderRadius:10, padding:'3px 10px' }}>部屋を一周しながら撮影中...</span>
       </div>
     </div>
   );
 
   if (step === 2) return (
     <div style={{ position:'absolute', inset:0, background:'linear-gradient(155deg,#1a2540 0%,#0e1628 100%)',
-      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:7 }}>
-      {/* アップロードアイコン */}
-      <div style={{ width:34, height:34, borderRadius:10,
-        background:'linear-gradient(135deg,rgba(59,130,246,0.3),rgba(99,102,241,0.2))',
-        border:'1.5px solid rgba(99,102,241,0.55)',
-        display:'flex', alignItems:'center', justifyContent:'center',
-        animation:'heroZoom 2.8s ease-in-out infinite',
-        boxShadow:'0 0 16px rgba(99,102,241,0.25)' }}>
-        <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
-          <path d="M8.5 11.5V5M5.5 7.5L8.5 5l3 2.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-          <rect x="2.5" y="12" width="12" height="1.5" rx="0.75" fill="rgba(255,255,255,0.45)"/>
-        </svg>
+      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12 }}>
+      {/* アップロードサークル */}
+      <div style={{ position:'relative', width:64, height:64 }}>
+        <div style={{ position:'absolute', inset:0, borderRadius:'50%',
+          border:'2px solid rgba(99,102,241,0.3)', animation:'heroZoom 2.5s ease-in-out infinite' }}/>
+        <div style={{ position:'absolute', inset:4, borderRadius:'50%',
+          background:'linear-gradient(135deg,rgba(59,130,246,0.35),rgba(99,102,241,0.25))',
+          border:'2px solid rgba(99,102,241,0.6)',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          boxShadow:'0 0 24px rgba(99,102,241,0.35)' }}>
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+            <path d="M13 17V9M9 12l4-4 4 4" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+            <rect x="4" y="19" width="18" height="2" rx="1" fill="rgba(255,255,255,0.4)"/>
+          </svg>
+        </div>
       </div>
       {/* 進捗バー */}
-      <div style={{ width:'72%', height:3, background:'rgba(255,255,255,0.12)', borderRadius:4 }}>
-        <div style={{ width:'75%', height:'100%', background:'linear-gradient(90deg,#6366f1,#3b82f6)', borderRadius:4 }}/>
+      <div style={{ width:'70%', height:4, background:'rgba(255,255,255,0.10)', borderRadius:4 }}>
+        <div style={{ width:'80%', height:'100%', background:'linear-gradient(90deg,#6366f1,#3b82f6)',
+          borderRadius:4, boxShadow:'0 0 8px rgba(99,102,241,0.5)' }}/>
       </div>
-      <p style={{ fontSize:7.5, fontWeight:700, color:'rgba(255,255,255,0.92)', margin:0, textAlign:'center' }}>動画を送信しました</p>
-      <p style={{ fontSize:6, color:'rgba(255,255,255,0.45)', margin:0 }}>職人が確認します</p>
+      <div style={{ textAlign:'center' }}>
+        <p style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.95)', margin:'0 0 4px' }}>送信完了！</p>
+        <p style={{ fontSize:8, color:'rgba(255,255,255,0.45)', margin:0 }}>職人に共有しました</p>
+      </div>
     </div>
   );
 
   if (step === 3) return (
-    <div style={{ position:'absolute', inset:0, background:'#f8fafc', display:'flex', flexDirection:'column' }}>
-      {/* アプリヘッダー */}
-      <div style={{ background:'white', padding:'5px 7px', borderBottom:'1px solid #f0f4f8',
-        display:'flex', alignItems:'center', gap:4 }}>
-        <div style={{ width:14, height:14, borderRadius:'50%',
-          background:'linear-gradient(135deg,#6366f1,#8b5cf6)',
-          display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-          <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
-            <path d="M5 1L9 8H1L5 1Z" fill="white"/>
-          </svg>
-        </div>
-        <span style={{ fontSize:6, fontWeight:700, color:'#1e293b' }}>PRO MATCH</span>
-        <div style={{ marginLeft:'auto', fontSize:5, color:'#64748b' }}>通知</div>
-      </div>
-      {/* メッセージカード */}
-      <div style={{ flex:1, padding:'6px 7px', display:'flex', flexDirection:'column', justifyContent:'center', gap:5 }}>
-        <div style={{ background:'white', borderRadius:10, padding:'6px 7px',
-          boxShadow:'0 2px 8px rgba(0,0,0,0.07)', border:'1px solid #f0f4f8' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:3, marginBottom:3 }}>
-            <div style={{ width:16, height:16, borderRadius:'50%', flexShrink:0,
-              background:'linear-gradient(135deg,#f59e0b,#d97706)',
-              display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <svg width="9" height="9" viewBox="0 0 20 20" fill="none">
-                <circle cx="10" cy="7" r="4" fill="white" opacity="0.9"/>
-                <path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7" fill="white" opacity="0.9"/>
-              </svg>
+    <div style={{ position:'absolute', inset:0, background:'linear-gradient(180deg,#1e293b 0%,#0f172a 100%)',
+      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:10, padding:'0 10px' }}>
+      {/* ビデオサムネイル（職人が見ている動画） */}
+      <div style={{ width:'85%', borderRadius:8, overflow:'hidden', position:'relative',
+        boxShadow:'0 4px 20px rgba(0,0,0,0.5)', border:'1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ aspectRatio:'16/9', position:'relative', overflow:'hidden', background:'#0f172a' }}>
+          <RoomScene scale={0.4} />
+          {/* 再生ボタンオーバーレイ */}
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.28)',
+            display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <div style={{ width:22, height:22, borderRadius:'50%',
+              background:'rgba(255,255,255,0.9)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <div style={{ width:0, height:0,
+                borderTop:'5px solid transparent', borderBottom:'5px solid transparent',
+                borderLeft:'8px solid #1e293b', marginLeft:2 }}/>
             </div>
-            <span style={{ fontSize:5.5, fontWeight:600, color:'#374151' }}>山田職人</span>
-            <span style={{ fontSize:5, color:'#9ca3af', marginLeft:'auto' }}>今</span>
           </div>
-          <p style={{ fontSize:6, color:'#374151', margin:0, lineHeight:1.5 }}>
-            動画を確認しました！<br/>すぐに見積もりをお送りします。
-          </p>
+          {/* タイムバー */}
+          <div style={{ position:'absolute', bottom:0, left:0, right:0, height:2,
+            background:'rgba(255,255,255,0.15)' }}>
+            <div style={{ width:'45%', height:'100%', background:'#3b82f6' }}/>
+          </div>
         </div>
-        {/* タイピング中 */}
-        <div style={{ display:'flex', alignItems:'center', gap:3, paddingLeft:2 }}>
-          <span style={{ fontSize:5, color:'#9ca3af' }}>見積もりを作成中</span>
-          <div style={{ display:'flex', gap:2, alignItems:'center' }}>
-            {([0,0.3,0.6] as const).map((d, i) => (
-              <span key={i} style={{ width:3, height:3, borderRadius:'50%', background:'#94a3b8',
-                display:'inline-block', animation:`heroDots 1.4s ease-in-out ${d}s infinite` }}/>
-            ))}
+      </div>
+      {/* 職人カード */}
+      <div style={{ width:'85%', background:'rgba(255,255,255,0.06)',
+        borderRadius:10, padding:'8px 10px', border:'1px solid rgba(255,255,255,0.10)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+          {/* 職人アバター（大きめ） */}
+          <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0,
+            background:'linear-gradient(135deg,#f59e0b,#d97706)',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            border:'2px solid rgba(245,158,11,0.4)', boxShadow:'0 0 12px rgba(245,158,11,0.2)' }}>
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="7" r="4" fill="white" opacity="0.95"/>
+              <path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7" fill="white" opacity="0.95"/>
+            </svg>
           </div>
+          <div style={{ flex:1 }}>
+            <p style={{ fontSize:8, fontWeight:700, color:'rgba(255,255,255,0.92)', margin:'0 0 1px' }}>山田 太郎 職人</p>
+            <p style={{ fontSize:6.5, color:'rgba(255,255,255,0.4)', margin:0 }}>内装歴12年・東京都</p>
+          </div>
+        </div>
+        <p style={{ fontSize:7.5, fontWeight:600, color:'rgba(255,255,255,0.7)', margin:'0 0 5px', letterSpacing:'0.01em' }}>
+          内容を確認中...
+        </p>
+        <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+          {([0,0.3,0.6] as const).map((d, i) => (
+            <span key={i} style={{ width:6, height:6, borderRadius:'50%', background:'#3b82f6',
+              display:'inline-block', animation:`heroDots 1.4s ease-in-out ${d}s infinite` }}/>
+          ))}
+          <span style={{ fontSize:6, color:'rgba(255,255,255,0.35)', marginLeft:2 }}>対応可能な職人が確認しています</span>
         </div>
       </div>
     </div>
   );
 
-  // step 4: 見積もりカード
+  // step 4: 見積書
   return (
-    <div style={{ position:'absolute', inset:0, background:'linear-gradient(160deg,#f0fdf6 0%,#e8faf0 100%)',
-      display:'flex', flexDirection:'column' }}>
-      {/* ヘッダー */}
-      <div style={{ background:'white', padding:'5px 7px', borderBottom:'1px solid #f0f4f8',
-        display:'flex', alignItems:'center', gap:4 }}>
-        <div style={{ width:14, height:14, borderRadius:'50%',
-          background:'linear-gradient(135deg,#6366f1,#8b5cf6)',
-          display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-          <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
-            <path d="M5 1L9 8H1L5 1Z" fill="white"/>
-          </svg>
-        </div>
-        <span style={{ fontSize:6, fontWeight:700, color:'#1e293b' }}>PRO MATCH</span>
-      </div>
-      {/* 見積もりカード */}
-      <div style={{ flex:1, padding:'5px 7px', display:'flex', flexDirection:'column', justifyContent:'center', gap:4,
+    <div style={{ position:'absolute', inset:0, background:'linear-gradient(160deg,#0f172a 0%,#1a2540 100%)',
+      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'8px' }}>
+      <div style={{ width:'100%', background:'white', borderRadius:12,
+        boxShadow:'0 8px 32px rgba(0,0,0,0.4)',
         animation:'heroSlideUp 0.5s ease-out forwards' }}>
-        <div style={{ background:'white', borderRadius:10, padding:'7px 8px',
-          boxShadow:'0 3px 12px rgba(0,0,0,0.08)', border:'1px solid #d1fae5' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:3, marginBottom:5 }}>
-            <div style={{ width:6, height:6, borderRadius:'50%', background:'#22c55e', flexShrink:0 }}/>
-            <span style={{ fontSize:6, fontWeight:700, color:'#15803d' }}>見積もりが届きました</span>
+        {/* 見積書ヘッダー */}
+        <div style={{ background:'linear-gradient(90deg,#1e40af,#2563eb)', borderRadius:'10px 10px 0 0',
+          padding:'7px 10px', display:'flex', alignItems:'center', gap:5 }}>
+          <div style={{ width:16, height:16, borderRadius:'50%', background:'rgba(255,255,255,0.2)',
+            display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+              <path d="M5 1L9 8H1L5 1Z" fill="white"/>
+            </svg>
           </div>
-          <div style={{ marginBottom:4 }}>
-            <p style={{ fontSize:14, fontWeight:800, color:'#1e293b', margin:'0 0 1px',
-              letterSpacing:'-0.03em' }}>¥92,000<span style={{ fontSize:9, color:'#64748b' }}>〜</span></p>
-            <p style={{ fontSize:5, color:'#64748b', margin:0 }}>壁紙張り替え・6畳</p>
+          <span style={{ fontSize:8, fontWeight:700, color:'white' }}>お見積もり</span>
+          <span style={{ fontSize:6, color:'rgba(255,255,255,0.65)', marginLeft:'auto' }}>6畳・壁紙工事</span>
+        </div>
+        {/* 金額 */}
+        <div style={{ padding:'10px 10px 6px', borderBottom:'1px solid #f1f5f9' }}>
+          <p style={{ fontSize:7, color:'#64748b', margin:'0 0 2px', fontWeight:500 }}>お見積もり金額</p>
+          <p style={{ fontSize:22, fontWeight:800, color:'#0f172a', margin:0, letterSpacing:'-0.04em' }}>
+            ¥92,000<span style={{ fontSize:12, color:'#94a3b8', fontWeight:600 }}>〜</span>
+          </p>
+        </div>
+        {/* 作業項目リスト */}
+        <div style={{ padding:'8px 10px' }}>
+          {([
+            { label:'壁紙張替', checked:true },
+            { label:'床材張替', checked:true },
+            { label:'下地補修', checked:true },
+          ]).map(({ label, checked }) => (
+            <div key={label} style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 0',
+              borderBottom:'1px solid #f8fafc' }}>
+              <div style={{ width:14, height:14, borderRadius:'50%', flexShrink:0,
+                background:checked ? '#22c55e' : '#e2e8f0',
+                display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                  <path d="M1.5 4l2 2L6.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <span style={{ fontSize:8, fontWeight:500, color:'#374151' }}>{label}</span>
+            </div>
+          ))}
+        </div>
+        {/* 職人カード */}
+        <div style={{ padding:'6px 10px 8px', display:'flex', alignItems:'center', gap:6 }}>
+          <div style={{ width:24, height:24, borderRadius:'50%', flexShrink:0,
+            background:'linear-gradient(135deg,#f59e0b,#d97706)',
+            display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="7" r="4" fill="white" opacity="0.95"/>
+              <path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7" fill="white" opacity="0.95"/>
+            </svg>
           </div>
-          <div style={{ display:'flex', alignItems:'center', gap:3, paddingTop:4,
-            borderTop:'1px solid #f0fdf4' }}>
-            <div style={{ width:14, height:14, borderRadius:'50%', background:'linear-gradient(135deg,#f59e0b,#d97706)',
-              display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <svg width="8" height="8" viewBox="0 0 20 20" fill="none">
-                <circle cx="10" cy="7" r="4" fill="white" opacity="0.9"/>
-                <path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7" fill="white" opacity="0.9"/>
-              </svg>
-            </div>
-            <div>
-              <p style={{ fontSize:5.5, fontWeight:600, color:'#374151', margin:0 }}>山田職人</p>
-              <p style={{ fontSize:5, color:'#9ca3af', margin:0 }}>最短3日で対応可能</p>
-            </div>
+          <div>
+            <p style={{ fontSize:7, fontWeight:600, color:'#374151', margin:0 }}>山田 太郎 職人</p>
+            <p style={{ fontSize:6, color:'#94a3b8', margin:0 }}>最短3日で対応可能</p>
+          </div>
+          <div style={{ marginLeft:'auto', background:'#22c55e', borderRadius:6, padding:'3px 6px' }}>
+            <span style={{ fontSize:6, fontWeight:700, color:'white' }}>連絡する</span>
           </div>
         </div>
       </div>
@@ -523,12 +557,29 @@ function ShootStepContent({ anim }: { anim: 'pan' | 'zoom' | 'send' }) {
   );
 }
 
+/* ─────────────── 矢印 ─────────────── */
+function FlowArrow() {
+  return (
+    <div style={{ flexShrink:0, width:28, display:'flex', alignItems:'center', justifyContent:'center',
+      paddingTop:'5.5rem' }}>
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <path d="M3 11h16M13 5l6 6-6 6" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </div>
+  );
+}
+
 /* ─────────────── メインコンポーネント ─────────────── */
 export default function HomePage() {
   const navigate = useNavigate();
   const handleStart = () => navigate('/corporate');
 
-  const heroMockLabels = ['部屋を撮影', '動画を送信', '職人が確認', '見積もりが届く'];
+  const HERO_STEPS = [
+    { step: 1 as const, title:'部屋を撮影',    sub:'ゆっくり一周するだけ' },
+    { step: 2 as const, title:'動画を送信',    sub:'30秒で完了'           },
+    { step: 3 as const, title:'職人が確認',    sub:'内容をチェック'       },
+    { step: 4 as const, title:'見積もりが届く', sub:'最短即日でお届け'     },
+  ];
 
   return (
     <div className="min-h-screen bg-white">
@@ -583,86 +634,157 @@ export default function HomePage() {
       </header>
 
       {/* ── Hero ───────────────────────────────────────── */}
-      <section className="max-w-5xl mx-auto px-5 pt-12 pb-16 lg:flex lg:items-center lg:gap-14 lg:pt-20 lg:pb-24">
+      <section className="max-w-6xl mx-auto px-5 pt-12 pb-10 lg:flex lg:items-center lg:gap-10 lg:pt-16 lg:pb-16">
 
-        {/* 左：テキスト・CTA */}
-        <div className="lg:flex-1 mb-12 lg:mb-0">
+        {/* 左：テキスト・CTA（固定幅 38%） */}
+        <div className="lg:w-[38%] flex-shrink-0 mb-12 lg:mb-0">
           <div className="inline-flex items-center gap-1.5 bg-blue-50 border border-blue-100 text-blue-600 text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse inline-block"/>
             30秒で完了・完全無料
           </div>
 
-          <h1 className="text-[2.1rem] lg:text-[2.8rem] font-black text-slate-900 leading-[1.15] tracking-tight mb-5">
+          <h1 className="text-[2.1rem] lg:text-[2.6rem] font-black text-slate-900 leading-[1.15] tracking-tight mb-5">
             ショート動画で、<br />
             職人から<span className="text-blue-600">直接</span><br />
             見積もりが届く。
           </h1>
 
-          <p className="text-[14px] text-slate-500 leading-relaxed mb-8">
+          <p className="text-[13px] text-slate-500 leading-relaxed mb-7">
             部屋を撮るだけで、壁紙・床の見積もりが届きます。<br className="hidden sm:block"/>
             写真や寸法の準備は必要ありません。
           </p>
 
-          <div className="grid grid-cols-2 gap-2.5 mb-8">
+          <div className="grid grid-cols-2 gap-2 mb-7">
             {(['動画を撮るだけでOK', 'ログイン不要', '地元の職人に直接依頼', 'しつこい営業なし'] as const).map(label => (
               <div key={label} className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="flex-shrink-0">
                   <circle cx="6" cy="6" r="6" fill="#3b82f6"/>
                   <path d="M3 6l2 2 4-3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                <span className="text-xs font-medium text-slate-700 leading-tight">{label}</span>
+                <span className="text-[11px] font-medium text-slate-700 leading-tight">{label}</span>
               </div>
             ))}
           </div>
 
           <button
             onClick={handleStart}
-            className="w-full lg:w-auto lg:px-12 py-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-extrabold text-base shadow-lg shadow-blue-200/80 transition-all mb-2.5"
+            className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-extrabold text-base shadow-lg shadow-blue-200/80 transition-all mb-2.5"
           >
             30秒で見積もりする →
           </button>
           <p className="text-xs text-slate-400 text-center lg:text-left">お客様は完全無料・ログイン不要</p>
         </div>
 
-        {/* 右：4ステップ小モック */}
-        <div className="lg:flex-1">
-          <div className="grid grid-cols-4 gap-2.5 max-w-xs mx-auto lg:max-w-none">
-            {([1, 2, 3, 4] as const).map((step, i) => (
-              <div key={step} className="flex flex-col items-center gap-2">
-                <div
-                  className="w-full rounded-2xl relative overflow-hidden shadow-xl"
-                  style={{
-                    aspectRatio:'9/16',
-                    border:'2px solid #1e2938',
-                    background:'#111827',
-                    animation:`phoneFloat ${3.0+i*0.4}s ease-in-out infinite`,
-                    animationDelay:`${i*0.28}s`,
-                    boxShadow:'0 8px 24px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.12)',
-                  }}
-                >
+        {/* 右：4ステップ大型フロー（残り 62%） */}
+        <div className="flex-1 min-w-0">
+
+          {/* モバイル：2×2グリッド */}
+          <div className="grid grid-cols-2 gap-4 lg:hidden max-w-xs mx-auto">
+            {HERO_STEPS.map(({ step, title }, i) => (
+              <div key={step} className="flex flex-col items-center gap-1.5">
+                <div style={{ width:'100%', aspectRatio:'9/16', borderRadius:16,
+                  border:'2px solid #1e2938', background:'#111827', position:'relative', overflow:'hidden',
+                  boxShadow:'0 6px 20px rgba(0,0,0,0.2)' }}>
                   <HeroPhoneContent step={step}/>
-                  {/* ノッチ */}
                   <div style={{ position:'absolute', top:0, left:'50%', transform:'translateX(-50%)',
-                    width:'38%', height:4, background:'#111827', borderRadius:'0 0 5px 5px', zIndex:10 }}/>
-                  {/* 画面の微かな反射 */}
-                  <div style={{ position:'absolute', top:0, left:0, right:'60%', height:'40%',
-                    background:'linear-gradient(135deg,rgba(255,255,255,0.04) 0%,transparent 100%)',
-                    pointerEvents:'none', zIndex:9 }}/>
+                    width:'38%', height:4, background:'#111827', borderRadius:'0 0 4px 4px', zIndex:10 }}/>
                 </div>
-                <p className="text-[9px] font-semibold text-slate-400 text-center leading-tight">{heroMockLabels[i]}</p>
+                <div className="text-center">
+                  <span className="text-[8px] font-bold text-slate-500">{i+1}. {title}</span>
+                </div>
               </div>
             ))}
           </div>
-          {/* ステップインジケーター */}
-          <div className="flex items-center max-w-xs mx-auto lg:max-w-none mt-4 px-2">
-            {([1, 2, 3, 4] as const).map((n, i) => (
-              <div key={n} className="flex items-center flex-1">
-                <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[9px] font-extrabold flex-shrink-0 mx-auto shadow-sm">
-                  {n}
+
+          {/* デスクトップ：横並び＋矢印 */}
+          <div className="hidden lg:flex items-start">
+
+            {/* Step 1 */}
+            <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
+              <div className="text-center px-1 h-14 flex flex-col justify-center">
+                <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">1</span>
+                  <span className="text-xs font-bold text-slate-800">部屋を撮影</span>
                 </div>
-                {i < 3 && <div className="flex-1 h-px bg-blue-100 mx-1"/>}
+                <p className="text-[10px] text-slate-400">ゆっくり一周するだけ</p>
               </div>
-            ))}
+              <div style={{ width:'100%', aspectRatio:'9/16', borderRadius:18,
+                border:'2.5px solid #1e2938', background:'#111827', position:'relative', overflow:'hidden',
+                boxShadow:'0 10px 32px rgba(0,0,0,0.22)', animation:'phoneFloat 3.2s ease-in-out infinite' }}>
+                <HeroPhoneContent step={1}/>
+                <div style={{ position:'absolute', top:0, left:'50%', transform:'translateX(-50%)',
+                  width:'38%', height:5, background:'#111827', borderRadius:'0 0 5px 5px', zIndex:10 }}/>
+                <div style={{ position:'absolute', top:0, left:0, right:'58%', height:'38%',
+                  background:'linear-gradient(135deg,rgba(255,255,255,0.05) 0%,transparent 100%)', zIndex:9, pointerEvents:'none' }}/>
+              </div>
+            </div>
+
+            <FlowArrow />
+
+            {/* Step 2 */}
+            <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
+              <div className="text-center px-1 h-14 flex flex-col justify-center">
+                <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">2</span>
+                  <span className="text-xs font-bold text-slate-800">動画を送信</span>
+                </div>
+                <p className="text-[10px] text-slate-400">30秒で完了</p>
+              </div>
+              <div style={{ width:'100%', aspectRatio:'9/16', borderRadius:18,
+                border:'2.5px solid #1e2938', background:'#111827', position:'relative', overflow:'hidden',
+                boxShadow:'0 10px 32px rgba(0,0,0,0.22)', animation:'phoneFloat 3.5s ease-in-out infinite', animationDelay:'0.3s' }}>
+                <HeroPhoneContent step={2}/>
+                <div style={{ position:'absolute', top:0, left:'50%', transform:'translateX(-50%)',
+                  width:'38%', height:5, background:'#111827', borderRadius:'0 0 5px 5px', zIndex:10 }}/>
+                <div style={{ position:'absolute', top:0, left:0, right:'58%', height:'38%',
+                  background:'linear-gradient(135deg,rgba(255,255,255,0.05) 0%,transparent 100%)', zIndex:9, pointerEvents:'none' }}/>
+              </div>
+            </div>
+
+            <FlowArrow />
+
+            {/* Step 3 */}
+            <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
+              <div className="text-center px-1 h-14 flex flex-col justify-center">
+                <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">3</span>
+                  <span className="text-xs font-bold text-slate-800">職人が確認</span>
+                </div>
+                <p className="text-[10px] text-slate-400">内容をチェック</p>
+              </div>
+              <div style={{ width:'100%', aspectRatio:'9/16', borderRadius:18,
+                border:'2.5px solid #1e2938', background:'#111827', position:'relative', overflow:'hidden',
+                boxShadow:'0 10px 32px rgba(0,0,0,0.22)', animation:'phoneFloat 3.8s ease-in-out infinite', animationDelay:'0.6s' }}>
+                <HeroPhoneContent step={3}/>
+                <div style={{ position:'absolute', top:0, left:'50%', transform:'translateX(-50%)',
+                  width:'38%', height:5, background:'#111827', borderRadius:'0 0 5px 5px', zIndex:10 }}/>
+                <div style={{ position:'absolute', top:0, left:0, right:'58%', height:'38%',
+                  background:'linear-gradient(135deg,rgba(255,255,255,0.05) 0%,transparent 100%)', zIndex:9, pointerEvents:'none' }}/>
+              </div>
+            </div>
+
+            <FlowArrow />
+
+            {/* Step 4 */}
+            <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
+              <div className="text-center px-1 h-14 flex flex-col justify-center">
+                <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">4</span>
+                  <span className="text-xs font-bold text-slate-800">見積もりが届く</span>
+                </div>
+                <p className="text-[10px] text-slate-400">最短即日でお届け</p>
+              </div>
+              <div style={{ width:'100%', aspectRatio:'9/16', borderRadius:18,
+                border:'2.5px solid #1e2938', background:'#111827', position:'relative', overflow:'hidden',
+                boxShadow:'0 10px 32px rgba(0,0,0,0.22)', animation:'phoneFloat 4.1s ease-in-out infinite', animationDelay:'0.9s' }}>
+                <HeroPhoneContent step={4}/>
+                <div style={{ position:'absolute', top:0, left:'50%', transform:'translateX(-50%)',
+                  width:'38%', height:5, background:'#111827', borderRadius:'0 0 5px 5px', zIndex:10 }}/>
+                <div style={{ position:'absolute', top:0, left:0, right:'58%', height:'38%',
+                  background:'linear-gradient(135deg,rgba(255,255,255,0.05) 0%,transparent 100%)', zIndex:9, pointerEvents:'none' }}/>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
