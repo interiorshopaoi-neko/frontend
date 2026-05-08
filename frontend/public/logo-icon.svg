@@ -2,18 +2,28 @@
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#38bdf8"/>
-      <stop offset="55%" stop-color="#6366f1"/>
+      <stop offset="50%" stop-color="#6366f1"/>
       <stop offset="100%" stop-color="#7c3aed"/>
     </linearGradient>
   </defs>
-  <!-- Roof -->
-  <polyline points="2,22 24,4 46,22"
+
+  <!-- Roof: peak (24,4), eaves y=22, span x=2..46 -->
+  <polyline
+    points="2,22 24,4 46,22"
     stroke="url(#g)" stroke-width="3.5"
-    stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <!-- Walls -->
-  <polyline points="8,22 8,44 40,44 40,22"
+    stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Walls: x=8..40, y=22..44 -->
+  <polyline
+    points="8,22 8,44 40,44 40,22"
     stroke="url(#g)" stroke-width="3.5"
-    stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <!-- Play triangle — visual center: x=24, y=33 (center of wall area x:8-40, y:22-44) -->
-  <polygon points="15,27 15,39 33,33" fill="url(#g)"/>
+    stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!--
+    Play triangle — wall interior: x=8-40 (w=32), y=22-44 (h=22), center=(24,33)
+    Triangle: left x=13, right x=35 → visual center x=(13+35)/2=24 ✓
+              top y=24, bottom y=42 → visual center y=(24+42)/2=33 ✓
+    Size: w=22px (69% of wall width), h=18px (82% of wall height) — clearly large
+  -->
+  <polygon points="13,24 13,42 35,33" fill="url(#g)"/>
 </svg>

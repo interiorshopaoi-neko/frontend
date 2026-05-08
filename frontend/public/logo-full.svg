@@ -2,21 +2,27 @@
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#38bdf8"/>
-      <stop offset="55%" stop-color="#6366f1"/>
+      <stop offset="50%" stop-color="#6366f1"/>
       <stop offset="100%" stop-color="#7c3aed"/>
     </linearGradient>
   </defs>
-  <!-- Roof -->
-  <polyline points="2,22 24,4 46,22"
+
+  <!-- Roof: peak (24,4), eaves y=22 -->
+  <polyline
+    points="2,22 24,4 46,22"
     stroke="url(#g)" stroke-width="3.5"
-    stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <!-- Walls -->
-  <polyline points="8,22 8,44 40,44 40,22"
+    stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Walls: x=8..40, y=22..44 -->
+  <polyline
+    points="8,22 8,44 40,44 40,22"
     stroke="url(#g)" stroke-width="3.5"
-    stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <!-- Play triangle — visual center: x=24, y=33 -->
-  <polygon points="15,27 15,39 33,33" fill="url(#g)"/>
-  <!-- PRO MATCH — baseline y=33 aligns vertically with play triangle center -->
+    stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Play triangle: same as logo-icon, visual center=(24,33) -->
+  <polygon points="13,24 13,42 35,33" fill="url(#g)"/>
+
+  <!-- PRO MATCH: baseline y=33, cap-center ≈y=25, aligns with icon vertical center -->
   <text
     x="58" y="33"
     font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif"
