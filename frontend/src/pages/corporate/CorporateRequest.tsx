@@ -451,6 +451,24 @@ export default function CorporateRequest() {
         console.error('[notify] メール通知エラー:', notifyErr);
       }
 
+      // 5. 依頼者へ受付完了メール（失敗しても送信完了扱い）
+      if (contactMethod === 'メール' && contactValue.includes('@')) {
+        try {
+          await supabase.functions.invoke('send-customer-email', {
+            body: {
+              to:        contactValue,
+              area,
+              work_type: workType,
+              room_type: roomType   || undefined,
+              room_size: roomSize   || undefined,
+              timing:    timing     || undefined,
+            },
+          });
+        } catch (customerMailErr) {
+          console.warn('[send-customer-email] 送信失敗（依頼は受付済み）:', customerMailErr);
+        }
+      }
+
       setSubmitState('success');
     } catch (err) {
       console.error('[handleSubmit] 送信エラー:', err);
