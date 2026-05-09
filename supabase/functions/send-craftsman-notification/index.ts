@@ -64,18 +64,50 @@ function calcEstimate(
   return { low, high };
 }
 
-function rowEstimate(estimate: { low: number; high: number } | null): string {
+function buildSalesCard(estimate: { low: number; high: number } | null): string {
   if (!estimate) return '';
   const { low, high } = estimate;
   const range = low === high ? `約${low}万円前後` : `約${low}〜${high}万円前後`;
   return `
-    <tr>
-      <td style="padding:12px 20px;border-bottom:1px solid #bfdbfe;background:#eff6ff;">
-        <span style="font-size:11px;color:#2563eb;font-weight:700;display:block;margin-bottom:4px;">💴 &nbsp;概算目安</span>
-        <span style="font-size:17px;color:#1e293b;font-weight:800;">${range}</span>
-        <span style="font-size:10px;color:#94a3b8;display:block;margin-top:3px;">※確定金額ではありません</span>
-      </td>
-    </tr>`;
+          <!-- 想定売上目安カード -->
+          <tr>
+            <td style="padding:20px 32px 0;">
+              <table width="100%" cellpadding="0" cellspacing="0"
+                style="background:linear-gradient(135deg,#fefce8 0%,#fef9c3 100%);border:1.5px solid #fde68a;border-radius:14px;overflow:hidden;">
+                <tr>
+                  <td style="padding:20px 24px 6px;">
+                    <span style="display:inline-block;background:#f59e0b;color:#ffffff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:100px;letter-spacing:0.06em;">
+                      💰 &nbsp;想定売上目安
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 24px 4px;">
+                    <p style="margin:0;font-size:26px;font-weight:800;color:#1e293b;letter-spacing:-0.02em;line-height:1.2;">
+                      ${range}
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 24px 16px;">
+                    <p style="margin:0 0 4px;font-size:13px;color:#78350f;">
+                      📍 近場で対応できる可能性がある案件です
+                    </p>
+                    <p style="margin:0;font-size:13px;color:#78350f;">
+                      🕐 早めの確認がおすすめです
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 24px 14px;">
+                    <p style="margin:0;font-size:10px;color:#a16207;">
+                      ※ 現場状況・仕様により変動します。参考目安です。
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`;
 }
 
 function row(label: string, value: string | undefined): string {
@@ -157,14 +189,15 @@ function buildHtml(
             </td>
           </tr>
 
+          ${buildSalesCard(estimate)}
+
           <!-- 案件概要カード -->
           <tr>
-            <td style="padding:24px 32px 0;">
+            <td style="padding:20px 32px 0;">
               <p style="margin:0 0 10px;font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:0.1em;text-transform:uppercase;">案件概要</p>
               <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
                 ${row('施工内容', workType)}
                 ${row('エリア', area)}
-                ${rowEstimate(estimate)}
                 ${row('部屋タイプ', roomType)}
                 ${row('希望時期', timing)}
                 ${buildMediaBadges(hasVideo, hasPhotos, hasFloorPlan)}
