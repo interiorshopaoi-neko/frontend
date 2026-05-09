@@ -8,6 +8,9 @@
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "install:all": "cd backend && npm install && cd ../frontend && npm install"
   },
+  "dependencies": {
+    "resend": "^6.12.2"
+  },
   "devDependencies": {
     "concurrently": "^9.1.2",
     "vite": "^5.4.21",
