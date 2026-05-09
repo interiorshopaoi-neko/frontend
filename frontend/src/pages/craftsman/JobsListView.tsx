@@ -127,13 +127,48 @@ export default function JobsListView({ jobs, loading }: Props) {
 
         {/* ローディング / 空 */}
         {loading ? (
-          <div className="rounded-2xl bg-white p-10 text-center text-slate-400 text-sm shadow-sm">
-            読み込み中...
-          </div>
+          // スケルトン3枚 + 「近くの動画案件を探しています…」
+          <>
+            <div className="mb-3 rounded-xl bg-white border border-slate-100 px-3 py-2.5 flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+              </span>
+              <p className="text-[11.5px] text-slate-600 font-semibold">
+                近くの動画案件を探しています…
+              </p>
+            </div>
+            <div className="space-y-3">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-3xl ring-1 ring-slate-200 shadow-sm p-4 animate-pulse"
+                >
+                  <div className="flex gap-2 mb-3">
+                    <div className="h-5 w-16 bg-slate-200 rounded-full" />
+                    <div className="h-5 w-12 bg-slate-200 rounded-full" />
+                  </div>
+                  <div className="h-5 w-3/4 bg-slate-200 rounded mb-2" />
+                  <div className="h-4 w-1/2 bg-slate-200 rounded mb-3" />
+                  <div className="h-9 bg-slate-100 rounded-xl" />
+                </div>
+              ))}
+            </div>
+          </>
         ) : sortedJobs.length === 0 ? (
-          <div className="rounded-2xl bg-white p-10 text-center shadow-sm ring-1 ring-slate-200">
-            <p className="text-3xl mb-2">📭</p>
-            <p className="text-sm font-bold text-slate-700">該当する案件がありません</p>
+          <div className="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200">
+            <div className="inline-flex items-center gap-1.5 mb-3">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+              </span>
+              <span className="text-[10px] font-black tracking-widest text-blue-600">SEARCHING</span>
+            </div>
+            <p className="text-sm font-bold text-slate-800 mb-1.5">近くの動画案件を探しています…</p>
+            <p className="text-[11.5px] text-slate-500 leading-relaxed">
+              新しい案件が入り次第、ここに表示されます。<br />
+              通知をONにすると、いち早くお知らせします。
+            </p>
           </div>
         ) : (
           <div className="space-y-4">

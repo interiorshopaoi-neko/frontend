@@ -252,6 +252,17 @@ function SwipeSlide({ job, idx, total, applied, submitting, onApply }: SlideProp
             {revenue}
           </p>
         </div>
+
+        {/* 「他N人が検討中」— viewer_count があるときだけ表示（DEMO/将来的な実データ両対応） */}
+        {typeof job.viewer_count === 'number' && job.viewer_count > 0 && (
+          <span className="bg-black/50 backdrop-blur text-white text-[11px] font-bold px-3 py-1 rounded-full inline-flex items-center gap-1.5">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+            </span>
+            他{job.viewer_count}人が検討中
+          </span>
+        )}
       </div>
 
       {/* ボトム：案件情報 + 補助ボタン */}
@@ -368,10 +379,28 @@ export default function JobsSwipeView({ jobs }: Props) {
 
   if (videoJobs.length === 0) {
     return (
-      <div className="h-full flex flex-col items-center justify-center bg-slate-900 text-white gap-4 px-6 text-center">
-        <span className="text-5xl">🎬</span>
-        <p className="text-lg font-bold">動画付き案件がありません</p>
-        <p className="text-sm text-slate-400">動画を添付した依頼が届くとここに表示されます</p>
+      <div className="h-full flex flex-col items-center justify-center bg-slate-900 text-white gap-3 px-6 text-center">
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur border border-white/15 px-3 py-1">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+          </span>
+          <span className="text-[10px] font-black tracking-widest text-emerald-300">SEARCHING</span>
+        </div>
+        <p className="text-base font-bold">近くの動画案件を探しています…</p>
+        <p className="text-[12px] text-slate-400 leading-relaxed">
+          新しい案件が入り次第、ここに表示されます。<br />
+          通知をONにすると、いち早くお知らせします。
+        </p>
+        <div className="mt-2 grid grid-cols-3 gap-2 w-full max-w-xs">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="aspect-[9/16] rounded-xl bg-white/5 border border-white/5 animate-pulse"
+              style={{ animationDelay: `${i * 0.15}s` }}
+            />
+          ))}
+        </div>
       </div>
     );
   }

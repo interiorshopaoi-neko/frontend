@@ -43,9 +43,15 @@ export type Job = {
   video_url?: string;
   created_at?: string;
   meta?: JobMeta | null;
+  /** DEMOデータ用: 「他N人が検討中」表示。実DBには存在しないため optional */
+  viewer_count?: number;
 };
 
 // ─── Demo data ────────────────────────────────────────────────────────────────
+// 過疎感を消すため、初期表示時に「他の職人も動いている」雰囲気を出す。
+// created_at は読み込み時から相対計算するため毎回「○分前」が新鮮に見える。
+
+const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
 
 const DEMO_JOBS: Job[] = [
   {
@@ -62,6 +68,8 @@ const DEMO_JOBS: Job[] = [
     has_floor_plan: false,
     customer_note: '壁一面に汚れあり。退去後の原状回復。',
     video_url: undefined,
+    created_at: minutesAgo(2),       // 2分前
+    viewer_count: 3,
   },
   {
     id: 'demo-2',
@@ -69,14 +77,16 @@ const DEMO_JOBS: Job[] = [
     city: '伊勢崎市',
     room_size: '8畳',
     damage_level: 'middle',
-    urgency: 'soon',
-    preferred_date: '3日以内',
-    distance_km: 12.3,
+    urgency: 'tomorrow',
+    preferred_date: '明日',
+    distance_km: 6.5,
     has_video: true,
     has_photos: true,
     has_floor_plan: true,
     customer_note: 'クッションフロアの一部めくれ。',
     video_url: undefined,
+    created_at: minutesAgo(5),       // 5分前
+    viewer_count: 5,
   },
   {
     id: 'demo-3',
@@ -84,13 +94,45 @@ const DEMO_JOBS: Job[] = [
     city: '前橋市',
     room_size: '4.5畳',
     damage_level: 'low',
-    urgency: 'normal',
-    preferred_date: '来週以降',
+    urgency: 'today',
+    preferred_date: '今日',
     distance_km: 7.1,
-    has_video: false,
+    has_video: true,
     has_photos: true,
     has_floor_plan: false,
     customer_note: '天井に染みあり。部分補修希望。',
+    created_at: minutesAgo(0.4),     // たった今
+    viewer_count: 2,
+  },
+  {
+    id: 'demo-4',
+    work_type: 'クロス張替え',
+    city: '高崎市',
+    room_size: '10畳',
+    damage_level: 'high',
+    urgency: 'soon',
+    preferred_date: '3日以内',
+    distance_km: 9.3,
+    has_video: true,
+    has_photos: true,
+    has_floor_plan: false,
+    customer_note: '退去後の原状回復。広めの部屋。',
+    created_at: minutesAgo(12),      // 12分前
+    viewer_count: 4,
+  },
+  {
+    id: 'demo-5',
+    work_type: '床工事',
+    city: '桐生市',
+    room_size: '12畳',
+    damage_level: 'middle',
+    urgency: 'normal',
+    preferred_date: '来週中',
+    distance_km: 14.2,
+    has_video: false,
+    has_photos: true,
+    customer_note: 'リビングの全面張替え。',
+    created_at: minutesAgo(60),      // 1時間前
   },
 ];
 
@@ -151,6 +193,20 @@ export default function CraftsmanJobsPage() {
 
   return (
     <div className="flex flex-col bg-slate-50" style={{ height: '100dvh' }}>
+
+      {/* ── LIVEバー（過疎感を消すための「動いてる感」演出） ── */}
+      <div className="flex-shrink-0 bg-slate-900 text-white px-4 py-1.5 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
+          <span className="text-[10px] font-black tracking-[0.18em] text-emerald-400">LIVE</span>
+        </div>
+        <p className="text-[11px] text-white/85 font-semibold">
+          本日 <span className="font-black text-white">12件</span>の動画案件が公開されています
+        </p>
+      </div>
 
       {/* ── ヘッダー ── */}
       <header className="flex-shrink-0 bg-white border-b border-slate-200 px-4 pt-4 pb-0">
