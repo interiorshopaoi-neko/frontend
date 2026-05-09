@@ -86,7 +86,7 @@ export default function SupportPage() {
 
             {/* 連絡先 */}
             <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">メール / LINE名<span className="ml-1 text-slate-400 font-normal">（任意）</span></label>
+              <label className="block text-xs font-bold text-slate-600 mb-1">メール<span className="ml-1 text-slate-400 font-normal">（任意）</span></label>
               <input
                 type="text"
                 placeholder="例: example@mail.com"
@@ -115,9 +115,13 @@ export default function SupportPage() {
               </div>
             </div>
 
-            {/* 通報の場合：理由選択 */}
+            {/* 通報の場合：説明＋理由選択 */}
             {type === '通報' && (
               <div>
+                <p className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 mb-3">
+                  不適切な案件・迷惑行為・外部誘導などを報告できます。<br />
+                  内容を確認のうえ、対応いたします。
+                </p>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">報告の理由</label>
                 <div className="flex flex-wrap gap-2">
                   {REPORT_REASONS.map(r => (

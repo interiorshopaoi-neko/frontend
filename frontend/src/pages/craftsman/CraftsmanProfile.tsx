@@ -310,14 +310,17 @@ export default function CraftsmanProfile() {
 
           <div className="border-t border-slate-100 my-4" />
 
-          <Field label="対応エリア">
+          <Field label="拠点エリア（市区町村）">
             <input
               type="text"
               value={form.service_area}
               onChange={e => set('service_area', e.target.value)}
-              placeholder="例：渋谷区・目黒区・品川区"
+              placeholder="例：群馬県太田市"
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
+            <p className="mt-1.5 text-[11px] text-slate-400">
+              ここを中心に、設定した半径内の案件をご案内します
+            </p>
           </Field>
 
           <Field label="対応半径">
@@ -434,8 +437,8 @@ export default function CraftsmanProfile() {
           </p>
 
           {/* プロフィール写真プレビュー */}
-          <Field label="プロフィール写真">
-            <div className="flex items-center gap-4 mb-3">
+          <Field label="プロフィール写真（準備中）">
+            <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
                 {form.profile_image_url ? (
                   <img
@@ -448,17 +451,9 @@ export default function CraftsmanProfile() {
                   <span className="text-2xl font-extrabold text-slate-400">{avatarLetter}</span>
                 )}
               </div>
-              <div className="flex-1">
-                <input
-                  type="url"
-                  value={form.profile_image_url}
-                  onChange={e => set('profile_image_url', e.target.value)}
-                  placeholder="https://... 画像URL"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-                <p className="mt-1 text-[11px] text-slate-400">
-                  ※ 正式版ではカメラロールから直接アップロード予定
-                </p>
+              <div className="flex-1 rounded-xl bg-slate-50 border border-slate-200 px-3 py-3">
+                <p className="text-xs font-bold text-slate-500">📷 画像アップロードは近日対応予定です</p>
+                <p className="mt-0.5 text-[11px] text-slate-400">現在は画像アップロード未対応です</p>
               </div>
             </div>
           </Field>
@@ -579,7 +574,7 @@ export default function CraftsmanProfile() {
             {[
               { label: 'よくある質問', href: '/faq' },
               { label: 'お問い合わせ', href: '/support' },
-              { label: '通報する',     href: '/support?type=report' },
+              { label: '不適切・外部誘導を報告', href: '/support?type=report' },
               { label: '利用規約',     href: '/terms' },
             ].map(({ label, href }) => (
               <a key={label} href={href} className="text-xs text-blue-600 hover:underline font-medium">
