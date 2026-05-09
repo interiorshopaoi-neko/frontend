@@ -10,10 +10,86 @@ interface Payload {
   work_type: string;
   area: string;
   room_type?: string;
+  room_size?: string;
+  rooms?: string;
+  size_note?: string;
   timing?: string;
   has_video?: boolean;
   has_photos?: boolean;
   has_floor_plan?: boolean;
+}
+
+// ─── 概算目安ロジック ─────────────────────────────────────────────────────────
+// ※ 参考目安のみ。正確な見積もりではありません。
+
+function calcEstimate(
+  workType: string,
+  roomSize: string | undefined,
+  sizeNote: string | undefined,
+  rooms: string | undefined,
+): { low: number; high: number } | null {
+  // 工事種別ベース単価（万円/1部屋あたり）
+  const baseMap: Array<[string, [number, number]]> = [
+    ['フローリング', [8, 15]],
+    ['床工事',       [6, 12]],
+    ['クロス',       [3,  6]],
+    ['壁紙',         [3,  6]],
+    ['CF',           [3,  8]],
+    ['クッションフロア', [3, 8]],
+    ['床',           [5, 10]],
+    ['補修',         [2,  5]],
+    ['塗装',         [4,  9]],
+    ['タイル',       [5, 12]],
+  ];
+
+  let base: [number, number] = [3, 8]; // その他デフォルト
+  for (const [key, val] of baseMap) {
+    if (workType.includes(key)) { base = val; break; }
+  }
+
+  // サイズ補正（room_size または size_note から読み取る）
+  const sizeStr = (roomSize ?? sizeNote ?? '');
+  let sizeMult = 1.0;
+  if (/6畳以下|〜6|狭|小|コンパクト/.test(sizeStr))          sizeMult = 0.7;
+  else if (/LDK|ＬＤＫ|16畳|18畳|20畳|広め|大/.test(sizeStr)) sizeMult = 1.6;
+  else if (/12畳|14畳/.test(sizeStr))                         sizeMult = 1.3;
+  else if (/8畳|10畳/.test(sizeStr))                          sizeMult = 1.0;
+
+  // 部屋数補正
+  const roomsNum = parseInt(rooms ?? '1') || 1;
+  const roomsMult = roomsNum >= 3 ? 2.5 : roomsNum === 2 ? 1.8 : 1.0;
+
+  const low  = Math.max(2, Math.round(base[0] * sizeMult * roomsMult));
+  const high = Math.max(3, Math.round(base[1] * sizeMult * roomsMult));
+  return { low, high };
+}
+
+function buildEstimateBadge(estimate: { low: number; high: number } | null): string {
+  if (!estimate) return '';
+  const { low, high } = estimate;
+  const range = low === high ? `約${low}万円前後` : `約${low}〜${high}万円前後`;
+  return `
+          <!-- 概算目安カード -->
+          <tr>
+            <td style="padding:20px 32px 0;">
+              <table width="100%" cellpadding="0" cellspacing="0"
+                style="background:linear-gradient(135deg,#eff6ff 0%,#f0fdf4 100%);border:1.5px solid #bfdbfe;border-radius:14px;overflow:hidden;">
+                <tr>
+                  <td style="padding:18px 22px;">
+                    <p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#3b82f6;letter-spacing:0.08em;text-transform:uppercase;">
+                      💴 &nbsp;参考 概算目安
+                    </p>
+                    <p style="margin:0;font-size:22px;font-weight:800;color:#1e293b;letter-spacing:-0.01em;">
+                      ${range}
+                    </p>
+                    <p style="margin:6px 0 0;font-size:11px;color:#64748b;">
+                      ※ 施工規模・仕様・現場状況により変動します。確定金額ではありません。
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`;
 }
 
 function row(label: string, value: string | undefined): string {
@@ -52,6 +128,7 @@ function buildHtml(
   hasFloorPlan: boolean,
   ctaUrl: string,
   logoUrl: string,
+  estimate: { low: number; high: number } | null,
 ): string {
   return `<!DOCTYPE html>
 <html lang="ja">
@@ -107,6 +184,8 @@ function buildHtml(
               </table>
             </td>
           </tr>
+
+          ${buildEstimateBadge(estimate)}
 
           <!-- CTAボタン -->
           <tr>
@@ -170,7 +249,7 @@ serve(async (req) => {
     }
 
     const payload: Payload = await req.json();
-    const { to, work_type, area, room_type, timing, has_video = false, has_photos = false, has_floor_plan = false } = payload;
+    const { to, work_type, area, room_type, room_size, rooms, size_note, timing, has_video = false, has_photos = false, has_floor_plan = false } = payload;
 
     if (!to || !to.includes('@')) {
       console.error('[send-craftsman-notification] 無効なメールアドレス:', to);
@@ -180,8 +259,9 @@ serve(async (req) => {
       });
     }
 
-    const logoUrl = 'https://frontend-alpha-gray-75.vercel.app/logo-full.png';
-    const ctaUrl  = 'https://frontend-alpha-gray-75.vercel.app/craftsman/jobs';
+    const logoUrl  = 'https://frontend-alpha-gray-75.vercel.app/logo-full.png';
+    const ctaUrl   = 'https://frontend-alpha-gray-75.vercel.app/craftsman/jobs';
+    const estimate = calcEstimate(work_type, room_size, size_note, rooms);
 
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -193,7 +273,7 @@ serve(async (req) => {
         from: `PRO MATCH（内装職人マッチング） <${fromEmail}>`,
         to: [to],
         subject: '【PRO MATCH】対応できそうな新着案件があります',
-        html: buildHtml(work_type, area, room_type, timing, has_video, has_photos, has_floor_plan, ctaUrl, logoUrl),
+        html: buildHtml(work_type, area, room_type, timing, has_video, has_photos, has_floor_plan, ctaUrl, logoUrl, estimate),
       }),
     });
 

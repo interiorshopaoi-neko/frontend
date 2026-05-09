@@ -30,6 +30,8 @@ type EstimateRequest = {
   status: string | null;
   video_url: string | null;
   room_type: string | null;
+  room_size: string | null;
+  rooms: string | null;
   size_note: string | null;
   timing: string | null;
   site_condition: string | null;
@@ -665,7 +667,7 @@ function RequestsList({ session }: { session: Session }) {
     (async () => {
       const { data, error } = await supabase
         .from('estimate_requests')
-        .select('id, created_at, area, work_type, contact_method, contact_value, status, video_url, room_type, size_note, timing, site_condition, desire_type, memo')
+        .select('id, created_at, area, work_type, contact_method, contact_value, status, video_url, room_type, room_size, rooms, size_note, timing, site_condition, desire_type, memo')
         .order('created_at', { ascending: false });
       if (error) setErrMsg(`[SupabaseError] ${error.message}\n${JSON.stringify(error, null, 2)}`);
       else setRows(data ?? []);
@@ -740,6 +742,9 @@ function RequestsList({ session }: { session: Session }) {
           work_type: req.work_type  ?? '内装工事',
           area:      req.area       ?? '未設定',
           room_type: req.room_type  ?? undefined,
+          room_size: req.room_size  ?? undefined,
+          rooms:     req.rooms      ?? undefined,
+          size_note: req.size_note  ?? undefined,
           timing:    req.timing     ?? undefined,
           has_video: !!req.video_url,
           has_photos:     false,
