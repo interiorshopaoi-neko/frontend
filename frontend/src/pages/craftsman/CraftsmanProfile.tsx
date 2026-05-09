@@ -8,6 +8,7 @@ import BottomNav from '../../components/BottomNav';
 type ProfileForm = {
   shop_name: string;
   full_name: string;
+  email: string;
   service_area: string;
   radius_km: number;
   work_types: string[];
@@ -27,6 +28,7 @@ type ProfileForm = {
 const DEFAULT_FORM: ProfileForm = {
   shop_name: '',
   full_name: '',
+  email: '',
   service_area: '',
   radius_km: 20,
   work_types: [],
@@ -126,6 +128,7 @@ export default function CraftsmanProfile() {
         setForm({
           shop_name:            data.shop_name           ?? '',
           full_name:            data.full_name           ?? '',
+          email:                data.email               ?? '',
           service_area:         data.service_area        ?? '',
           radius_km:            data.radius_km           ?? 20,
           work_types:           data.work_types          ?? [],
@@ -157,6 +160,7 @@ export default function CraftsmanProfile() {
           user_id:               userId,
           shop_name:             form.shop_name,
           full_name:             form.full_name,
+          email:                 form.email || null,
           service_area:          form.service_area,
           radius_km:             form.radius_km,
           work_types:            form.work_types,
@@ -409,6 +413,24 @@ export default function CraftsmanProfile() {
               enabled={form.notification_enabled}
               onChange={v => set('notification_enabled', v)}
             />
+            {form.notification_enabled && (
+              <div className="mt-3">
+                <label className="text-[11px] text-slate-400 font-semibold">
+                  通知先メールアドレス（任意）
+                </label>
+                <input
+                  type="email"
+                  inputMode="email"
+                  value={form.email}
+                  onChange={e => set('email', e.target.value)}
+                  placeholder="example@gmail.com"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+                <p className="mt-1 text-[11px] text-slate-400">
+                  新着案件の通知メールを受け取るアドレスです。未入力の場合は通知されません。
+                </p>
+              </div>
+            )}
           </Field>
         </div>
 
