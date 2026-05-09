@@ -358,7 +358,9 @@ export default function ProSignupPage() {
   const navigate = useNavigate();
 
   const goRegister = () => navigate('/register');
-  const goPreview  = () => navigate('/pro/jobs');
+  // 未登録向けの公開案件ボードはまだ用意できていないため、
+  // 動画・詳細・応募の導線は登録ページへ集約する（個人情報の漏えい防止）。
+  const goPreview  = () => navigate('/register');
 
   return (
     <div className="min-h-screen bg-slate-50">
