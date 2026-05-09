@@ -110,6 +110,7 @@ export default function App() {
         {/* 公開ページ */}
         <Route path="/complete"   element={<CompletePage />} />
         <Route path="/pro-signup" element={<ProSignupPage />} />
+        <Route path="/for-pros"   element={<ProSignupPage />} />
         <Route path="/policy"     element={<PolicyPage />} />
         <Route path="/faq"        element={<FaqPage />} />
         <Route path="/support"    element={<SupportPage />} />
