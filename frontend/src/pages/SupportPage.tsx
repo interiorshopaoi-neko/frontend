@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { FEE_TABLE } from '../constants/fees';
 
 const TYPES = ['質問', '不具合', '通報', 'その他'] as const;
 type SupportType = typeof TYPES[number];
@@ -68,38 +67,6 @@ export default function SupportPage() {
           <p className="text-[11px] text-slate-400 mt-0.5">{isReport ? '問題を報告する' : 'ご質問・ご要望'}</p>
         </div>
       </header>
-
-      {/* 職人向け手数料情報 */}
-      <div className="max-w-lg mx-auto px-4 pt-5 pb-0">
-        <div className="bg-white rounded-2xl ring-1 ring-slate-200 p-5">
-          <p className="text-xs font-extrabold text-slate-700 mb-3">💡 職人向け手数料について</p>
-          <ul className="space-y-1.5 mb-4">
-            {[
-              'PRO MATCHでは、応募しただけでは料金は発生しません。',
-              'お客様と成約した場合のみ、成約時点の概算金額に応じて手数料が確定します。',
-              '工事後に金額が増減しても、原則として再計算は行いません。',
-              '手数料は、案件掲載・通知・マッチング運営のための費用です。',
-              '工事代金は依頼者と職人が直接やり取りし、PRO MATCHは工事代金を預かりません。',
-            ].map(text => (
-              <li key={text} className="flex items-start gap-2 text-xs text-slate-600 leading-relaxed">
-                <span className="text-blue-400 flex-shrink-0 mt-0.5">·</span>
-                {text}
-              </li>
-            ))}
-          </ul>
-          <div className="border-t border-slate-100 pt-3">
-            <p className="text-[10px] font-bold text-slate-500 mb-2">手数料の目安</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              {FEE_TABLE.map(({ label, feeLabel }) => (
-                <div key={label} className="flex items-center justify-between">
-                  <span className="text-[11px] text-slate-500">{label}</span>
-                  <span className="text-[11px] font-bold text-slate-700">{feeLabel}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
 
       <div className="max-w-lg mx-auto px-4 py-5">
         <form onSubmit={handleSubmit} className="space-y-4">
