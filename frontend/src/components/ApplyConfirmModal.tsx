@@ -1,18 +1,12 @@
 import { useEffect } from 'react';
 import type { Job } from '../pages/craftsman/CraftsmanJobsPage';
+import { FEE_TABLE } from '../constants/fees';
 
 type Props = {
   job: Job;
   onCancel: () => void;
   onConfirm: () => void;
 };
-
-const FEE_TABLE = [
-  { label: '〜30,000円',   fee: '500円'   },
-  { label: '〜80,000円',   fee: '1,500円' },
-  { label: '〜150,000円',  fee: '3,000円' },
-  { label: '150,001円〜',  fee: '5,000円' },
-];
 
 function estimateRevenue(job: Job): string {
   const base =
@@ -119,10 +113,10 @@ export default function ApplyConfirmModal({ job, onCancel, onConfirm }: Props) {
             <div className="border-t border-blue-100 pt-3">
               <p className="text-[10px] font-bold text-blue-600 mb-1.5">手数料の目安</p>
               <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                {FEE_TABLE.map(({ label, fee }) => (
+                {FEE_TABLE.map(({ label, feeLabel }) => (
                   <div key={label} className="flex items-center justify-between">
                     <span className="text-[11px] text-slate-500">{label}</span>
-                    <span className="text-[11px] font-bold text-slate-700">{fee}</span>
+                    <span className="text-[11px] font-bold text-slate-700">{feeLabel}</span>
                   </div>
                 ))}
               </div>
