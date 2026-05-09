@@ -185,7 +185,8 @@ function SwipeSlide({ job, idx, total, applied, submitting, onApply }: SlideProp
       </div>
 
       {/* センター：希少性バッジ + 想定売上 */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none gap-4">
+      {/* pb-40 でスマホ時のみ justify-center の基準を上方にずらし、ボトム区画との重なりを防ぐ */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none gap-4 pb-40 sm:pb-0">
         {(showSlotWarning || showFirstCome) && (
           <div className="flex flex-col items-center gap-2">
             <div className="flex items-center gap-2">
