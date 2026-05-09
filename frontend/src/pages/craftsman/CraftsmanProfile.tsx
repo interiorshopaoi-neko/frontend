@@ -118,11 +118,9 @@ export default function CraftsmanProfile() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from('craftsmen')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
+      const { data: rows } = await supabase
+        .rpc('get_my_craftsman_profile', { p_user_id: userId });
+      const data = rows?.[0] ?? null;
 
       if (data) {
         setForm({
@@ -154,31 +152,26 @@ export default function CraftsmanProfile() {
     setError(null);
 
     const { error: upsertError } = await supabase
-      .from('craftsmen')
-      .upsert(
-        {
-          user_id:               userId,
-          shop_name:             form.shop_name,
-          full_name:             form.full_name,
-          email:                 form.email || null,
-          service_area:          form.service_area,
-          radius_km:             form.radius_km,
-          work_types:            form.work_types,
-          specialty:             form.specialty,
-          available_weekdays:    form.available_weekdays,
-          notification_enabled:  form.notification_enabled,
-          profile_image_url:     form.profile_image_url || null,
-          age:                   form.age !== '' ? Number(form.age) : null,
-          experience_years:      form.experience_years !== '' ? Number(form.experience_years) : null,
-          bio:                   form.bio || null,
-          available_time:        form.available_time || null,
-          has_car:               form.has_car,
-          has_tools:             form.has_tools,
-          public_profile_enabled: form.public_profile_enabled,
-          updated_at:            new Date().toISOString(),
-        },
-        { onConflict: 'user_id' }
-      );
+      .rpc('upsert_craftsman_profile', {
+        p_user_id:                userId,
+        p_email:                  form.email || null,
+        p_shop_name:              form.shop_name,
+        p_full_name:              form.full_name,
+        p_service_area:           form.service_area,
+        p_radius_km:              form.radius_km,
+        p_work_types:             form.work_types,
+        p_specialty:              form.specialty,
+        p_available_weekdays:     form.available_weekdays,
+        p_notification_enabled:   form.notification_enabled,
+        p_profile_image_url:      form.profile_image_url || null,
+        p_age:                    form.age !== '' ? Number(form.age) : null,
+        p_experience_years:       form.experience_years !== '' ? Number(form.experience_years) : null,
+        p_bio:                    form.bio || null,
+        p_available_time:         form.available_time || null,
+        p_has_car:                form.has_car,
+        p_has_tools:              form.has_tools,
+        p_public_profile_enabled: form.public_profile_enabled,
+      });
 
     setSaving(false);
 

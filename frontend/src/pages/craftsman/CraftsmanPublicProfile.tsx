@@ -80,11 +80,9 @@ export default function CraftsmanPublicProfile() {
     if (!userId) { setNotFound(true); setLoading(false); return; }
 
     (async () => {
-      const { data } = await supabase
-        .from('craftsmen')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
+      const { data: rows } = await supabase
+        .rpc('get_craftsman_public_profile', { p_user_id: userId });
+      const data = rows?.[0] ?? null;
 
       if (!data || data.public_profile_enabled === false) {
         setNotFound(true);

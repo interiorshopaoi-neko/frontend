@@ -263,12 +263,10 @@ export default function RequestApplicationsPage() {
         return;
       }
 
-      // 職人情報を個別取得してマージ
+      // 職人情報を個別取得してマージ（RPC経由 / email等個人情報は取得しない）
       const craftsmanIds = [...new Set(appData.map(a => a.craftsman_id).filter(Boolean))];
       const { data: craftsmenData } = await supabase
-        .from('craftsmen')
-        .select('user_id, shop_name, full_name, experience_years, work_types, has_car, has_tools, bio, profile_image_url')
-        .in('user_id', craftsmanIds);
+        .rpc('get_craftsmen_by_ids', { p_user_ids: craftsmanIds });
 
       const craftsmenMap = Object.fromEntries(
         (craftsmenData ?? []).map(c => [c.user_id, c as CraftsmanInfo])
