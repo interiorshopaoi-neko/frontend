@@ -15,7 +15,8 @@ export default function CustomerDashboard() {
 
   useEffect(() => {
     api.get('/estimates/my')
-      .then(({ data }) => setEstimates(data))
+      .then(({ data }) => setEstimates(Array.isArray(data) ? data : []))
+      .catch(() => setEstimates([]))
       .finally(() => setLoading(false));
   }, []);
 
