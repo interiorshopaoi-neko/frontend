@@ -557,6 +557,24 @@ function ModalItem({ label, value }: { label: string; value: string | null }) {
 // CraftsmanNotifyPanel
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** エリア・工事種別の簡易マッチング */
+function isRecommendedCraftsman(req: EstimateRequest, c: NotifiableCraftsman): boolean {
+  const reqArea     = req.area ?? '';
+  const reqWorkType = req.work_type ?? '';
+  const cArea       = c.service_area ?? '';
+  const cTypes      = c.work_types ?? [];
+
+  const areaMatch =
+    cArea.length > 0 &&
+    (reqArea.includes(cArea) || cArea.includes(reqArea));
+
+  const typeMatch =
+    cTypes.length > 0 &&
+    cTypes.some(t => reqWorkType.includes(t) || t.includes(reqWorkType));
+
+  return areaMatch && typeMatch;
+}
+
 function CraftsmanNotifyPanel({
   reqId,
   req,
@@ -575,8 +593,54 @@ function CraftsmanNotifyPanel({
   const [open, setOpen] = useState(false);
   const count = craftsmen.length;
 
-  // 未使用警告を抑制（req は呼び出し側で使用）
-  void req;
+  const recommended = craftsmen.filter(c => isRecommendedCraftsman(req, c));
+  const others      = craftsmen.filter(c => !isRecommendedCraftsman(req, c));
+
+  const renderRow = (c: NotifiableCraftsman, isRec: boolean) => {
+    const key         = `${reqId}-${c.user_id}`;
+    const sentTime    = sentMap[key];
+    const isSending   = sendingKey === key;
+    const displayName = c.shop_name || c.full_name || '名称未設定';
+    return (
+      <div key={c.user_id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <p className="text-xs font-bold text-slate-800 truncate">{displayName}</p>
+            {isRec && (
+              <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-200 rounded-full px-2 py-0.5 leading-none flex-shrink-0">
+                この案件に対応できそうです
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
+            {c.service_area && (
+              <span className="text-[11px] text-slate-500">📍 {c.service_area}</span>
+            )}
+            {c.work_types && c.work_types.length > 0 && (
+              <span className="text-[11px] text-slate-500">{c.work_types.join('・')}</span>
+            )}
+            <span className="text-[11px] text-emerald-600 font-semibold">🔔 通知ON</span>
+          </div>
+        </div>
+        {sentTime ? (
+          <span className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1">
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+            送信済み（{sentTime}）
+          </span>
+        ) : (
+          <button
+            onClick={() => onSend(c)}
+            disabled={!!sendingKey}
+            className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-300 rounded-lg px-2.5 py-1 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isSending ? '送信中...' : 'この職人へ通知'}
+          </button>
+        )}
+      </div>
+    );
+  };
 
   if (count === 0) {
     return (
@@ -592,48 +656,38 @@ function CraftsmanNotifyPanel({
         onClick={() => setOpen(v => !v)}
         className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-300 rounded-lg px-3 py-1.5 transition-colors"
       >
-        🔔 通知可能な職人 {count}人 {open ? '▲' : '▼'}
+        🔔 通知可能な職人 {count}人
+        {recommended.length > 0 && (
+          <span className="text-emerald-700 font-bold">（おすすめ {recommended.length}人）</span>
+        )}
+        {open ? ' ▲' : ' ▼'}
       </button>
       {open && (
-        <div className="mt-2 rounded-xl border border-indigo-100 bg-indigo-50/40 divide-y divide-indigo-100 overflow-hidden">
-          {craftsmen.map(c => {
-            const key = `${reqId}-${c.user_id}`;
-            const sentTime = sentMap[key];
-            const isSending = sendingKey === key;
-            const displayName = c.shop_name || c.full_name || '名称未設定';
-            return (
-              <div key={c.user_id} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-800 truncate">{displayName}</p>
-                  <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
-                    {c.service_area && (
-                      <span className="text-[11px] text-slate-500">📍 {c.service_area}</span>
-                    )}
-                    {c.work_types && c.work_types.length > 0 && (
-                      <span className="text-[11px] text-slate-500">{c.work_types.join('・')}</span>
-                    )}
-                    <span className="text-[11px] text-emerald-600 font-semibold">🔔 通知ON</span>
-                  </div>
-                </div>
-                {sentTime ? (
-                  <span className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1">
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
-                    </svg>
-                    送信済み（{sentTime}）
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => onSend(c)}
-                    disabled={!!sendingKey}
-                    className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-300 rounded-lg px-2.5 py-1 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {isSending ? '送信中...' : 'この職人へ通知'}
-                  </button>
-                )}
+        <div className="mt-2 space-y-3">
+          {/* A. おすすめ職人 */}
+          {recommended.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold text-emerald-700 mb-1.5 flex items-center gap-1">
+                ⭐ おすすめ職人
+                <span className="bg-emerald-100 text-emerald-700 rounded-full px-1.5 py-0.5">{recommended.length}人</span>
+              </p>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 divide-y divide-emerald-100 overflow-hidden">
+                {recommended.map(c => renderRow(c, true))}
               </div>
-            );
-          })}
+            </div>
+          )}
+          {/* B. その他の通知可能な職人 */}
+          {others.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold text-slate-500 mb-1.5 flex items-center gap-1">
+                その他の通知可能な職人
+                <span className="bg-slate-100 text-slate-500 rounded-full px-1.5 py-0.5">{others.length}人</span>
+              </p>
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 divide-y divide-indigo-100 overflow-hidden">
+                {others.map(c => renderRow(c, false))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
