@@ -19,6 +19,7 @@ import AdminRequests from './pages/admin/AdminRequests';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import ProJobs from './pages/pro/ProJobs';
 import CraftsmanJobsPage from './pages/craftsman/CraftsmanJobsPage';
+import JobsLockedPreview from './components/JobsLockedPreview';
 import CraftsmanProfile from './pages/craftsman/CraftsmanProfile';
 import HelpRequestPage from './pages/craftsman/HelpRequestPage';
 import HelpListPage from './pages/craftsman/HelpListPage';
@@ -93,8 +94,12 @@ export default function App() {
         <Route path="/corporate"  element={<CorporateRequest />} />
 
         {/* 職人向け案件ボード・プロフィール */}
-        <Route path="/pro/jobs"           element={<ProJobs />} />
-        <Route path="/craftsman/jobs"     element={<CraftsmanJobsPage />} />
+        <Route path="/pro/jobs"           element={
+          user?.role === 'craftsman' ? <ProJobs /> : <JobsLockedPreview />
+        } />
+        <Route path="/craftsman/jobs"     element={
+          user?.role === 'craftsman' ? <CraftsmanJobsPage /> : <JobsLockedPreview />
+        } />
         <Route path="/craftsman/dashboard"           element={<CraftsmanDashboardPage />} />
         <Route path="/request/:id/applications"    element={<RequestApplicationsPage />} />
         <Route path="/request/:id/review"          element={<ReviewPage />} />
