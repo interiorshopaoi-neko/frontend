@@ -157,9 +157,15 @@ CREATE OR REPLACE FUNCTION public.upsert_craftsman_profile(
   p_public_profile_enabled boolean
 )
 RETURNS void
-LANGUAGE sql SECURITY DEFINER
+LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public
 AS $$
+BEGIN
+  -- UUID v4 形式バリデーション（SECURITY DEFINER は RLS をバイパスするため内部で検証する）
+  IF p_user_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
+    RAISE EXCEPTION 'invalid user_id format: must be UUID v4';
+  END IF;
+
   INSERT INTO public.craftsmen (
     user_id, email, shop_name, full_name, service_area, radius_km,
     work_types, specialty, available_weekdays, notification_enabled,
@@ -190,6 +196,7 @@ AS $$
     has_tools              = EXCLUDED.has_tools,
     public_profile_enabled = EXCLUDED.public_profile_enabled,
     updated_at             = now();
+END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.upsert_craftsman_profile(
