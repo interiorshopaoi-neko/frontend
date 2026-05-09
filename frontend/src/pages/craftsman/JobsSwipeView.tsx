@@ -29,6 +29,23 @@ function urgencyConfig(job: Job): { text: string; cls: string } {
   return                                  { text: '💭 急ぎなし',  cls: 'bg-slate-600/80 text-white' };
 }
 
+function timeAgo(createdAt?: string): string {
+  if (!createdAt) return '';
+  const diff = Date.now() - new Date(createdAt).getTime();
+  const mins  = Math.floor(diff / 60000);
+  if (mins <  1)  return 'たった今';
+  if (mins < 60)  return `${mins}分前`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}時間前`;
+  if (hours < 48) return '昨日投稿';
+  return `${Math.floor(hours / 24)}日前`;
+}
+
+function isNewPost(createdAt?: string): boolean {
+  if (!createdAt) return false;
+  return (Date.now() - new Date(createdAt).getTime()) / 3600000 <= 2;
+}
+
 // ─── SwipeSlide ───────────────────────────────────────────────────────────────
 
 type SlideProps = {
@@ -54,6 +71,8 @@ function SwipeSlide({ job, idx, total, applied, submitting, onApply }: SlideProp
   const swipeProgress   = Math.min(1, Math.max(0, dragX / 130));
   const showSlotWarning = job.urgency === 'today' || job.urgency === 'tomorrow';
   const showFirstCome   = job.has_video || job.has_photos;
+  const isNew           = isNewPost(job.created_at);
+  const postedAt        = timeAgo(job.created_at);
 
   // 非passive touchリスナーで水平ドラッグを確実に検知
   useEffect(() => {
@@ -175,12 +194,19 @@ function SwipeSlide({ job, idx, total, applied, submitting, onApply }: SlideProp
         </div>
       )}
 
-      {/* トップバー：緊急度 + カウンター */}
-      <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
-        <span className={`px-3 py-1.5 rounded-full text-xs font-extrabold shadow-lg backdrop-blur-sm ${urgency.cls}`}>
-          {urgency.text}
-        </span>
-        <span className="text-white/50 text-xs font-mono bg-black/30 backdrop-blur-sm px-2.5 py-1 rounded-full">
+      {/* トップバー：鮮度バッジ + 緊急度 + カウンター */}
+      <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10 gap-2">
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          {isNew && (
+            <span className="px-2.5 py-1 rounded-full text-xs font-extrabold shadow-lg backdrop-blur-sm bg-amber-400 text-white flex-shrink-0">
+              🔥 新着
+            </span>
+          )}
+          <span className={`px-3 py-1.5 rounded-full text-xs font-extrabold shadow-lg backdrop-blur-sm ${urgency.cls}`}>
+            {urgency.text}
+          </span>
+        </div>
+        <span className="text-white/50 text-xs font-mono bg-black/30 backdrop-blur-sm px-2.5 py-1 rounded-full flex-shrink-0">
           {idx + 1} / {total}
         </span>
       </div>
@@ -247,6 +273,7 @@ function SwipeSlide({ job, idx, total, applied, submitting, onApply }: SlideProp
           {job.room_size && <span className="text-white/60">📐 {job.room_size}</span>}
           {job.has_photos && <span className="text-white/60">📷 写真あり</span>}
           {job.has_floor_plan && <span className="text-white/60">📋 図面あり</span>}
+          {postedAt && <span className="text-white/40 text-xs ml-auto">🕐 {postedAt}</span>}
         </div>
 
         {/* 補助ボタン */}

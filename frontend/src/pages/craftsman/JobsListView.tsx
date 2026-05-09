@@ -4,6 +4,39 @@ import { calculateServiceFee } from '../../lib/serviceFee';
 import { FEE_TABLE } from '../../constants/fees';
 import type { Job } from './CraftsmanJobsPage';
 
+// ─── Freshness helpers ───────────────────────────────────────────────────────
+
+function timeAgo(createdAt?: string): string {
+  if (!createdAt) return '';
+  const diff = Date.now() - new Date(createdAt).getTime();
+  const mins  = Math.floor(diff / 60000);
+  if (mins <  1)  return 'たった今';
+  if (mins < 60)  return `${mins}分前`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}時間前`;
+  if (hours < 48) return '昨日投稿';
+  const days  = Math.floor(hours / 24);
+  return `${days}日前`;
+}
+
+type FreshnessBadge = { text: string; cls: string };
+
+function getFreshnessBadge(job: Job): FreshnessBadge | null {
+  const timingText = `${job.preferred_date ?? ''} ${job.meta?.extra_info?.timing ?? ''}`;
+  const wantsToday = /今日|至急|早め|当日/.test(timingText);
+
+  if (job.created_at) {
+    const hours = (Date.now() - new Date(job.created_at).getTime()) / 3600000;
+    const days  = hours / 24;
+    if (hours <= 2)  return { text: '🔥 新着', cls: 'bg-red-500 text-white' };
+    if (days  >= 4)  return { text: '⏳ まもなく終了', cls: 'bg-slate-500 text-white' };
+  }
+  if (wantsToday && job.urgency !== 'today' && job.urgency !== 'tomorrow') {
+    return { text: '⏰ 今日対応歓迎', cls: 'bg-emerald-500 text-white' };
+  }
+  return null;
+}
+
 // ─── Revenue estimator ────────────────────────────────────────────────────────
 
 function estimateRevenue(job: Job): number {
@@ -113,12 +146,19 @@ export default function JobsListView({ jobs, loading }: Props) {
               const isTomorrow = job.urgency === 'tomorrow';
               const isSoon     = job.urgency === 'soon';
               const hasMedia   = job.has_video || job.has_photos || job.has_floor_plan;
+              const freshness  = getFreshnessBadge(job);
+              const postedAt   = timeAgo(job.created_at);
 
               return (
                 <article key={job.id} className="bg-white rounded-3xl ring-1 ring-slate-200 shadow-sm overflow-hidden">
 
                   {/* ── バッジ行 ── */}
                   <div className="px-4 pt-4 pb-0 flex flex-wrap gap-1.5">
+                    {freshness && (
+                      <span className={`text-xs font-extrabold px-2.5 py-1 rounded-full ${freshness.cls}`}>
+                        {freshness.text}
+                      </span>
+                    )}
                     {isToday && (
                       <span className="bg-red-500 text-white text-xs font-extrabold px-2.5 py-1 rounded-full animate-pulse">
                         🔥 本日中に決まります
@@ -147,6 +187,11 @@ export default function JobsListView({ jobs, loading }: Props) {
                     {job.meta?.extra_info && (
                       <span className="bg-emerald-50 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full">
                         ✓ 追加情報あり
+                      </span>
+                    )}
+                    {postedAt && (
+                      <span className="text-slate-400 text-[10px] font-bold px-2 py-1 rounded-full bg-slate-50 ml-auto">
+                        🕐 {postedAt}
                       </span>
                     )}
                   </div>
