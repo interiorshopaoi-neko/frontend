@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import ApplySuccessModal from '../../components/ApplySuccessModal';
+import ApplyConfirmModal from '../../components/ApplyConfirmModal';
 import type { Job } from './CraftsmanJobsPage';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -297,6 +298,7 @@ export default function JobsSwipeView({ jobs }: Props) {
   const [currentIdx,      setCurrentIdx]      = useState(0);
   const [modalOpen,       setModalOpen]       = useState(false);
   const [lastAppliedJob,  setLastAppliedJob]  = useState<Job | null>(null);
+  const [confirmJob,      setConfirmJob]      = useState<Job | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // スクロール位置を追跡
@@ -349,6 +351,19 @@ export default function JobsSwipeView({ jobs }: Props) {
 
   return (
     <>
+      {/* 応募前確認モーダル */}
+      {confirmJob && (
+        <ApplyConfirmModal
+          job={confirmJob}
+          onCancel={() => setConfirmJob(null)}
+          onConfirm={() => {
+            const job = confirmJob;
+            setConfirmJob(null);
+            applyJob(job);
+          }}
+        />
+      )}
+
       {/* 応募完了モーダル */}
       {modalOpen && (
         <ApplySuccessModal
@@ -377,7 +392,7 @@ export default function JobsSwipeView({ jobs }: Props) {
             total={videoJobs.length}
             applied={appliedIds.has(job.id)}
             submitting={submittingId === job.id}
-            onApply={() => applyJob(job)}
+            onApply={() => setConfirmJob(job)}
           />
         ))}
       </div>
