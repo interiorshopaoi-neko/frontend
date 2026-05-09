@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
-import type { User } from '../../types';
-import api from '../../utils/api';
+import type { User, Role } from '../../types';
+import { supabase } from '../../lib/supabase';
 
 interface Props {
   onLogin: (token: string, user: User) => void;
@@ -20,11 +20,34 @@ export default function Login({ onLogin }: Props) {
     setError('');
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/login', { email, password });
-      onLogin(data.token, data.user);
-      navigate(data.user.role === 'customer' ? '/customer' : '/craftsman');
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      if (authError || !data.session || !data.user) {
+        setError(authError?.message ?? 'ログインに失敗しました');
+        return;
+      }
+
+      // role は user_metadata.role に格納（Phase1）。古い既存ユーザーで未設定の場合は
+      // localStorage.user.role の旧値を引き継ぐ。それも無ければ customer 扱い。
+      const meta = (data.user.user_metadata ?? {}) as { name?: unknown; role?: unknown };
+      const fallbackRaw = (() => {
+        try { return JSON.parse(localStorage.getItem('user') ?? 'null'); } catch { return null; }
+      })();
+      const role: Role =
+        meta.role === 'craftsman' || meta.role === 'customer'
+          ? meta.role
+          : (fallbackRaw?.role === 'craftsman' ? 'craftsman' : 'customer');
+
+      const userData: User = {
+        id: data.user.id,
+        name: typeof meta.name === 'string' ? meta.name : (fallbackRaw?.name ?? ''),
+        email: data.user.email ?? email,
+        role,
+      };
+
+      onLogin(data.session.access_token, userData);
+      navigate(userData.role === 'customer' ? '/customer' : '/craftsman');
     } catch (err: any) {
-      setError(err.response?.data?.error ?? 'ログインに失敗しました');
+      setError(err?.message ?? 'ログインに失敗しました');
     } finally {
       setLoading(false);
     }

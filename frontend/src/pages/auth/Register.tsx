@@ -10,7 +10,7 @@ import {
   Radio,
 } from 'lucide-react';
 import type { User, Role } from '../../types';
-import api from '../../utils/api';
+import { supabase } from '../../lib/supabase';
 
 interface Props {
   onLogin: (token: string, user: User) => void;
@@ -32,21 +32,42 @@ export default function Register({ onLogin }: Props) {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<Role>(initialRole);
   const [error, setError] = useState('');
+  const [info,  setInfo]  = useState('');
   const [loading, setLoading] = useState(false);
-
-  void api; // 本番API差し替えに備えて import を維持
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setInfo('');
     setLoading(true);
     try {
-      // TODO: 本番APIに差し替える
-      // const { data } = await api.post('/auth/register', { name, email, password, role });
-      // onLogin(data.token, data.user);
-      console.log('[mock] register success', { name, email, role });
-      const mockUser = { id: 0, name, email, role } as import('../../types').User;
-      onLogin('mock-token', mockUser);
+      // Supabase Auth signUp。name / role は user_metadata に保存し、
+      // localStorage.user.role には useAuth 側でミラーされる。
+      const { data, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { name, role } },
+      });
+
+      if (authError) {
+        setError(authError.message);
+        return;
+      }
+
+      // Email 確認 ON の場合は session が null。無音失敗を防ぎ、案内を表示する。
+      if (!data.session || !data.user) {
+        setInfo('確認メールを送信しました。メール内のリンクで認証後、ログインしてください。');
+        return;
+      }
+
+      const userData: User = {
+        id: data.user.id,
+        name,
+        email: data.user.email ?? email,
+        role,
+      };
+      onLogin(data.session.access_token, userData);
+
       if (role === 'customer' && fromLanding) {
         navigate('/customer/estimate/flow');
       } else if (role === 'craftsman' && fromProLp) {
@@ -57,9 +78,7 @@ export default function Register({ onLogin }: Props) {
         navigate(role === 'customer' ? '/customer' : '/craftsman');
       }
     } catch (err: any) {
-      console.error('[mock] register error', err);
-      // TODO: 本番実装時に有効化
-      // setError(err.response?.data?.error ?? '登録に失敗しました');
+      setError(err?.message ?? '登録に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -330,10 +349,12 @@ export default function Register({ onLogin }: Props) {
               />
             </div>
 
-            {/* TODO: 本番実装時に有効化 */}
-            {/* {error && (
+            {error && (
               <p className="text-rose-500 text-[12px] bg-rose-50 rounded-lg px-3 py-2 border border-rose-100">{error}</p>
-            )} */}
+            )}
+            {info && (
+              <p className="text-emerald-700 text-[12px] bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-100">{info}</p>
+            )}
             <button
               type="submit"
               disabled={loading}
@@ -374,8 +395,6 @@ export default function Register({ onLogin }: Props) {
           {' '}に同意したものとみなされます
         </p>
 
-        {/* 警告抑止のため未使用警告を出さない場所で error を no-op で参照 */}
-        <span className="hidden">{error ? error : ''}</span>
       </main>
     </div>
   );
