@@ -11,17 +11,23 @@ interface Props {
 }
 
 export default function Register({ onLogin }: Props) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState<Role>('customer');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useLangContext();
   // If came from landing page estimate CTA, send new customers straight to the flow
   const fromLanding = (location.state as any)?.fromLanding === true;
+  // 職人LP（/for-pros · /pro-signup）から来た場合は role を 'craftsman' で初期選択し、
+  // 登録完了後は /craftsman/jobs（動画で探す画面）に遷移する。
+  const fromProLp        = (location.state as any)?.fromProLp === true;
+  const stateDefaultRole = (location.state as any)?.defaultRole as Role | undefined;
+  const initialRole: Role = stateDefaultRole === 'craftsman' ? 'craftsman' : 'customer';
+
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<Role>(initialRole);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +42,9 @@ export default function Register({ onLogin }: Props) {
       onLogin('mock-token', mockUser);
       if (role === 'customer' && fromLanding) {
         navigate('/customer/estimate/flow');
+      } else if (role === 'craftsman' && fromProLp) {
+        // 職人LP起点の登録は、約束した「ショート動画で案件を探す」体験へ直接送る
+        navigate('/craftsman/jobs');
       } else {
         navigate(role === 'customer' ? '/customer' : '/craftsman');
       }

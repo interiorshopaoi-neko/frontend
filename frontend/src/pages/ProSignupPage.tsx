@@ -357,10 +357,13 @@ function VideoDemoBack() {
 export default function ProSignupPage() {
   const navigate = useNavigate();
 
-  const goRegister = () => navigate('/register');
+  // 職人LPから来たことを Register.tsx に伝え、role 初期値を 'craftsman' にし、
+  // 登録完了後の遷移先を /craftsman/jobs（動画で探す画面）に切り替える。
+  const proLpState = { defaultRole: 'craftsman' as const, fromProLp: true };
+  const goRegister = () => navigate('/register', { state: proLpState });
   // 未登録向けの公開案件ボードはまだ用意できていないため、
   // 動画・詳細・応募の導線は登録ページへ集約する（個人情報の漏えい防止）。
-  const goPreview  = () => navigate('/register');
+  const goPreview  = () => navigate('/register', { state: proLpState });
 
   return (
     <div className="min-h-screen bg-slate-50">
