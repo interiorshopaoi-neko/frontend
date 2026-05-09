@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import JobsListView from './JobsListView';
 import JobsSwipeView from './JobsSwipeView';
 import BottomNav from '../../components/BottomNav';
+import CraftsmanWelcomeModal from '../../components/CraftsmanWelcomeModal';
 
 // ─── Job type（子コンポーネントで import して使う）────────────────────────────
 
@@ -109,6 +111,24 @@ export default function CraftsmanJobsPage() {
   const [tab,     setTab]     = useState<Tab>('video');
   const [isDemo,  setIsDemo]  = useState(false);
 
+  // ── 登録直後だけ表示するウェルカムモーダル（PR1の justRegistered 経路） ──
+  // useState の lazy initializer でマウント時に1度だけ評価する。re-render
+  // しても再判定されないため、モーダルを閉じた後に「既存職人」状態に戻っても
+  // 同セッションで再表示されない。
+  const location = useLocation();
+  const [showWelcome, setShowWelcome] = useState<boolean>(() => {
+    const justRegistered = (location.state as any)?.justRegistered === true;
+    const alreadyWelcomed = typeof window !== 'undefined'
+      && localStorage.getItem('craftsman_welcomed') !== null;
+    return justRegistered && !alreadyWelcomed;
+  });
+  const dismissWelcome = useCallback(() => {
+    try {
+      localStorage.setItem('craftsman_welcomed', new Date().toISOString());
+    } catch { /* localStorage unavailable */ }
+    setShowWelcome(false);
+  }, []);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -196,6 +216,9 @@ export default function CraftsmanJobsPage() {
       </div>
 
       <BottomNav variant="flex" />
+
+      {/* 登録直後の初回ウェルカム（既存職人・直接URL訪問では出ない） */}
+      {showWelcome && <CraftsmanWelcomeModal onClose={dismissWelcome} />}
     </div>
   );
 }

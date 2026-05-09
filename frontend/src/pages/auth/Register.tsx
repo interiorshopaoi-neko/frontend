@@ -50,8 +50,9 @@ export default function Register({ onLogin }: Props) {
       if (role === 'customer' && fromLanding) {
         navigate('/customer/estimate/flow');
       } else if (role === 'craftsman' && fromProLp) {
-        // 職人LP起点の登録は、約束した「ショート動画で案件を探す」体験へ直接送る
-        navigate('/craftsman/jobs');
+        // 職人LP起点の登録は、約束した「ショート動画で案件を探す」体験へ直接送る。
+        // justRegistered フラグで /craftsman/jobs の初回ウェルカムモーダルを発火させる。
+        navigate('/craftsman/jobs', { state: { justRegistered: true } });
       } else {
         navigate(role === 'customer' ? '/customer' : '/craftsman');
       }
