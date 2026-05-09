@@ -47,6 +47,15 @@ type EnrichedRow = EstimateRequest & {
 
 type SortOrder = 'desc' | 'asc';
 
+type NotifiableCraftsman = {
+  user_id: string;
+  shop_name: string | null;
+  full_name: string | null;
+  email: string;
+  service_area: string | null;
+  work_types: string[] | null;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants / Maps
 // ─────────────────────────────────────────────────────────────────────────────
@@ -543,6 +552,93 @@ function ModalItem({ label, value }: { label: string; value: string | null }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CraftsmanNotifyPanel
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CraftsmanNotifyPanel({
+  reqId,
+  req,
+  craftsmen,
+  sendingKey,
+  sentMap,
+  onSend,
+}: {
+  reqId: string;
+  req: EstimateRequest;
+  craftsmen: NotifiableCraftsman[];
+  sendingKey: string | null;
+  sentMap: Record<string, string>;
+  onSend: (c: NotifiableCraftsman) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const count = craftsmen.length;
+
+  // 未使用警告を抑制（req は呼び出し側で使用）
+  void req;
+
+  if (count === 0) {
+    return (
+      <span className="text-[11px] text-slate-400 flex items-center gap-1">
+        🔔 通知可能な職人 0人（メール登録なし）
+      </span>
+    );
+  }
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-300 rounded-lg px-3 py-1.5 transition-colors"
+      >
+        🔔 通知可能な職人 {count}人 {open ? '▲' : '▼'}
+      </button>
+      {open && (
+        <div className="mt-2 rounded-xl border border-indigo-100 bg-indigo-50/40 divide-y divide-indigo-100 overflow-hidden">
+          {craftsmen.map(c => {
+            const key = `${reqId}-${c.user_id}`;
+            const sentTime = sentMap[key];
+            const isSending = sendingKey === key;
+            const displayName = c.shop_name || c.full_name || '名称未設定';
+            return (
+              <div key={c.user_id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-800 truncate">{displayName}</p>
+                  <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
+                    {c.service_area && (
+                      <span className="text-[11px] text-slate-500">📍 {c.service_area}</span>
+                    )}
+                    {c.work_types && c.work_types.length > 0 && (
+                      <span className="text-[11px] text-slate-500">{c.work_types.join('・')}</span>
+                    )}
+                    <span className="text-[11px] text-emerald-600 font-semibold">🔔 通知ON</span>
+                  </div>
+                </div>
+                {sentTime ? (
+                  <span className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    送信済み（{sentTime}）
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => onSend(c)}
+                    disabled={!!sendingKey}
+                    className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-300 rounded-lg px-2.5 py-1 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isSending ? '送信中...' : 'この職人へ通知'}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // RequestsList
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -561,8 +657,9 @@ function RequestsList({ session }: { session: Session }) {
   const [videoUrl,           setVideoUrl]           = useState<string | null>(null);
   const [sendingFollowupId,  setSendingFollowupId]  = useState<string | null>(null);
   const [followupSentMap,    setFollowupSentMap]    = useState<Record<string, string>>({});
-  const [sendingCraftsmanId, setSendingCraftsmanId] = useState<string | null>(null);
-  const [craftsmanSentMap,   setCraftsmanSentMap]   = useState<Record<string, string>>({});
+  const [notifiableCraftsmen, setNotifiableCraftsmen] = useState<NotifiableCraftsman[]>([]);
+  const [sendingNotifyKey,   setSendingNotifyKey]   = useState<string | null>(null);
+  const [notifySentMap,      setNotifySentMap]      = useState<Record<string, string>>({});
 
   useEffect(() => {
     (async () => {
@@ -573,6 +670,19 @@ function RequestsList({ session }: { session: Session }) {
       if (error) setErrMsg(`[SupabaseError] ${error.message}\n${JSON.stringify(error, null, 2)}`);
       else setRows(data ?? []);
       setLoading(false);
+    })();
+  }, []);
+
+  // 通知可能な職人一覧を取得（authenticated セッションで craftsmen テーブルへ直接アクセス可）
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('craftsmen')
+        .select('user_id, shop_name, full_name, email, service_area, work_types')
+        .eq('notification_enabled', true)
+        .not('email', 'is', null)
+        .neq('email', '');
+      setNotifiableCraftsmen((data ?? []) as NotifiableCraftsman[]);
     })();
   }, []);
 
@@ -615,35 +725,40 @@ function RequestsList({ session }: { session: Session }) {
     }
   }, [sendingFollowupId, showToast]);
 
-  const handleSendCraftsmanNotification = useCallback(async (r: EstimateRequest) => {
-    if (sendingCraftsmanId) return;
-    setSendingCraftsmanId(r.id);
+  const handleSendToOneCraftsman = useCallback(async (
+    reqId: string,
+    req: EstimateRequest,
+    c: NotifiableCraftsman,
+  ) => {
+    const key = `${reqId}-${c.user_id}`;
+    if (sendingNotifyKey) return;
+    setSendingNotifyKey(key);
     try {
       const { error } = await supabase.functions.invoke('send-craftsman-notification', {
         body: {
-          to:        'interior.shop.aoi@gmail.com',
-          work_type: r.work_type  ?? '内装工事',
-          area:      r.area       ?? '未設定',
-          room_type: r.room_type  ?? undefined,
-          timing:    r.timing     ?? undefined,
-          has_video: !!r.video_url,
+          to:        c.email,
+          work_type: req.work_type  ?? '内装工事',
+          area:      req.area       ?? '未設定',
+          room_type: req.room_type  ?? undefined,
+          timing:    req.timing     ?? undefined,
+          has_video: !!req.video_url,
           has_photos:     false,
           has_floor_plan: false,
         },
       });
       if (error) {
-        showToast('職人通知メールの送信に失敗しました');
+        showToast('通知メールの送信に失敗しました');
       } else {
         const sentTime = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-        setCraftsmanSentMap(prev => ({ ...prev, [r.id]: sentTime }));
-        showToast('職人通知メールを送信しました');
+        setNotifySentMap(prev => ({ ...prev, [key]: sentTime }));
+        showToast(`${c.shop_name || c.full_name || '職人'}へ通知しました`);
       }
     } catch {
-      showToast('職人通知メールの送信に失敗しました');
+      showToast('通知メールの送信に失敗しました');
     } finally {
-      setSendingCraftsmanId(null);
+      setSendingNotifyKey(null);
     }
-  }, [sendingCraftsmanId, showToast]);
+  }, [sendingNotifyKey, showToast]);
 
   // useMemo でスコアリング・フィルタ・並び替えを一括処理
   const enrichedRows = useMemo(() => rows.map(enrich), [rows]);
@@ -821,8 +936,7 @@ function RequestsList({ session }: { session: Session }) {
               {displayRows.map((r) => {
                 const isStaleCard  = getFreshness(r.created_at).status === 'urgent';
                 const isNeglected  = r._elapsedHours / 24 >= 14;
-                const sentTime          = followupSentMap[r.id];
-                const craftsmanSentTime = craftsmanSentMap[r.id];
+                const sentTime = followupSentMap[r.id];
                 const cardBadge = sentTime
                   ? { emoji: '🔵', label: '確認メール送信済み', cls: 'bg-blue-50 text-blue-700 border-b border-blue-100' }
                   : isNeglected
@@ -1058,21 +1172,22 @@ function RequestsList({ session }: { session: Session }) {
                         完了にする
                       </button>
                     )}
-                    {/* ── 職人へ通知テスト ── */}
-                    {craftsmanSentTime ? (
-                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
-                        🔔 職人通知済み（{craftsmanSentTime}）
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handleSendCraftsmanNotification(r)}
-                        disabled={sendingCraftsmanId === r.id}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-300 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        🔔 {sendingCraftsmanId === r.id ? '送信中...' : '職人へ通知テスト'}
-                      </button>
-                    )}
                     <span className="ml-auto text-[10px] text-slate-300">詳細 →</span>
+                  </div>
+
+                  {/* ── ⑤ 職人への通知パネル ── */}
+                  <div
+                    className="px-5 pb-4 pt-3 border-t border-slate-100"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <CraftsmanNotifyPanel
+                      reqId={r.id}
+                      req={r}
+                      craftsmen={notifiableCraftsmen}
+                      sendingKey={sendingNotifyKey}
+                      sentMap={notifySentMap}
+                      onSend={c => handleSendToOneCraftsman(r.id, r, c)}
+                    />
                   </div>
                 </div>
                 );
