@@ -64,32 +64,18 @@ function calcEstimate(
   return { low, high };
 }
 
-function buildEstimateBadge(estimate: { low: number; high: number } | null): string {
+function rowEstimate(estimate: { low: number; high: number } | null): string {
   if (!estimate) return '';
   const { low, high } = estimate;
   const range = low === high ? `約${low}万円前後` : `約${low}〜${high}万円前後`;
   return `
-          <!-- 概算目安カード -->
-          <tr>
-            <td style="padding:20px 32px 0;">
-              <table width="100%" cellpadding="0" cellspacing="0"
-                style="background:linear-gradient(135deg,#eff6ff 0%,#f0fdf4 100%);border:1.5px solid #bfdbfe;border-radius:14px;overflow:hidden;">
-                <tr>
-                  <td style="padding:18px 22px;">
-                    <p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#3b82f6;letter-spacing:0.08em;text-transform:uppercase;">
-                      💴 &nbsp;参考 概算目安
-                    </p>
-                    <p style="margin:0;font-size:22px;font-weight:800;color:#1e293b;letter-spacing:-0.01em;">
-                      ${range}
-                    </p>
-                    <p style="margin:6px 0 0;font-size:11px;color:#64748b;">
-                      ※ 施工規模・仕様・現場状況により変動します。確定金額ではありません。
-                    </p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>`;
+    <tr>
+      <td style="padding:12px 20px;border-bottom:1px solid #bfdbfe;background:#eff6ff;">
+        <span style="font-size:11px;color:#2563eb;font-weight:700;display:block;margin-bottom:4px;">💴 &nbsp;概算目安</span>
+        <span style="font-size:17px;color:#1e293b;font-weight:800;">${range}</span>
+        <span style="font-size:10px;color:#94a3b8;display:block;margin-top:3px;">※確定金額ではありません</span>
+      </td>
+    </tr>`;
 }
 
 function row(label: string, value: string | undefined): string {
@@ -178,14 +164,13 @@ function buildHtml(
               <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
                 ${row('施工内容', workType)}
                 ${row('エリア', area)}
+                ${rowEstimate(estimate)}
                 ${row('部屋タイプ', roomType)}
                 ${row('希望時期', timing)}
                 ${buildMediaBadges(hasVideo, hasPhotos, hasFloorPlan)}
               </table>
             </td>
           </tr>
-
-          ${buildEstimateBadge(estimate)}
 
           <!-- CTAボタン -->
           <tr>
