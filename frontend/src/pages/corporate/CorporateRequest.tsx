@@ -477,8 +477,9 @@ export default function CorporateRequest() {
         </div>
         <h2 className="text-2xl font-extrabold text-slate-900 mb-3">受付が完了しました</h2>
         <p className="text-sm text-slate-600 leading-relaxed max-w-xs mb-6">
-          内容を確認し、対応可能な職人から<br />
-          <strong>2営業日以内</strong>にご連絡いたします。
+          内容を確認後、対応可能な職人から<br />
+          順次ご連絡いたします。<br />
+          <span className="text-xs text-slate-400 mt-1 block">早ければ当日中に連絡が来る場合があります。</span>
         </p>
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-emerald-100 px-6 py-5 text-left max-w-xs w-full space-y-3 shadow-sm mb-6">
           {[
@@ -914,7 +915,7 @@ export default function CorporateRequest() {
         <div className="rounded-2xl bg-violet-50 border border-violet-100 px-4 py-4 mb-2">
           <p className="text-xs font-bold text-violet-700 mb-2">📋 送信後の流れ</p>
           <ol className="space-y-1.5">
-            {['担当職人が内容を確認します（2営業日以内）', '登録のメールアドレスにご連絡します', '概算金額をご案内します（無料）'].map((item, i) => (
+            {['対応可能な職人が内容を確認します', '登録のメールアドレスにご連絡します', '概算金額をご案内します（無料）'].map((item, i) => (
               <li key={i} className="flex items-start gap-2">
                 <span className="text-xs font-extrabold text-violet-400 flex-shrink-0 w-4">{i + 1}.</span>
                 <span className="text-xs text-violet-700">{item}</span>
