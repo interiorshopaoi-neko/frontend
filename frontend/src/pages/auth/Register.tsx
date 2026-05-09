@@ -68,6 +68,36 @@ export default function Register({ onLogin }: Props) {
       };
       onLogin(data.session.access_token, userData);
 
+      // 職人登録時のみ craftsmen テーブルへ初期行を投入する。
+      // 既存 RPC upsert_craftsman_profile を使用（直接 insert はしない）。
+      // 失敗しても navigate は止めず、軽量な案内のみ表示する。
+      if (role === 'craftsman') {
+        const { error: profErr } = await supabase.rpc('upsert_craftsman_profile', {
+          p_user_id:                data.user.id,
+          p_email:                  data.user.email ?? email,
+          p_shop_name:              null,
+          p_full_name:              name,
+          p_service_area:           null,
+          p_radius_km:              20,
+          p_work_types:             [],
+          p_specialty:              null,
+          p_available_weekdays:     [],
+          p_notification_enabled:   true,
+          p_profile_image_url:      null,
+          p_age:                    null,
+          p_experience_years:       null,
+          p_bio:                    null,
+          p_available_time:         null,
+          p_has_car:                false,
+          p_has_tools:              false,
+          p_public_profile_enabled: false,
+        });
+        if (profErr) {
+          console.error('[craftsmen init] upsert_craftsman_profile failed:', profErr);
+          setError('プロフィール初期化に失敗しました。あとでプロフィール画面から設定できます。');
+        }
+      }
+
       if (role === 'customer' && fromLanding) {
         navigate('/customer/estimate/flow');
       } else if (role === 'craftsman' && fromProLp) {
