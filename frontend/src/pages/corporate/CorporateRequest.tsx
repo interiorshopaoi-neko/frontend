@@ -402,42 +402,37 @@ export default function CorporateRequest() {
         }
       }
 
-      // 2. estimate_requests に保存（IDを返す）
-      const { data: inserted, error } = await supabase.from('estimate_requests').insert({
-        video_url,
-        area,
-        work_type:      workType,
-        rooms:          null,
-        size_note:      roomSize   || '',
-        timing:         timing     || '',
-        contact_method: contactMethod,
-        contact_value:  contactValue,
-        status:         'new',
-        room_type:      roomType      || null,
-        site_condition: siteCondition || null,
-        desire_type:    desireType    || null,
-        memo:           memo          || null,
-      }).select('id').single();
+      // 2. estimate_requests に保存（SECURITY DEFINER RPC 経由でRLSをバイパス）
+      const metaPayload = { rooms: hasRoomInfo ? rooms : null, extra_info: null };
+      console.log('[CorporateRequest] rpc payload meta:', JSON.stringify(metaPayload, null, 2));
+
+      const { data: rpcResult, error } = await supabase.rpc('create_estimate_request', {
+        p_video_url:      video_url,
+        p_area:           area,
+        p_work_type:      workType,
+        p_size_note:      roomSize        || '',
+        p_timing:         timing          || '',
+        p_contact_method: contactMethod,
+        p_contact_value:  contactValue,
+        p_status:         'new',
+        p_room_type:      roomType        || null,
+        p_site_condition: siteCondition   || null,
+        p_desire_type:    desireType      || null,
+        p_memo:           memo            || null,
+        p_meta:           metaPayload,
+      });
 
       if (error) {
-        console.error('[handleSubmit] Supabase insert error:', error.message, error);
-        setDevErrorDetail(`[SupabaseError] ${error.message}\n${JSON.stringify(error, null, 2)}`);
+        console.error('[handleSubmit] Supabase RPC error:', error.message, error);
+        setDevErrorDetail(`[SupabaseRPCError] ${error.message}\n${JSON.stringify(error, null, 2)}`);
         setSubmitState('error');
         return;
       }
 
-      // 3. meta.rooms を別途保存（カラムがあれば）
-      const metaPayload = { rooms: hasRoomInfo ? rooms : null, extra_info: null };
-      console.log('[CorporateRequest] meta payload:', JSON.stringify(metaPayload, null, 2));
+      const inserted = rpcResult as { id: string; status: string } | null;
+      console.log('[CorporateRequest] insert success, id:', inserted?.id);
       if (inserted?.id) {
         setNewRequestId(inserted.id);
-        const { error: metaErr } = await supabase
-          .from('estimate_requests')
-          .update({ meta: metaPayload } as Record<string, unknown>)
-          .eq('id', inserted.id);
-        if (metaErr) {
-          console.warn('[CorporateRequest] meta save skipped (column may not exist):', metaErr.message);
-        }
       }
 
       // 4. 管理者へメール通知（失敗しても送信完了扱い）
