@@ -561,6 +561,8 @@ function RequestsList({ session }: { session: Session }) {
   const [videoUrl,           setVideoUrl]           = useState<string | null>(null);
   const [sendingFollowupId,  setSendingFollowupId]  = useState<string | null>(null);
   const [followupSentMap,    setFollowupSentMap]    = useState<Record<string, string>>({});
+  const [sendingCraftsmanId, setSendingCraftsmanId] = useState<string | null>(null);
+  const [craftsmanSentMap,   setCraftsmanSentMap]   = useState<Record<string, string>>({});
 
   useEffect(() => {
     (async () => {
@@ -612,6 +614,36 @@ function RequestsList({ session }: { session: Session }) {
       setSendingFollowupId(null);
     }
   }, [sendingFollowupId, showToast]);
+
+  const handleSendCraftsmanNotification = useCallback(async (r: EstimateRequest) => {
+    if (sendingCraftsmanId) return;
+    setSendingCraftsmanId(r.id);
+    try {
+      const { error } = await supabase.functions.invoke('send-craftsman-notification', {
+        body: {
+          to:        'interior.shop.aoi@gmail.com',
+          work_type: r.work_type  ?? '内装工事',
+          area:      r.area       ?? '未設定',
+          room_type: r.room_type  ?? undefined,
+          timing:    r.timing     ?? undefined,
+          has_video: !!r.video_url,
+          has_photos:     false,
+          has_floor_plan: false,
+        },
+      });
+      if (error) {
+        showToast('職人通知メールの送信に失敗しました');
+      } else {
+        const sentTime = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        setCraftsmanSentMap(prev => ({ ...prev, [r.id]: sentTime }));
+        showToast('職人通知メールを送信しました');
+      }
+    } catch {
+      showToast('職人通知メールの送信に失敗しました');
+    } finally {
+      setSendingCraftsmanId(null);
+    }
+  }, [sendingCraftsmanId, showToast]);
 
   // useMemo でスコアリング・フィルタ・並び替えを一括処理
   const enrichedRows = useMemo(() => rows.map(enrich), [rows]);
@@ -789,7 +821,8 @@ function RequestsList({ session }: { session: Session }) {
               {displayRows.map((r) => {
                 const isStaleCard  = getFreshness(r.created_at).status === 'urgent';
                 const isNeglected  = r._elapsedHours / 24 >= 14;
-                const sentTime     = followupSentMap[r.id];
+                const sentTime          = followupSentMap[r.id];
+                const craftsmanSentTime = craftsmanSentMap[r.id];
                 const cardBadge = sentTime
                   ? { emoji: '🔵', label: '確認メール送信済み', cls: 'bg-blue-50 text-blue-700 border-b border-blue-100' }
                   : isNeglected
@@ -1023,6 +1056,20 @@ function RequestsList({ session }: { session: Session }) {
                       <button onClick={() => updateStatus(r.id, 'done')}
                         className="text-xs font-semibold text-emerald-700 bg-white hover:bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 transition-colors">
                         完了にする
+                      </button>
+                    )}
+                    {/* ── 職人へ通知テスト ── */}
+                    {craftsmanSentTime ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
+                        🔔 職人通知済み（{craftsmanSentTime}）
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleSendCraftsmanNotification(r)}
+                        disabled={sendingCraftsmanId === r.id}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-300 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        🔔 {sendingCraftsmanId === r.id ? '送信中...' : '職人へ通知テスト'}
                       </button>
                     )}
                     <span className="ml-auto text-[10px] text-slate-300">詳細 →</span>
