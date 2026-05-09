@@ -337,6 +337,7 @@ export default function JobsSwipeView({ jobs }: Props) {
   const [modalOpen,       setModalOpen]       = useState(false);
   const [lastAppliedJob,  setLastAppliedJob]  = useState<Job | null>(null);
   const [confirmJob,      setConfirmJob]      = useState<Job | null>(null);
+  const [applyError,      setApplyError]      = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // スクロール位置を追跡
@@ -351,24 +352,73 @@ export default function JobsSwipeView({ jobs }: Props) {
     return () => container.removeEventListener('scroll', onScroll);
   }, []);
 
+  // refresh 後も応募状態を維持するため、マウント時に DB から自分の応募一覧を読み戻す。
+  // demo 行（estimate_request_id が UUID 形式でない）は DB 上に存在しないため、
+  // demo 案件への応募状態は localStorage 等にも残さない（=リロード後は再応募可能）。
+  // craftsman ロール以外は読み込み不要。
+  useEffect(() => {
+    (async () => {
+      const stored = localStorage.getItem('user');
+      const userObj = stored ? JSON.parse(stored) : null;
+      if (userObj?.role !== 'craftsman' || !userObj?.id) return;
+
+      const { data, error } = await supabase
+        .from('job_applications')
+        .select('estimate_request_id')
+        .eq('craftsman_id', userObj.id);
+      if (error) {
+        console.error('[apply] fetch applied list failed:', error);
+        return;
+      }
+      if (data && data.length > 0) {
+        setAppliedIds(new Set(data.map((r: { estimate_request_id: string }) => r.estimate_request_id)));
+      }
+    })();
+  }, []);
+
+  // inline error は数秒で自動的に消す
+  useEffect(() => {
+    if (!applyError) return;
+    const t = setTimeout(() => setApplyError(null), 4000);
+    return () => clearTimeout(t);
+  }, [applyError]);
+
   const applyJob = useCallback(async (job: Job) => {
     if (appliedIds.has(job.id) || submittingId) return;
-    setSubmittingId(job.id);
 
-    const storedUser = localStorage.getItem('user');
-    const craftsmanId = storedUser ? JSON.parse(storedUser).id : null;
+    // role ガード（customer 経路保護）
+    const stored = localStorage.getItem('user');
+    const userObj = stored ? JSON.parse(stored) : null;
+    if (userObj?.role !== 'craftsman' || !userObj?.id) {
+      console.error('[apply] blocked: not a craftsman session');
+      setApplyError('職人として登録・ログインしてから応募してください。');
+      return;
+    }
+
+    // demo 案件は DB に保存しない（UI 上だけ成功扱い）。
+    // estimate_request_id は uuid 列のため demo-N を insert すると必ず失敗する。
+    if (job.id.startsWith('demo-')) {
+      setAppliedIds(prev => new Set([...prev, job.id]));
+      setLastAppliedJob(job);
+      setModalOpen(true);
+      return;
+    }
+
+    setSubmittingId(job.id);
+    setApplyError(null);
 
     const { error } = await supabase.from('job_applications').insert({
       estimate_request_id: job.id,
-      craftsman_id: craftsmanId,
-      status: 'available',
-      message: '今すぐ行けます',
+      craftsman_id:        userObj.id,
+      status:              'available',
+      message:             '今すぐ行けます',
     });
 
     setSubmittingId(null);
 
     if (error) {
-      alert('送信に失敗しました。もう一度お試しください。');
+      console.error('[apply] job_applications insert failed:', error);
+      setApplyError('応募の送信に失敗しました。しばらくしてからもう一度お試しください。');
       return;
     }
 
@@ -431,6 +481,13 @@ export default function JobsSwipeView({ jobs }: Props) {
             }
           }}
         />
+      )}
+
+      {/* 応募失敗トースト（数秒で自動消去） */}
+      {applyError && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 max-w-[92%] px-4 py-2.5 rounded-xl bg-rose-600/95 backdrop-blur text-white text-[12.5px] font-bold shadow-xl shadow-rose-900/30 text-center">
+          {applyError}
+        </div>
       )}
 
       {/* スワイプコンテナ */}
