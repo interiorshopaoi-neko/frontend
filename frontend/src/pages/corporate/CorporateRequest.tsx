@@ -414,7 +414,6 @@ export default function CorporateRequest() {
         p_timing:         timing          || '',
         p_contact_method: contactMethod,
         p_contact_value:  contactValue,
-        p_status:         'new',
         p_room_type:      roomType        || null,
         p_site_condition: siteCondition   || null,
         p_desire_type:    desireType      || null,
