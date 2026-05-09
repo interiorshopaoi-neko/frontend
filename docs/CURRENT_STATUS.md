@@ -10,15 +10,16 @@
 | ページ | ルート | 説明 |
 |---|---|---|
 | トップページ | `/` | 動画ファーストLP。BottomNav(subtle)あり |
-| 動画フォーム依頼 | `/corporate` | マルチステップ依頼フォーム（動画・写真対応） |
+| 動画フォーム依頼 | `/corporate` | マルチステップ7ステップ依頼フォーム（動画・写真・複数部屋対応） |
+| 追加情報入力 | `/request/:id/extra-info` | 依頼送信後の任意情報（家具・駐車・材料等）。meta JSONB 保存 |
 | 見積もりフロー | `/customer/estimate/flow` | 旧フロー（残存） |
 | レビューページ | `/request/:id/review` | 星評価・確認チェックリスト（デモのみ・DB保存なし） |
 
 ### 職人側
 | ページ | ルート | 説明 |
 |---|---|---|
-| 案件一覧 | `/craftsman/jobs` | 動画タブ優先・想定売上/手取り表示 |
-| 応募ページ | `/craftsman/apply/:id` | 概算金額入力・手数料プレビュー・手数料ルール表示 |
+| 案件一覧 | `/craftsman/jobs` | 動画タブ優先・想定売上/手取り表示・部屋数/追加情報バッジ |
+| 応募ページ | `/craftsman/apply/:id` | 概算金額入力・手数料プレビュー・部屋情報/追加情報セクション表示 |
 | 応募管理 | `/craftsman/dashboard` | ステータス管理・手数料notice・レビュー待ちバナー |
 | プロフィール | `/craftsman/profile` | 編集画面・職人ツール導線・サポートカード |
 | 公開プロフィール | `/craftsman/profile/:userId` | 閲覧専用・通報リンク |
@@ -29,7 +30,7 @@
 ### 管理者側
 | ページ | ルート | 説明 |
 |---|---|---|
-| 管理ダッシュボード | `/admin/dashboard` | Supabaseから依頼・職人・応募データ取得・分析 |
+| 管理ダッシュボード | `/admin/dashboard` | 依頼・職人・応募データ取得・分析。部屋数/追加情報列あり |
 | 依頼一覧 | `/admin/requests` | 依頼一覧 |
 | 旧管理 | `/admin` | 旧AdminDashboard（残存） |
 
@@ -48,6 +49,7 @@
 - `BottomNav`：4タブ固定（案件・管理・応援・マイページ）
 - `serviceFee.ts`：`calculateServiceFee()` / `formatFee()`
 - SVGロゴ：`/public/logo-full.svg`・`/public/logo-icon.svg`（家+再生ボタン）
+- 型定義：`RoomInfo` / `JobMeta` / `ExtraInfo`（`CraftsmanJobsPage.tsx` / `RequestExtraInfoPage.tsx` からexport）
 
 ---
 

@@ -33,7 +33,7 @@ export default function CompletePage() {
 
         {/* Logo */}
         <div className="mb-10">
-          <img src="/logo-full.svg" alt="PRO MATCH" className="h-8 object-contain" />
+          <img src="/logo-full.png" alt="PRO MATCH" className="h-8 object-contain" />
         </div>
 
         {/* Hero */}

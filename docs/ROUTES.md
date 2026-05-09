@@ -44,6 +44,7 @@
 | `/craftsman` | 職人ダッシュボード旧版（ログイン必須） |
 | `/craftsman/estimate/:id` | 見積もりレビュー（ログイン必須 or demo） |
 | `/request/:id/applications` | 依頼への応募一覧（お客様側） |
+| `/request/:id/extra-info` | 依頼送信後の任意追加情報入力（家具・駐車・材料等。meta JSONB に保存） |
 
 ---
 

@@ -1,22 +1,17 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Layers, Scissors, LayoutGrid, MessageSquare, Mail } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 // ── 定数 ─────────────────────────────────────────────────────────────────────
 
-const WORK_OPTIONS = [
-  { value: 'クロス張り替え', icon: '🧱', desc: '壁紙を新しく張り替え' },
-  { value: 'クロス補修',     icon: '🔧', desc: '傷・破れなど部分補修' },
-  { value: '床工事',         icon: '🪵', desc: 'フローリング・CF張替' },
-  { value: 'その他相談',     icon: '💬', desc: 'まずは相談したい' },
-] as const;
-
-const CONTACT_OPTIONS = [
-  { value: 'LINE',  icon: '💬', desc: 'LINEのIDをお知らせください', placeholder: 'LINE ID を入力' },
-  { value: 'メール', icon: '📧', desc: 'メールアドレスを入力',       placeholder: 'example@mail.com' },
-  { value: '電話',   icon: '📞', desc: '折り返しご連絡します',       placeholder: '090-0000-0000' },
-] as const;
-
-// ── 詳細情報の選択肢 ──────────────────────────────────────────────────────────
+type WorkOption = { value: string; Icon: React.FC<{ size?: number; className?: string }>; desc: string };
+const WORK_OPTIONS: WorkOption[] = [
+  { value: 'クロス張り替え', Icon: Layers,      desc: '壁紙を新しく張り替え' },
+  { value: 'クロス補修',     Icon: Scissors,    desc: '傷・破れなど部分補修' },
+  { value: '床工事',         Icon: LayoutGrid,  desc: 'フローリング・CF張替' },
+  { value: 'その他相談',     Icon: MessageSquare, desc: 'まずは相談したい' },
+];
 
 const ROOM_TYPE_OPTIONS  = ['リビング', '洋室', '寝室', '廊下', 'その他', '不明'] as const;
 const ROOM_SIZE_OPTIONS  = ['6畳以下', '6〜8畳', '8〜10畳', '10畳以上', '不明'] as const;
@@ -32,7 +27,21 @@ const DESIRE_TYPE_OPTIONS = [
 
 const TRUST_ITEMS = ['ログイン不要', '住所入力不要', '概算確認のみ', 'しつこい営業なし'] as const;
 
-const TOTAL_STEPS = 6; // 動画・施工・エリア・詳細情報・連絡方法・連絡先
+// ── 複数部屋 ──────────────────────────────────────────────────────────────────
+
+type Room = {
+  name: string;
+  workType: string;
+  size: string;
+  condition: string[];
+};
+
+const ROOM_NAMES = ['LDK', '洋室', '寝室', '廊下', 'トイレ', '洗面所', 'その他'] as const;
+const ROOM_WORKS = ['壁紙・クロス', 'クッションフロア', '両方'] as const;
+const ROOM_SIZES = ['6畳', '8畳', '12畳', '不明'] as const;
+const ROOM_CONDS = ['汚れ', 'めくれ', '傷', 'カビ', 'ペット臭', '不明'] as const;
+
+const TOTAL_STEPS = 6; // 動画/部屋/施工/エリア/詳細/メール
 
 // ── PageShell ─────────────────────────────────────────────────────────────────
 
@@ -52,7 +61,7 @@ function PageHeader() {
   return (
     <div className="px-6 pt-8 pb-6 border-b border-slate-100 flex-shrink-0">
       <div className="flex items-center gap-2 mb-4">
-        <img src="/logo-full.svg" alt="PRO MATCH" className="h-7 object-contain" />
+        <img src="/logo-full.png" alt="PRO MATCH" className="h-7 object-contain" />
       </div>
       <h1 className="text-2xl font-extrabold text-slate-900 leading-snug mb-1">
         内装工事の概算確認
@@ -171,7 +180,7 @@ function BottomNav({
   );
 }
 
-// ── ChipGroup：選択チップ（詳細ステップ用） ──────────────────────────────────
+// ── ChipGroup ─────────────────────────────────────────────────────────────────
 
 function ChipGroup({
   label,
@@ -210,20 +219,138 @@ function ChipGroup({
   );
 }
 
+// ── RoomCard ──────────────────────────────────────────────────────────────────
+
+function RoomCard({
+  room,
+  index,
+  canDelete,
+  onUpdate,
+  onDelete,
+}: {
+  room: Room;
+  index: number;
+  canDelete: boolean;
+  onUpdate: (patch: Partial<Room>) => void;
+  onDelete: () => void;
+}) {
+  function toggleCond(c: string) {
+    const has = room.condition.includes(c);
+    onUpdate({ condition: has ? room.condition.filter(x => x !== c) : [...room.condition, c] });
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-extrabold text-slate-700">部屋 {index + 1}</p>
+        {canDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="text-xs text-red-400 hover:text-red-600 font-bold transition-colors"
+          >
+            削除
+          </button>
+        )}
+      </div>
+
+      {/* 部屋名 */}
+      <div>
+        <p className="text-[11px] font-bold text-slate-500 mb-1.5">部屋名</p>
+        <div className="flex flex-wrap gap-1.5">
+          {ROOM_NAMES.map(n => (
+            <button
+              key={n} type="button"
+              onClick={() => onUpdate({ name: n })}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                room.name === n
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 工事内容 */}
+      <div>
+        <p className="text-[11px] font-bold text-slate-500 mb-1.5">工事内容</p>
+        <div className="flex flex-wrap gap-1.5">
+          {ROOM_WORKS.map(w => (
+            <button
+              key={w} type="button"
+              onClick={() => onUpdate({ workType: w })}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                room.workType === w
+                  ? 'bg-violet-600 text-white border-violet-600'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300'
+              }`}
+            >
+              {w}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 広さ */}
+      <div>
+        <p className="text-[11px] font-bold text-slate-500 mb-1.5">だいたいの広さ</p>
+        <div className="flex flex-wrap gap-1.5">
+          {ROOM_SIZES.map(s => (
+            <button
+              key={s} type="button"
+              onClick={() => onUpdate({ size: s })}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                room.size === s
+                  ? 'bg-slate-800 text-white border-slate-800'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 状態 */}
+      <div>
+        <p className="text-[11px] font-bold text-slate-500 mb-1.5">状態（複数選択可）</p>
+        <div className="flex flex-wrap gap-1.5">
+          {ROOM_CONDS.map(c => (
+            <button
+              key={c} type="button"
+              onClick={() => toggleCond(c)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                room.condition.includes(c)
+                  ? 'bg-orange-500 text-white border-orange-500'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-orange-300'
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function CorporateRequest() {
-  // ── ステップ管理 ───────────────────────────────────────────────────────────
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
 
-  // ── フォームデータ（基本） ─────────────────────────────────────────────────
-  const [videoFile,     setVideoFile]     = useState<File | null>(null);
-  const [workType,      setWorkType]      = useState('');
-  const [area,          setArea]          = useState('');
-  const [contactMethod, setContactMethod] = useState('');
-  const [contactValue,  setContactValue]  = useState('');
+  // フォームデータ（基本）
+  const [videoFile,    setVideoFile]    = useState<File | null>(null);
+  const [workType,     setWorkType]     = useState('');
+  const [area,         setArea]         = useState('');
+  const [contactValue, setContactValue] = useState('');
+  const contactMethod = 'メール'; // メールアドレスに統一
 
-  // ── フォームデータ（詳細情報・すべて任意） ────────────────────────────────
+  // フォームデータ（詳細情報・すべて任意）
   const [roomType,      setRoomType]      = useState('');
   const [roomSize,      setRoomSize]      = useState('');
   const [timing,        setTiming]        = useState('');
@@ -231,12 +358,28 @@ export default function CorporateRequest() {
   const [desireType,    setDesireType]    = useState('');
   const [memo,          setMemo]          = useState('');
 
-  // ── 送信状態 ───────────────────────────────────────────────────────────────
-  const [submitState,    setSubmitState]    = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
-  const [devErrorDetail, setDevErrorDetail] = useState<string | null>(null); // 開発確認用（本番非表示）
+  // 複数部屋
+  const [rooms, setRooms] = useState<Room[]>([
+    { name: 'LDK', workType: '', size: '', condition: [] },
+  ]);
 
-  // ── 詳細情報の入力有無（確認画面で使う） ──────────────────────────────────
-  const hasDetail = !!(roomType || roomSize || timing || siteCondition || desireType || memo);
+  function addRoom() {
+    setRooms(prev => [...prev, { name: '洋室', workType: '', size: '', condition: [] }]);
+  }
+  function removeRoom(idx: number) {
+    setRooms(prev => prev.filter((_, i) => i !== idx));
+  }
+  function updateRoom(idx: number, patch: Partial<Room>) {
+    setRooms(prev => prev.map((r, i) => i === idx ? { ...r, ...patch } : r));
+  }
+
+  // 送信状態
+  const [submitState,    setSubmitState]    = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  const [devErrorDetail, setDevErrorDetail] = useState<string | null>(null);
+  const [newRequestId,   setNewRequestId]   = useState<string | null>(null);
+
+  const hasDetail = !!(timing || desireType || memo);
+  const hasRoomInfo = rooms.some(r => r.workType || r.size);
 
   // ── Supabase 送信処理 ──────────────────────────────────────────────────────
   const handleSubmit = async () => {
@@ -259,32 +402,39 @@ export default function CorporateRequest() {
         }
       }
 
-      // 2. estimate_requests に保存
-      const { error } = await supabase.from('estimate_requests').insert({
-        video_url,
-        area,
-        work_type:      workType,
-        rooms:          null,
-        size_note:      roomSize   || '',
-        timing:         timing     || '',
-        contact_method: contactMethod,
-        contact_value:  contactValue,
-        status:         'new',
-        // 詳細情報（新規カラム）
-        room_type:      roomType      || null,
-        site_condition: siteCondition || null,
-        desire_type:    desireType    || null,
-        memo:           memo          || null,
+      // 2. estimate_requests に保存（SECURITY DEFINER RPC 経由でRLSをバイパス）
+      const metaPayload = { rooms: hasRoomInfo ? rooms : null, extra_info: null };
+      console.log('[CorporateRequest] rpc payload meta:', JSON.stringify(metaPayload, null, 2));
+
+      const { data: rpcResult, error } = await supabase.rpc('create_estimate_request', {
+        p_video_url:      video_url,
+        p_area:           area,
+        p_work_type:      workType,
+        p_size_note:      roomSize        || '',
+        p_timing:         timing          || '',
+        p_contact_method: contactMethod,
+        p_contact_value:  contactValue,
+        p_room_type:      roomType        || null,
+        p_site_condition: siteCondition   || null,
+        p_desire_type:    desireType      || null,
+        p_memo:           memo            || null,
+        p_meta:           metaPayload,
       });
+
       if (error) {
-        // 技術的な詳細はコンソールのみ・UIには出さない
-        console.error('[handleSubmit] Supabase insert error:', error.message, error);
-        setDevErrorDetail(`[SupabaseError] ${error.message}\n${JSON.stringify(error, null, 2)}`);
+        console.error('[handleSubmit] Supabase RPC error:', error.message, error);
+        setDevErrorDetail(`[SupabaseRPCError] ${error.message}\n${JSON.stringify(error, null, 2)}`);
         setSubmitState('error');
         return;
       }
 
-      // 3. 管理者へメール通知（失敗しても送信完了扱い）
+      const inserted = rpcResult as { id: string; status: string } | null;
+      console.log('[CorporateRequest] insert success, id:', inserted?.id);
+      if (inserted?.id) {
+        setNewRequestId(inserted.id);
+      }
+
+      // 4. 管理者へメール通知（失敗しても送信完了扱い）
       try {
         await fetch('/api/notify', {
           method:  'POST',
@@ -303,7 +453,6 @@ export default function CorporateRequest() {
 
       setSubmitState('success');
     } catch (err) {
-      // 予期しないエラーもコンソールのみ
       console.error('[handleSubmit] 送信エラー:', err);
       const detail = err instanceof Error
         ? `[${err.name}] ${err.message}`
@@ -315,6 +464,7 @@ export default function CorporateRequest() {
 
   // ── 送信完了画面 ───────────────────────────────────────────────────────────
   if (submitState === 'success') {
+    const extraId = newRequestId ?? 'demo-1';
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center px-6 text-center"
@@ -326,21 +476,41 @@ export default function CorporateRequest() {
           </svg>
         </div>
         <h2 className="text-2xl font-extrabold text-slate-900 mb-3">受付が完了しました</h2>
-        <p className="text-sm text-slate-600 leading-relaxed max-w-xs mb-8">
+        <p className="text-sm text-slate-600 leading-relaxed max-w-xs mb-6">
           内容を確認し、対応可能な職人から<br />
           <strong>2営業日以内</strong>にご連絡いたします。
         </p>
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-emerald-100 px-6 py-5 text-left max-w-xs w-full space-y-3 shadow-sm">
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-emerald-100 px-6 py-5 text-left max-w-xs w-full space-y-3 shadow-sm mb-6">
           {[
             '費用が確定するまで料金は発生しません',
             '断っても一切費用はかかりません',
-            'しつこい営業電話はいたしません',
+            'しつこい営業メールはいたしません',
           ].map(msg => (
             <div key={msg} className="flex items-start gap-2.5">
               <span className="text-emerald-500 font-extrabold text-xs mt-0.5 flex-shrink-0">✓</span>
               <span className="text-xs text-slate-600 font-medium">{msg}</span>
             </div>
           ))}
+        </div>
+
+        {/* 追加情報CTA */}
+        <div className="max-w-xs w-full space-y-3">
+          <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-left">
+            <p className="text-xs font-bold text-blue-800 mb-0.5">さらに正確な見積もりにできます</p>
+            <p className="text-[11px] text-blue-600 leading-relaxed">部屋ごとの情報（広さ・状態・家具量など）を追加すると、職人がより正確な概算を出せます。</p>
+          </div>
+          <button
+            onClick={() => navigate(`/request/${extraId}/extra-info`)}
+            className="w-full py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-sm transition-all shadow-sm"
+          >
+            部屋ごとの情報を追加する →
+          </button>
+          <button
+            onClick={() => navigate('/')}
+            className="w-full py-3 rounded-2xl border border-slate-200 text-slate-500 font-semibold text-sm hover:bg-white transition-all"
+          >
+            今はスキップ
+          </button>
         </div>
       </div>
     );
@@ -360,12 +530,11 @@ export default function CorporateRequest() {
           時間をおいて再度お試しください。
         </p>
         <button
-          onClick={() => { setSubmitState('idle'); setStep(7); }}
+          onClick={() => { setSubmitState('idle'); setStep(8); }}
           className="px-8 py-3 rounded-2xl bg-violet-600 text-white font-bold text-sm shadow-sm hover:bg-violet-700 active:scale-95 transition-all mb-4"
         >
           もう一度試す
         </button>
-        {/* 開発環境のみエラー詳細を表示 */}
         {import.meta.env.DEV && devErrorDetail && (
           <details className="w-full max-w-sm text-left mt-2">
             <summary className="text-xs text-slate-300 cursor-pointer select-none">DEV: 詳細を見る</summary>
@@ -385,6 +554,33 @@ export default function CorporateRequest() {
         <PageHeader />
         <StepProgress step={1} />
         <StepContent title="お部屋の動画を撮影してください" sub="10〜30秒でOK。壁・床・気になる箇所をゆっくり撮るだけ">
+
+          {/* ── 撮影前チェックリスト ── */}
+          <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+            <p className="text-xs font-bold text-amber-800 mb-1">撮影前に軽くご確認ください</p>
+            <p className="text-[11px] text-amber-700 mb-3 leading-relaxed">
+              動画は職人が内容確認に使います。個人情報が映らないよう、撮影前に少し片付けていただけると安心です。
+            </p>
+            <ul className="space-y-2">
+              {[
+                '郵便物・書類が映っていない',
+                '表札・住所が映っていない',
+                '顔や家族の姿が映っていない',
+                '車のナンバーが映っていない',
+                '貴重品など個人情報がわかる物を片付けた',
+              ].map(item => (
+                <li key={item} className="flex items-center gap-2.5">
+                  <span className="w-4 h-4 rounded border border-amber-300 bg-white flex-shrink-0 flex items-center justify-center">
+                    <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+                      <path d="M2 5l2.5 2.5 3.5-4" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </span>
+                  <span className="text-xs text-amber-900">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
           <label
             className={`flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-2xl px-6 py-10 cursor-pointer transition-all ${
               videoFile
@@ -413,15 +609,25 @@ export default function CorporateRequest() {
 
           {!videoFile && (
             <div className="mt-5 rounded-2xl bg-slate-50 border border-slate-100 px-4 py-4">
-              <p className="text-xs font-bold text-slate-500 mb-2">📌 撮影のポイント</p>
-              <ul className="space-y-1.5">
-                {['部屋の四隅から全体を撮る', '傷や剥がれなどの気になる箇所はアップで', '明るい時間帯に撮影すると伝わりやすい'].map(tip => (
-                  <li key={tip} className="flex items-start gap-2">
-                    <span className="text-violet-400 text-xs mt-0.5">•</span>
-                    <span className="text-xs text-slate-500">{tip}</span>
+              <p className="text-xs font-bold text-slate-500 mb-3">📌 撮影のポイント（3ステップ）</p>
+              <ul className="space-y-2.5">
+                {[
+                  { step: '①', title: '部屋をゆっくり一周',      desc: '壁・天井・全体が映るように撮影' },
+                  { step: '②', title: '壁・床を映す',             desc: '施工したい面をゆっくり映してください' },
+                  { step: '③', title: '気になる箇所を近くで撮る', desc: '傷・剥がれなど問題箇所はアップで' },
+                ].map(({ step: s, title, desc }) => (
+                  <li key={s} className="flex items-start gap-3">
+                    <span className="text-violet-500 font-extrabold text-xs mt-0.5 w-4 flex-shrink-0">{s}</span>
+                    <div>
+                      <p className="text-xs font-bold text-slate-700">{title}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                    </div>
                   </li>
                 ))}
               </ul>
+              <p className="text-[11px] text-blue-600 mt-3 leading-relaxed">
+                💡 複数部屋の場合は、部屋ごとにゆっくり撮影してください。1本の動画にまとめてもOKです。
+              </p>
             </div>
           )}
         </StepContent>
@@ -430,25 +636,65 @@ export default function CorporateRequest() {
     );
   }
 
-  // ── STEP 2：施工内容 ────────────────────────────────────────────────────────
+  // ── STEP 2：工事する部屋 ────────────────────────────────────────────────────
   if (step === 2) {
     return (
       <PageShell>
         <PageHeader />
         <StepProgress step={2} />
+        <StepContent title="工事する部屋を教えてください" sub="任意・スキップ可。1部屋から複数部屋まで対応" scrollable>
+          <div className="space-y-4">
+            {rooms.map((room, idx) => (
+              <RoomCard
+                key={idx}
+                room={room}
+                index={idx}
+                canDelete={idx > 0}
+                onUpdate={patch => updateRoom(idx, patch)}
+                onDelete={() => removeRoom(idx)}
+              />
+            ))}
+
+            {/* 部屋追加ボタン */}
+            <button
+              type="button"
+              onClick={addRoom}
+              className="w-full rounded-2xl border-2 border-dashed border-slate-200 py-3.5 text-sm font-bold text-slate-400 hover:border-blue-300 hover:text-blue-500 transition-all active:scale-[0.99]"
+            >
+              ＋ 部屋を追加
+            </button>
+          </div>
+        </StepContent>
+        <BottomNav
+          onBack={() => setStep(1)}
+          onNext={() => setStep(3)}
+          nextLabel={hasRoomInfo ? '次へ →' : 'スキップ →'}
+        />
+      </PageShell>
+    );
+  }
+
+  // ── STEP 3：施工内容 ────────────────────────────────────────────────────────
+  if (step === 3) {
+    return (
+      <PageShell>
+        <PageHeader />
+        <StepProgress step={3} />
         <StepContent title="ご希望の施工内容を選んでください" sub="当てはまるものをひとつ選択してください">
           <div className="grid grid-cols-2 gap-3">
-            {WORK_OPTIONS.map(({ value, icon, desc }) => (
+            {WORK_OPTIONS.map(({ value, Icon, desc }) => (
               <button
                 key={value}
-                onClick={() => { setWorkType(value); setStep(3); }}
+                onClick={() => { setWorkType(value); setStep(4); }}
                 className={`flex flex-col items-start gap-2.5 rounded-2xl border-2 px-4 py-5 text-left transition-all active:scale-95 ${
                   workType === value
                     ? 'border-violet-500 bg-violet-50 shadow-sm shadow-violet-100'
                     : 'border-slate-200 bg-white hover:border-violet-300 hover:bg-violet-50/30'
                 }`}
               >
-                <span className="text-3xl">{icon}</span>
+                <span className={`${workType === value ? 'text-violet-500' : 'text-slate-400'}`}>
+                  <Icon size={26} />
+                </span>
                 <div>
                   <p className="text-sm font-extrabold text-slate-800">{value}</p>
                   <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{desc}</p>
@@ -460,17 +706,17 @@ export default function CorporateRequest() {
             ))}
           </div>
         </StepContent>
-        <BottomNav onBack={() => setStep(1)} onNext={() => workType && setStep(3)} nextDisabled={!workType} nextLabel="次へ →" />
+        <BottomNav onBack={() => setStep(2)} onNext={() => workType && setStep(4)} nextDisabled={!workType} nextLabel="次へ →" />
       </PageShell>
     );
   }
 
-  // ── STEP 3：施工エリア ──────────────────────────────────────────────────────
-  if (step === 3) {
+  // ── STEP 4：施工エリア ──────────────────────────────────────────────────────
+  if (step === 4) {
     return (
       <PageShell>
         <PageHeader />
-        <StepProgress step={3} />
+        <StepProgress step={4} />
         <StepContent title="施工エリアを教えてください" sub="住所は不要です。〇〇市・〇〇区レベルでOK">
           <div className="space-y-3">
             <input
@@ -494,57 +740,25 @@ export default function CorporateRequest() {
             </div>
           </div>
         </StepContent>
-        <BottomNav onBack={() => setStep(2)} onNext={() => setStep(4)} nextDisabled={area.trim() === ''} nextLabel="次へ →" />
+        <BottomNav onBack={() => setStep(3)} onNext={() => setStep(5)} nextDisabled={area.trim() === ''} nextLabel="次へ →" />
       </PageShell>
     );
   }
 
-  // ── STEP 4：詳細情報（すべて任意） ─────────────────────────────────────────
-  if (step === 4) {
+  // ── STEP 5：詳細情報（すべて任意） ─────────────────────────────────────────
+  if (step === 5) {
     return (
       <PageShell>
         <PageHeader />
-        <StepProgress step={4} />
+        <StepProgress step={5} />
         <StepContent
-          title="現場の詳細を教えてください"
-          sub="すべて任意です。わからない場合はスキップできます"
+          title="ご希望を少しだけ教えてください"
+          sub="任意です。わかる範囲だけで大丈夫です"
           scrollable
         >
           <div className="space-y-6 pb-2">
+            <ChipGroup label="希望時期" options={TIMING_OPTIONS} value={timing} onChange={setTiming} />
 
-            {/* 部屋の種類 */}
-            <ChipGroup
-              label="部屋の種類"
-              options={ROOM_TYPE_OPTIONS}
-              value={roomType}
-              onChange={setRoomType}
-            />
-
-            {/* だいたいの広さ */}
-            <ChipGroup
-              label="だいたいの広さ"
-              options={ROOM_SIZE_OPTIONS}
-              value={roomSize}
-              onChange={setRoomSize}
-            />
-
-            {/* 希望時期 */}
-            <ChipGroup
-              label="希望時期"
-              options={TIMING_OPTIONS}
-              value={timing}
-              onChange={setTiming}
-            />
-
-            {/* 現場状況 */}
-            <ChipGroup
-              label="現場状況"
-              options={SITE_COND_OPTIONS}
-              value={siteCondition}
-              onChange={setSiteCondition}
-            />
-
-            {/* 希望タイプ */}
             <div>
               <p className="text-xs font-bold text-slate-600 mb-0.5">
                 今回のご希望に近いものを選んでください
@@ -569,7 +783,6 @@ export default function CorporateRequest() {
               </div>
             </div>
 
-            {/* 補足メモ */}
             <div>
               <p className="text-xs font-bold text-slate-600 mb-2">
                 補足メモ
@@ -583,89 +796,57 @@ export default function CorporateRequest() {
                 className="w-full border-2 border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-violet-400 transition-colors resize-none leading-relaxed"
               />
             </div>
-
           </div>
         </StepContent>
-        {/* 任意なので nextDisabled=false。何も選ばずに「スキップ」として機能する */}
         <BottomNav
-          onBack={() => setStep(3)}
-          onNext={() => setStep(5)}
+          onBack={() => setStep(4)}
+          onNext={() => setStep(7)}
           nextLabel={hasDetail ? '次へ →' : 'スキップ →'}
         />
       </PageShell>
     );
   }
 
-  // ── STEP 5：連絡方法 ────────────────────────────────────────────────────────
-  if (step === 5) {
-    return (
-      <PageShell>
-        <PageHeader />
-        <StepProgress step={5} />
-        <StepContent title="ご連絡方法を選んでください" sub="職人からのご案内に使用します。迷惑な連絡はしません">
-          <div className="space-y-3">
-            {CONTACT_OPTIONS.map(({ value, icon, desc }) => (
-              <button
-                key={value}
-                onClick={() => { setContactMethod(value); setStep(6); }}
-                className={`w-full flex items-center gap-4 rounded-2xl border-2 px-5 py-4 text-left transition-all active:scale-95 ${
-                  contactMethod === value
-                    ? 'border-violet-500 bg-violet-50 shadow-sm shadow-violet-100'
-                    : 'border-slate-200 bg-white hover:border-violet-300 hover:bg-violet-50/30'
-                }`}
-              >
-                <span className="text-2xl w-8 flex-shrink-0">{icon}</span>
-                <div className="flex-1">
-                  <p className="text-sm font-extrabold text-slate-800">{value}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
-                </div>
-                {contactMethod === value && (
-                  <span className="text-xs font-bold text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full flex-shrink-0">選択中</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </StepContent>
-        <BottomNav onBack={() => setStep(4)} onNext={() => contactMethod && setStep(6)} nextDisabled={!contactMethod} nextLabel="次へ →" />
-      </PageShell>
-    );
-  }
-
-  // ── STEP 6：連絡先入力 ──────────────────────────────────────────────────────
-  if (step === 6) {
-    const contactOpt = CONTACT_OPTIONS.find(o => o.value === contactMethod);
+  // ── STEP 7（= 旧 STEP 7）：メールアドレス入力 ────────────────────────────────
+  if (step === 7) {
     return (
       <PageShell>
         <PageHeader />
         <StepProgress step={6} />
-        <StepContent title={`${contactMethod}を入力してください`} sub="職人のみが確認します。第三者への提供は一切行いません">
+        <StepContent title="メールアドレスを入力してください" sub="見積もりのご案内をメールでお送りします">
           <div className="space-y-3">
+            <div className="flex items-center gap-3 bg-violet-50 border border-violet-100 rounded-2xl px-4 py-3 mb-1">
+              <Mail size={18} className="text-violet-500 flex-shrink-0" />
+              <p className="text-xs font-semibold text-violet-700">
+                職人からのご連絡はメールでお届けします
+              </p>
+            </div>
             <input
-              type={contactMethod === 'メール' ? 'email' : contactMethod === '電話' ? 'tel' : 'text'}
+              type="email"
               autoFocus
               value={contactValue}
               onChange={e => setContactValue(e.target.value)}
-              placeholder={contactOpt?.placeholder ?? '入力してください'}
+              placeholder="example@mail.com"
               className="w-full border-2 border-slate-200 rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-violet-400 transition-colors placeholder:text-slate-300"
             />
             <div className="flex items-start gap-2 bg-slate-50 rounded-xl px-4 py-3">
               <span className="text-slate-400 text-xs mt-0.5 flex-shrink-0">🔒</span>
               <p className="text-xs text-slate-400 leading-relaxed">
-                入力した連絡先は見積もり対応にのみ使用します。マーケティング目的での使用や第三者への提供は行いません。
+                入力したメールアドレスは見積もり対応にのみ使用します。マーケティング目的での使用や第三者への提供は行いません。
               </p>
             </div>
           </div>
         </StepContent>
-        <BottomNav onBack={() => setStep(5)} onNext={() => setStep(7)} nextDisabled={contactValue.trim() === ''} nextLabel="確認画面へ →" />
+        <BottomNav onBack={() => setStep(5)} onNext={() => setStep(8)} nextDisabled={contactValue.trim() === ''} nextLabel="確認画面へ →" />
       </PageShell>
     );
   }
 
-  // ── STEP 7：送信確認 ────────────────────────────────────────────────────────
+  // ── STEP 8（確認画面）：送信確認 ────────────────────────────────────────────
   return (
     <PageShell>
       <PageHeader />
-      <StepProgress step={6} />
+      <StepProgress step={7} />
       <StepContent title="内容をご確認ください" sub="送信後に担当職人よりご連絡します" scrollable>
 
         {/* 基本情報 */}
@@ -674,7 +855,7 @@ export default function CorporateRequest() {
             { label: '動画',     value: videoFile?.name ?? 'なし（スキップ）' },
             { label: '施工内容', value: workType },
             { label: 'エリア',   value: area },
-            { label: '連絡方法', value: contactMethod },
+            { label: '連絡先',   value: 'メール' },
             { label: '連絡先',   value: contactValue },
           ].map(({ label, value }) => (
             <div key={label} className="flex items-start gap-4 px-5 py-3.5 bg-white hover:bg-slate-50 transition-colors">
@@ -684,7 +865,24 @@ export default function CorporateRequest() {
           ))}
         </div>
 
-        {/* 詳細情報（入力があれば表示） */}
+        {/* 部屋情報 */}
+        {hasRoomInfo && (
+          <div className="rounded-2xl border border-blue-100 bg-blue-50/40 divide-y divide-blue-100 overflow-hidden mb-4">
+            <div className="px-5 py-2.5 bg-blue-50">
+              <p className="text-xs font-bold text-blue-600">工事する部屋 ({rooms.length}部屋)</p>
+            </div>
+            {rooms.map((r, i) => (
+              <div key={i} className="px-5 py-3 bg-white/60">
+                <p className="text-xs font-bold text-slate-700">部屋{i + 1}：{r.name || '未選択'}</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {[r.workType, r.size, r.condition.join('・')].filter(Boolean).join(' / ') || '詳細未入力'}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 詳細情報 */}
         {hasDetail ? (
           <div className="rounded-2xl border border-violet-100 bg-violet-50/40 divide-y divide-violet-100 overflow-hidden mb-4">
             <div className="px-5 py-2.5 bg-violet-50">
@@ -716,7 +914,7 @@ export default function CorporateRequest() {
         <div className="rounded-2xl bg-violet-50 border border-violet-100 px-4 py-4 mb-2">
           <p className="text-xs font-bold text-violet-700 mb-2">📋 送信後の流れ</p>
           <ol className="space-y-1.5">
-            {['担当職人が内容を確認します（2営業日以内）', '入力した連絡先にご連絡します', '概算金額をご案内します（無料）'].map((item, i) => (
+            {['担当職人が内容を確認します（2営業日以内）', '登録のメールアドレスにご連絡します', '概算金額をご案内します（無料）'].map((item, i) => (
               <li key={i} className="flex items-start gap-2">
                 <span className="text-xs font-extrabold text-violet-400 flex-shrink-0 w-4">{i + 1}.</span>
                 <span className="text-xs text-violet-700">{item}</span>
@@ -728,7 +926,7 @@ export default function CorporateRequest() {
       </StepContent>
 
       <BottomNav
-        onBack={() => setStep(6)}
+        onBack={() => setStep(7)}
         onNext={handleSubmit}
         nextLabel="この内容で送信する ✓"
         loading={submitState === 'sending'}

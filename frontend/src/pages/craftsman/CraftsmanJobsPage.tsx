@@ -6,6 +6,25 @@ import BottomNav from '../../components/BottomNav';
 
 // ─── Job type（子コンポーネントで import して使う）────────────────────────────
 
+export type RoomInfo = {
+  name: string;
+  workType: string;
+  size: string;
+  condition?: string[];
+};
+
+export type JobMeta = {
+  rooms?: RoomInfo[];
+  extra_info?: {
+    furniture?: string;
+    parking?: string;
+    material?: string[];
+    condition?: string[];
+    timing?: string;
+    memo?: string;
+  };
+};
+
 export type Job = {
   id: string;
   work_type?: string;
@@ -21,6 +40,7 @@ export type Job = {
   customer_note?: string;
   video_url?: string;
   created_at?: string;
+  meta?: JobMeta | null;
 };
 
 // ─── Demo data ────────────────────────────────────────────────────────────────

@@ -1,32 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 46 46" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
   <defs>
-    <linearGradient id="g" x1="2" y1="9" x2="44" y2="43" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#06b6d4"/>
-      <stop offset="60%" stop-color="#6366f1"/>
+    <linearGradient id="g" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="50%" stop-color="#6366f1"/>
       <stop offset="100%" stop-color="#7c3aed"/>
     </linearGradient>
   </defs>
 
-  <!-- House: roof (flatter, wider) -->
-  <path
-    d="M2,21 L23,9 L44,21"
-    stroke="url(#g)"
-    stroke-width="3.2"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
-  <!-- House: walls (wider) -->
-  <path
-    d="M7,21 L7,43 L39,43 L39,21"
-    stroke="url(#g)"
-    stroke-width="3.2"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
+  <!-- Roof: peak (24,4), eaves y=22, span x=2..46 -->
+  <polyline
+    points="2,22 24,4 46,22"
+    stroke="url(#g)" stroke-width="3.5"
+    stroke-linecap="round" stroke-linejoin="round"/>
 
-  <!-- Play button -->
-  <path
-    d="M14,27 L14,40 L34,33.5 Z"
-    fill="url(#g)"
-  />
+  <!-- Walls: x=8..40, y=22..44 -->
+  <polyline
+    points="8,22 8,44 40,44 40,22"
+    stroke="url(#g)" stroke-width="3.5"
+    stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!--
+    Play triangle — wall interior: x=8-40 (w=32), y=22-44 (h=22), center=(24,33)
+    Triangle: left x=13, right x=35 → visual center x=(13+35)/2=24 ✓
+              top y=24, bottom y=42 → visual center y=(24+42)/2=33 ✓
+    Size: w=22px (69% of wall width), h=18px (82% of wall height) — clearly large
+  -->
+  <polygon points="13,24 13,42 35,33" fill="url(#g)"/>
 </svg>
