@@ -313,7 +313,14 @@ export default function RequestApplicationsPage() {
     );
   }
 
-  const minPrice = Math.min(...apps.filter(a => a.price != null).map(a => a.price!));
+  // price が入っている応募だけで最安値を計算する。
+  // すべての応募が価格未入力（例: Phase3 の "今すぐ行けます" だけが集まった状態）の場合、
+  // 旧コードは Math.min(...[]) === Infinity となり「最安値 ¥Infinity」と表示してしまう。
+  // pricedApps を経由し、件数 0 の場合は minPrice = null を返す形で防御する。
+  const pricedApps = apps.filter(a => a.price != null);
+  const minPrice = pricedApps.length > 0
+    ? Math.min(...pricedApps.map(a => a.price!))
+    : null;
   const contracted = apps.find(a => a.is_contracted);
 
   return (
@@ -413,7 +420,7 @@ export default function RequestApplicationsPage() {
               {apps.length}件 の応募が届いています
             </p>
           </div>
-          {apps.length > 0 && (
+          {apps.length > 0 && minPrice != null && (
             <div className="text-right">
               <p className="text-[11px] text-blue-200">最安値</p>
               <p className="text-base font-extrabold text-white">
@@ -436,7 +443,7 @@ export default function RequestApplicationsPage() {
               const c           = app.craftsman;
               const displayName = c?.shop_name || c?.full_name || '職人さん';
               const avatarLetter = displayName.charAt(0);
-              const isLowest    = app.price === minPrice && app.price != null;
+              const isLowest    = minPrice != null && app.price === minPrice && app.price != null;
               const isChosen    = app.is_contracted;
               const alreadyContracted = !!contracted && !isChosen;
 
