@@ -52,16 +52,19 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={
-          user ? <Navigate to={user.role === 'customer' ? '/customer' : '/craftsman'} /> : <Login onLogin={login} />
+          user ? <Navigate to={user.role === 'customer' ? '/corporate' : '/craftsman'} /> : <Login onLogin={login} />
         } />
         <Route path="/register" element={
-          user ? <Navigate to={user.role === 'customer' ? '/customer' : '/craftsman'} /> : <Register onLogin={login} />
+          user ? <Navigate to={user.role === 'customer' ? '/corporate' : '/craftsman'} /> : <Register onLogin={login} />
         } />
 
-        {/* お客様ルート */}
+        {/* お客様ルート — 現在の MVP では顧客の主導線は /corporate (依頼フォーム)。
+            旧 CustomerDashboard (Layout 経由・旧 backend api.get('/estimates/my') 依存)
+            は本番導線から外し、customer role が /customer に来た場合は /corporate へ
+            リダイレクトする。未認証は従来通り /login へ。 */}
         <Route path="/customer" element={
           user?.role === 'customer'
-            ? <Layout user={user} onLogout={logout}><CustomerDashboard /></Layout>
+            ? <Navigate to="/corporate" replace />
             : <Navigate to="/login" />
         } />
         <Route path="/customer/estimate/new" element={
@@ -126,15 +129,16 @@ export default function App() {
         <Route path="/privacy"    element={<PrivacyPage />} />
         <Route path="/legal"      element={<LegalPage />} />
 
-        {/* ランディング：未ログインなら新トップページ、ログイン済みはダッシュボードへ */}
+        {/* ランディング：未ログインなら新トップページ、ログイン済みは role 別の主導線へ。
+            customer は /corporate (依頼フォーム)、craftsman は /craftsman (→/craftsman/jobs)。 */}
         <Route path="/" element={
           user
-            ? <Navigate to={user.role === 'customer' ? '/customer' : '/craftsman'} />
+            ? <Navigate to={user.role === 'customer' ? '/corporate' : '/craftsman'} />
             : <HomePage />
         } />
 
         <Route path="*" element={
-          <Navigate to={user ? (user.role === 'customer' ? '/customer' : '/craftsman') : '/'} />
+          <Navigate to={user ? (user.role === 'customer' ? '/corporate' : '/craftsman') : '/'} />
         } />
       </Routes>
     </BrowserRouter>
