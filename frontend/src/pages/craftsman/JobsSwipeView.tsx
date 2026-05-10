@@ -422,6 +422,25 @@ export default function JobsSwipeView({ jobs }: Props) {
       return;
     }
 
+    // Phase6-A: insert 成功直後、管理者へ応募メール通知を fire-and-forget で送る。
+    // - await しない（応募成功 UX をブロックしない）
+    // - .catch で握りつぶす（通知失敗で応募 UI を壊さない）
+    // - demo 案件はこのブランチに到達しない（上の demo guard で早期 return 済み）
+    fetch('/api/notify-application', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        request_id:   job.id,
+        craftsman_id: userObj.id,
+        message:      '今すぐ行けます',
+        work_type:    job.work_type ?? null,
+        city:         job.city      ?? null,
+        created_at:   new Date().toISOString(),
+      }),
+    }).catch((notifyErr) => {
+      console.error('[apply] notify-application failed:', notifyErr);
+    });
+
     setAppliedIds(prev => new Set([...prev, job.id]));
     setLastAppliedJob(job);
     setModalOpen(true);
