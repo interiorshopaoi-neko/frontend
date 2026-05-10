@@ -314,14 +314,16 @@ function LandscapeThumb({ imgKey, showZoom = false, showRec = false }: {
 
 /* ── Good/Bad サムネイル ─────────────────────────── */
 
-function TipThumb({ imgKey, filter, focusBrackets = false }: {
-  imgKey: ImgKey; filter?: string; focusBrackets?: boolean;
+function TipThumb({ imgKey, filter, focusBrackets = false, imgScale = 1 }: {
+  imgKey: ImgKey; filter?: string; focusBrackets?: boolean; imgScale?: number;
 }) {
   return (
     <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 8, aspectRatio: '4 / 3', background: IMG_FALLBACK[imgKey] }}>
       <img src={IMG[imgKey]} alt="" style={{
         position: 'absolute', inset: 0, width: '100%', height: '100%',
         objectFit: 'cover', filter: filter || undefined,
+        transform: imgScale !== 1 ? `scale(${imgScale})` : undefined,
+        transformOrigin: 'center center',
       }} />
       {focusBrackets && (
         <div style={{
@@ -369,16 +371,24 @@ const SHOOT_STEPS = [
   },
 ];
 
+// 各 tip は public/homepage/ の実画像を読む。
+// Bad は filter / imgScale で「悪い撮影例」を視覚化する（image 自体は良画像を流用）。
 const GOOD_TIPS = [
-  { label: '明るい場所で撮る',   desc: '自然光が入る場所がおすすめ', imgKey: 'roomWide' as ImgKey,   filter: '', focusBrackets: false },
-  { label: 'ゆっくり動かす',     desc: '急な動きは避けましょう',     imgKey: 'roomWide' as ImgKey,   filter: 'saturate(0.75) brightness(0.92)', focusBrackets: false },
-  { label: '壁紙の傷を映す',     desc: '汚れ・剥がれはしっかりと',  imgKey: 'wallDamage' as ImgKey, filter: '', focusBrackets: true },
+  { label: '明るい場所で撮る', desc: '自然光が入る場所がおすすめ',
+    imgKey: 'roomWide' as ImgKey, filter: 'brightness(1.05) saturate(1.05)', focusBrackets: false, imgScale: 1 },
+  { label: 'ゆっくり動かす',   desc: '急な動きは避けましょう',
+    imgKey: 'panorama' as ImgKey, filter: '',                                  focusBrackets: false, imgScale: 1 },
+  { label: '壁紙の傷を映す',   desc: '汚れ・剥がれはしっかりと',
+    imgKey: 'wallDamage' as ImgKey, filter: '',                                focusBrackets: true,  imgScale: 1 },
 ];
 
 const BAD_TIPS = [
-  { label: '暗すぎる',     desc: '照明をつけて明るい場所で撮りましょう', imgKey: 'roomWide' as ImgKey,   filter: 'brightness(0.42) saturate(0.55)' },
-  { label: '速く動かしすぎ', desc: 'ゆっくり一定のスピードで動かして',   imgKey: 'roomWide' as ImgKey,   filter: 'blur(3px) brightness(1.1) saturate(0.75)' },
-  { label: '近すぎる',     desc: '2〜3歩下がって全体を映して',         imgKey: 'wallDamage' as ImgKey, filter: 'blur(5px) brightness(0.9)' },
+  { label: '暗すぎる',       desc: '照明をつけて明るい場所で撮りましょう',
+    imgKey: 'roomWide' as ImgKey,  filter: 'brightness(0.32) saturate(0.45)', imgScale: 1 },
+  { label: '速く動かしすぎ', desc: 'ゆっくり一定のスピードで動かして',
+    imgKey: 'panorama' as ImgKey,  filter: 'blur(4px) brightness(1.05)',      imgScale: 1 },
+  { label: '近すぎる',       desc: '2〜3歩下がって全体を映して',
+    imgKey: 'wallDamage' as ImgKey, filter: 'brightness(0.95)',               imgScale: 2.2 },
 ];
 
 const FEATURES = [
@@ -706,10 +716,10 @@ export default function HomePage() {
                     <span style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Good</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {GOOD_TIPS.map(({ label, desc, imgKey, filter, focusBrackets }) => (
+                    {GOOD_TIPS.map(({ label, desc, imgKey, filter, focusBrackets, imgScale }) => (
                       <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                         <div style={{ width: 100, flexShrink: 0 }}>
-                          <TipThumb imgKey={imgKey} filter={filter} focusBrackets={focusBrackets} />
+                          <TipThumb imgKey={imgKey} filter={filter} focusBrackets={focusBrackets} imgScale={imgScale} />
                         </div>
                         <div>
                           <p style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', margin: '0 0 3px', lineHeight: 1.35 }}>{label}</p>
@@ -734,10 +744,10 @@ export default function HomePage() {
                     <span style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Bad</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {BAD_TIPS.map(({ label, desc, imgKey, filter }) => (
+                    {BAD_TIPS.map(({ label, desc, imgKey, filter, imgScale }) => (
                       <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                         <div style={{ width: 100, flexShrink: 0 }}>
-                          <TipThumb imgKey={imgKey} filter={filter} />
+                          <TipThumb imgKey={imgKey} filter={filter} imgScale={imgScale} />
                         </div>
                         <div>
                           <p style={{ fontSize: 13, fontWeight: 700, color: '#ef4444', margin: '0 0 3px', lineHeight: 1.35 }}>{label}</p>
