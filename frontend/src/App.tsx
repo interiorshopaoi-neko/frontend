@@ -76,10 +76,13 @@ export default function App() {
             : <Navigate to="/login" />
         } />
 
-        {/* 職人ルート */}
+        {/* 職人ルート — /craftsman は最新の BottomNav 付き UI (/craftsman/jobs) へリダイレクト。
+            旧 CraftsmanDashboard (Layout 経由・BottomNav なし) は import は残すが
+            このルートからは参照されない（直リンクは無いので事実上の deprecate）。
+            未認証は従来通り /login へ。 */}
         <Route path="/craftsman" element={
           user?.role === 'craftsman'
-            ? <Layout user={user} onLogout={logout}><CraftsmanDashboard /></Layout>
+            ? <Navigate to="/craftsman/jobs" replace />
             : <Navigate to="/login" />
         } />
         <Route path="/craftsman/estimate/:id" element={
