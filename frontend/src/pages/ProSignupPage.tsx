@@ -370,7 +370,7 @@ export default function ProSignupPage() {
       {/* ヘッダー */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-100">
         <div className="max-w-md mx-auto px-5 h-14 flex items-center justify-between">
-          <img src="/logo-full.svg" alt="PRO MATCH" className="h-7 object-contain" />
+          <img src="/logo-full.png" alt="PRO MATCH" className="h-7 object-contain" />
           <button
             onClick={() => navigate('/login')}
             className="text-xs font-semibold text-slate-600 hover:text-slate-900"
