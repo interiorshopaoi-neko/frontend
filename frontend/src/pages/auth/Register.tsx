@@ -96,6 +96,25 @@ export default function Register({ onLogin }: Props) {
           console.error('[craftsmen init] upsert_craftsman_profile failed:', profErr);
           setError('プロフィール初期化に失敗しました。あとでプロフィール画面から設定できます。');
         }
+
+        // Phase6-B: craftsman 登録成功直後、管理者へ即メール通知を fire-and-forget で送る。
+        // - await しない（register 成功 UX をブロックしない）
+        // - .catch で握りつぶす（通知失敗で navigate を止めない）
+        // - customer 経路はこの分岐の外なのでこの fetch までそもそも到達しない
+        // - Email Confirm ON で session=null の経路は上で早期 return 済のため到達しない
+        fetch('/api/notify-signup', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id:    data.user.id,
+            name,
+            email:      data.user.email ?? email,
+            role,
+            created_at: new Date().toISOString(),
+          }),
+        }).catch((notifyErr) => {
+          console.error('[signup] notify-signup failed:', notifyErr);
+        });
       }
 
       if (role === 'customer' && fromLanding) {
