@@ -51,9 +51,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={
-          user ? <Navigate to={user.role === 'customer' ? '/corporate' : '/craftsman'} /> : <Login onLogin={login} />
-        } />
+        {/* /login は常に Login.tsx を表示する。ログイン済みでも即 redirect しないことで、
+            /for-pros → ログイン のように「別 role で再ログインしたい」導線を潰さない。
+            ログイン後の遷移先は Login.tsx の責務（5 段階 role 解決 → navigate）。 */}
+        <Route path="/login" element={<Login onLogin={login} />} />
         <Route path="/register" element={
           user ? <Navigate to={user.role === 'customer' ? '/corporate' : '/craftsman'} /> : <Register onLogin={login} />
         } />
