@@ -129,13 +129,11 @@ export default function App() {
         <Route path="/privacy"    element={<PrivacyPage />} />
         <Route path="/legal"      element={<LegalPage />} />
 
-        {/* ランディング：未ログインなら新トップページ、ログイン済みは role 別の主導線へ。
-            customer は /corporate (依頼フォーム)、craftsman は /craftsman (→/craftsman/jobs)。 */}
-        <Route path="/" element={
-          user
-            ? <Navigate to={user.role === 'customer' ? '/corporate' : '/craftsman'} />
-            : <HomePage />
-        } />
+        {/* ランディング：誰が来ても HomePage を表示する。ログイン済でも自動遷移しない。
+            役割別の主導線への誘導は HomePage 内の CTA から行う。
+            (e26216b で logged-in customer を /corporate に飛ばしていたが、
+             トップ URL は常にトップページであるべきという基本方針に戻す。) */}
+        <Route path="/" element={<HomePage />} />
 
         <Route path="*" element={
           <Navigate to={user ? (user.role === 'customer' ? '/corporate' : '/craftsman') : '/'} />
