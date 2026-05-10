@@ -148,10 +148,13 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function CraftsmanJobsPage() {
-  const [jobs,    setJobs]    = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [tab,     setTab]     = useState<Tab>('video');
-  const [isDemo,  setIsDemo]  = useState(false);
+  // realJobs は実 estimate_requests 取得結果のみを保持する（DEMO_JOBS は混ぜない）。
+  // 描画用の jobs / isDemo は下の useMemo で realJobs から派生させ、
+  // 「実案件 0 件のときだけ DEMO_JOBS を表示」「1 件以上あれば demo を完全非表示」
+  // の規則を 1 箇所で表現する。これにより demo と実データが混ざる状態を作れない。
+  const [realJobs, setRealJobs] = useState<Job[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [tab,      setTab]      = useState<Tab>('video');
 
   // ── 登録直後だけ表示するウェルカムモーダル（PR1の justRegistered 経路） ──
   // useState の lazy initializer でマウント時に1度だけ評価する。re-render
@@ -179,17 +182,22 @@ export default function CraftsmanJobsPage() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error || !data || data.length === 0) {
-        setJobs(DEMO_JOBS);
-        setIsDemo(true);
+      // error / 取得失敗は「実案件 0 件」と等価に扱う（既存の demo フォールバック動作と整合）。
+      if (error || !data) {
+        setRealJobs([]);
       } else {
-        setJobs(data as Job[]);
+        setRealJobs(data as Job[]);
       }
       setLoading(false);
     })();
   }, []);
 
-  const videoCount = jobs.filter((j) => j.has_video || j.video_url).length;
+  // ── demo / real 切替の単一の真実 ────────────────────────────────────────
+  // hasRealJobs ? realJobs : DEMO_JOBS。両者が混ざることはない。
+  const hasRealJobs = realJobs.length > 0;
+  const jobs        = hasRealJobs ? realJobs : DEMO_JOBS;
+  const isDemo      = !loading && !hasRealJobs;
+  const videoCount  = jobs.filter((j) => j.has_video || j.video_url).length;
 
   return (
     <div className="flex flex-col bg-slate-50" style={{ height: '100dvh' }}>
@@ -202,6 +210,12 @@ export default function CraftsmanJobsPage() {
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
           <span className="text-[10px] font-black tracking-[0.18em] text-emerald-400">LIVE</span>
+          {/* Phase5: realJobs 有無を一瞥で示す状態バッジ。デザインは LIVE バー全体の
+              「過疎感を消す」目的を壊さないよう、テキスト1要素・ピル形・小サイズ。 */}
+          {!loading && (hasRealJobs
+            ? <span className="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider bg-emerald-400/15 text-emerald-300 border border-emerald-400/30">リアル案件</span>
+            : <span className="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider bg-amber-400/15 text-amber-300 border border-amber-400/30">DEMO表示中</span>
+          )}
         </div>
         <p className="text-[11px] text-white/85 font-semibold">
           本日 <span className="font-black text-white">12件</span>の動画案件が公開されています
