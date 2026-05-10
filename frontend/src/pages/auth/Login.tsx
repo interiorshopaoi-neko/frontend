@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
 import type { User, Role } from '../../types';
 import { supabase } from '../../lib/supabase';
@@ -10,6 +10,15 @@ interface Props {
 
 export default function Login({ onLogin }: Props) {
   const navigate = useNavigate();
+  const location = useLocation();
+  // 職人LP (/for-pros) からのログインは state に { fromProLp, defaultRole: 'craftsman' }
+  // を載せて遷移してくる。user_metadata と localStorage が両方空のときに
+  // 暗黙 customer に倒れて /corporate に飛ばないよう、ヒントとして読み取る。
+  const fromProLp  = (location.state as any)?.fromProLp === true;
+  const stateRole  = (location.state as any)?.defaultRole;
+  const stateRoleNormalized: Role | null =
+    stateRole === 'craftsman' || stateRole === 'customer' ? stateRole : null;
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -26,8 +35,12 @@ export default function Login({ onLogin }: Props) {
         return;
       }
 
-      // role は user_metadata.role に格納（Phase1）。古い既存ユーザーで未設定の場合は
-      // localStorage.user.role の旧値を引き継ぐ。それも無ければ customer 扱い。
+      // role 解決の優先順位:
+      //   1. supabase user_metadata.role (Phase1+ で signUp された正規データ)
+      //   2. localStorage.user.role (前回ログインの値)
+      //   3. location.state.defaultRole (LP 経由のヒント)
+      //   4. location.state.fromProLp === true なら craftsman
+      //   5. それ以外 customer
       const meta = (data.user.user_metadata ?? {}) as { name?: unknown; role?: unknown };
       const fallbackRaw = (() => {
         try { return JSON.parse(localStorage.getItem('user') ?? 'null'); } catch { return null; }
@@ -35,7 +48,10 @@ export default function Login({ onLogin }: Props) {
       const role: Role =
         meta.role === 'craftsman' || meta.role === 'customer'
           ? meta.role
-          : (fallbackRaw?.role === 'craftsman' ? 'craftsman' : 'customer');
+          : (fallbackRaw?.role === 'craftsman' || fallbackRaw?.role === 'customer')
+            ? fallbackRaw.role
+            : (stateRoleNormalized
+              ?? (fromProLp ? 'craftsman' : 'customer'));
 
       const userData: User = {
         id: data.user.id,

@@ -372,7 +372,7 @@ export default function ProSignupPage() {
         <div className="max-w-md mx-auto px-5 h-14 flex items-center justify-between">
           <img src="/logo-full.png" alt="PRO MATCH" className="h-7 object-contain" />
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/login', { state: proLpState })}
             className="text-xs font-semibold text-slate-600 hover:text-slate-900"
           >
             ログイン
