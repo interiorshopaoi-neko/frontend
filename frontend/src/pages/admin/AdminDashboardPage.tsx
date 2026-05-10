@@ -33,6 +33,11 @@ type Craftsman = {
   service_area: string | null;
   work_types: string[] | null;
   experience_years: number | null;
+  // applications.craftsman_id とつなぐキー（= Supabase Auth UUID）。
+  // craftsmen テーブルの主キー id とは別物。Phase4 で「最近の応募」カードに
+  // 職人名/email を表示するために取得する。
+  user_id?: string | null;
+  email?:   string | null;
 };
 
 type Application = {
@@ -43,6 +48,8 @@ type Application = {
   status: string | null;
   price: number | null;
   service_fee: number | null;
+  // Phase3 の "今すぐ行けます" など、応募メッセージ。
+  message?: string | null;
   estimate_requests?: { work_type: string | null; city: string | null } | null;
 };
 
@@ -57,15 +64,15 @@ const DEMO_REQUESTS: Request[] = [
 ];
 
 const DEMO_CRAFTSMEN: Craftsman[] = [
-  { id: 'c1', created_at: new Date(Date.now() - 86400000 * 10).toISOString(), shop_name: '内装の田中', full_name: '田中一郎', service_area: '大阪市全域', work_types: ['クロス', 'CF'], experience_years: 12 },
-  { id: 'c2', created_at: new Date(Date.now() - 86400000 * 5).toISOString(), shop_name: '山本内装', full_name: '山本花子', service_area: '堺市・大阪市南部', work_types: ['クロス', '床'], experience_years: 7 },
-  { id: 'c3', created_at: new Date(Date.now() - 86400000 * 2).toISOString(), shop_name: null, full_name: '鈴木健太', service_area: '大阪市北区', work_types: ['補修'], experience_years: 3 },
+  { id: 'c1', created_at: new Date(Date.now() - 86400000 * 10).toISOString(), shop_name: '内装の田中', full_name: '田中一郎', service_area: '大阪市全域', work_types: ['クロス', 'CF'], experience_years: 12, user_id: 'c1', email: 'tanaka@example.com' },
+  { id: 'c2', created_at: new Date(Date.now() - 86400000 * 5).toISOString(), shop_name: '山本内装', full_name: '山本花子', service_area: '堺市・大阪市南部', work_types: ['クロス', '床'], experience_years: 7, user_id: 'c2', email: 'yamamoto@example.com' },
+  { id: 'c3', created_at: new Date(Date.now() - 86400000 * 2).toISOString(), shop_name: null, full_name: '鈴木健太', service_area: '大阪市北区', work_types: ['補修'], experience_years: 3, user_id: 'c3', email: null },
 ];
 
 const DEMO_APPLICATIONS: Application[] = [
-  { id: 'a1', created_at: new Date().toISOString(), estimate_request_id: 'r1', craftsman_id: 'c1', status: 'available', price: 45000, service_fee: 1500, estimate_requests: { work_type: 'クロス張替え', city: '大阪市北区' } },
-  { id: 'a2', created_at: new Date().toISOString(), estimate_request_id: 'r1', craftsman_id: 'c2', status: 'available', price: 38000, service_fee: 1500, estimate_requests: { work_type: 'クロス張替え', city: '大阪市北区' } },
-  { id: 'a3', created_at: new Date(Date.now() - 86400000).toISOString(), estimate_request_id: 'r3', craftsman_id: 'c1', status: 'matched', price: 72000, service_fee: 1500, estimate_requests: { work_type: '床張替え', city: '堺市堺区' } },
+  { id: 'a1', created_at: new Date().toISOString(), estimate_request_id: 'r1', craftsman_id: 'c1', status: 'available', price: 45000, service_fee: 1500, message: '今すぐ行けます', estimate_requests: { work_type: 'クロス張替え', city: '大阪市北区' } },
+  { id: 'a2', created_at: new Date().toISOString(), estimate_request_id: 'r1', craftsman_id: 'c2', status: 'available', price: 38000, service_fee: 1500, message: '明日対応可能です', estimate_requests: { work_type: 'クロス張替え', city: '大阪市北区' } },
+  { id: 'a3', created_at: new Date(Date.now() - 86400000).toISOString(), estimate_request_id: 'r3', craftsman_id: 'c1', status: 'matched', price: 72000, service_fee: 1500, message: null, estimate_requests: { work_type: '床張替え', city: '堺市堺区' } },
 ];
 
 // ─── Analysis functions ───────────────────────────────────────────────────────
@@ -124,10 +131,24 @@ function statusBadge(status: string | null) {
     matched: 'bg-green-100 text-green-700',
     closed: 'bg-slate-100 text-slate-500',
     available: 'bg-blue-100 text-blue-700',
+    applied: 'bg-blue-100 text-blue-700',
     cancelled: 'bg-red-100 text-red-600',
   };
   const cls = map[status ?? ''] ?? 'bg-slate-100 text-slate-500';
   return <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${cls}`}>{status ?? '—'}</span>;
+}
+
+// 相対時間（"3分前" / "2時間前" / "昨日" / "MM/DD"）。Phase4 の「最近の応募」カード用。
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1)  return 'たった今';
+  if (mins < 60) return `${mins}分前`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}時間前`;
+  if (hours < 48) return '昨日';
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -146,8 +167,8 @@ function AdminDashboardPageContent({ session }: { session: Session }) {
       try {
         const [{ data: reqs }, { data: crafts }, { data: apps }] = await Promise.all([
           supabase.from('estimate_requests').select('id,created_at,work_type,city,status,has_video,has_photos,urgency,meta').order('created_at', { ascending: false }).limit(100),
-          supabase.from('craftsmen').select('id,created_at,shop_name,full_name,service_area,work_types,experience_years').order('created_at', { ascending: false }).limit(100),
-          supabase.from('job_applications').select('id,created_at,estimate_request_id,craftsman_id,status,price,service_fee,estimate_requests(work_type,city)').order('created_at', { ascending: false }).limit(200),
+          supabase.from('craftsmen').select('id,created_at,shop_name,full_name,service_area,work_types,experience_years,user_id,email').order('created_at', { ascending: false }).limit(100),
+          supabase.from('job_applications').select('id,created_at,estimate_request_id,craftsman_id,status,price,service_fee,message,estimate_requests(work_type,city)').order('created_at', { ascending: false }).limit(200),
         ]);
 
         const hasData = (reqs?.length ?? 0) + (crafts?.length ?? 0) + (apps?.length ?? 0) > 0;
@@ -183,6 +204,15 @@ function AdminDashboardPageContent({ session }: { session: Session }) {
 
   const appCountByRequest: Record<string, number> = {};
   applications.forEach(a => { appCountByRequest[a.estimate_request_id] = (appCountByRequest[a.estimate_request_id] ?? 0) + 1; });
+
+  // Phase4: applications.craftsman_id (= Auth UUID) → craftsmen の行を引く lookup map。
+  // craftsmen.user_id が無い行（旧データ）は entry が作られないため、
+  // カード描画時に craftsman_id 先頭8桁の fallback 表示にフォールスルーする。
+  const craftsmenByUserId: Record<string, Craftsman> = {};
+  craftsmen.forEach(c => { if (c.user_id) craftsmenByUserId[c.user_id] = c; });
+
+  // 「最近の応募」用: applications は order desc.limit(200) で fetch 済 = 既に新しい順。
+  const recentApps = applications.slice(0, 10);
 
   const freshnessCounts = useMemo(() => {
     let fresh = 0, warning = 0, stale = 0;
@@ -242,6 +272,61 @@ function AdminDashboardPageContent({ session }: { session: Session }) {
             <StatCard label="見込み手数料" value={`¥${expectedRevenue.toLocaleString()}`} sub="成約分" />
             <StatCard label="今日の新規依頼" value={todayRequests.length} sub={today} to="/admin/requests?filter=today" />
           </div>
+        </section>
+
+        {/* 最近の応募（Phase4 - admin専用カード型）
+            craftsmen.user_id を applications.craftsman_id とつなぎ、職人名 / email を表示する。
+            email は管理画面のみ。customer 経路は get_craftsmen_by_ids RPC を使う構造で
+            元から email を返さない設計のため、ここでの email 表示は customer 側に漏れない。 */}
+        <section>
+          <SectionTitle>最近の応募（直近{recentApps.length}件）</SectionTitle>
+          {recentApps.length === 0 ? (
+            <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm px-5 py-8 text-center">
+              <p className="text-sm font-bold text-slate-700 mb-1">まだ応募はありません</p>
+              <p className="text-xs text-slate-400">職人へ通知中です…</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {recentApps.map(a => {
+                const c = a.craftsman_id ? craftsmenByUserId[a.craftsman_id] : null;
+                const displayName = c?.shop_name || c?.full_name
+                  || (a.craftsman_id ? `${a.craftsman_id.slice(0, 8)} (craftsman_id)` : '職人不明');
+                return (
+                  <article
+                    key={a.id}
+                    className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm px-4 py-3.5 flex flex-col gap-2"
+                  >
+                    {/* ヘッダー: 名前 + status + 応募時間 */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-extrabold text-slate-900 truncate">{displayName}</p>
+                        {c?.email && (
+                          <p className="text-[10.5px] text-slate-400 truncate font-mono">{c.email}</p>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                        {statusBadge(a.status)}
+                        <span className="text-[10px] text-slate-400">{timeAgo(a.created_at)}</span>
+                      </div>
+                    </div>
+
+                    {/* 対象案件 (work_type / city) */}
+                    <div className="rounded-lg bg-slate-50 px-2.5 py-1.5 text-[11px] text-slate-600 leading-tight">
+                      <span className="font-bold text-slate-700">{a.estimate_requests?.work_type ?? '工事内容不明'}</span>
+                      {a.estimate_requests?.city && (
+                        <span className="text-slate-500"> · {a.estimate_requests.city}</span>
+                      )}
+                    </div>
+
+                    {/* メッセージ（"今すぐ行けます" など）*/}
+                    {a.message && (
+                      <p className="text-[12px] text-slate-700 leading-snug">💬 {a.message}</p>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         {/* Listing status cards */}
