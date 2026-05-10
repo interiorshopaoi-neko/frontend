@@ -9,7 +9,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const ADMIN_TO   = 'interior.shop.aoi@gmail.com';
 const ADMIN_FROM = 'Aoi Interior <onboarding@resend.dev>';
-const ADMIN_BASE_URL = 'https://frontend-alpha-gray-75.vercel.app';
+const ADMIN_BASE_URL = 'https://promatch-app.jp';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {

@@ -26,7 +26,7 @@ export default async function handler(req: any, res: any) {
     `連絡先　　：${contact_value  ?? '—'}`,
     '',
     '▼ 管理画面で確認',
-    'https://frontend-alpha-gray-75.vercel.app/admin/requests',
+    'https://promatch-app.jp/admin/requests',
   ].join('\n');
 
   try {

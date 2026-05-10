@@ -225,7 +225,7 @@ serve(async (req) => {
     }
 
     const sentAt  = formatJST(new Date());
-    const logoUrl = 'https://frontend-alpha-gray-75.vercel.app/logo-full.png';
+    const logoUrl = `${siteUrl}/logo-full.png`;
 
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
