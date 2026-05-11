@@ -3,7 +3,8 @@ import { useAuth } from './hooks/useAuth';
 import Layout from './components/Layout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
-import AuthConfirmed from './pages/auth/AuthConfirmed';
+import AuthConfirmed  from './pages/auth/AuthConfirmed';
+import ResetPassword  from './pages/auth/ResetPassword';
 import CustomerDashboard from './pages/customer/CustomerDashboard';
 import NewEstimate from './pages/customer/NewEstimate';
 import EstimateDetail from './pages/customer/EstimateDetail';
@@ -64,6 +65,9 @@ export default function App() {
         {/* メール確認後のランディングページ。token_hash を Supabase が自動処理し
             role に応じた導線を表示する。認証不要（ゲートなし）。 */}
         <Route path="/auth/confirmed" element={<AuthConfirmed />} />
+        {/* パスワードリセット専用ページ。recovery メールのリンクから遷移し
+            PASSWORD_RECOVERY イベント後に新パスワード設定フォームを表示する。 */}
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* お客様ルート — 現在の MVP では顧客の主導線は /corporate (依頼フォーム)。
             旧 CustomerDashboard (Layout 経由・旧 backend api.get('/estimates/my') 依存)

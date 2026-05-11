@@ -34,7 +34,22 @@ export default function Login({ onLogin }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [info,  setInfo]  = useState('');
   const [loading, setLoading] = useState(false);
+
+  const handleForgotPassword = async () => {
+    setError('');
+    setInfo('');
+    if (!email) {
+      setError('メールアドレスを入力してから「パスワードをお忘れですか？」を押してください');
+      return;
+    }
+    // セキュリティ上、メールが存在しない場合でも同じメッセージを返す
+    await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setInfo('パスワードリセットメールを送信しました。メールをご確認ください。');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,6 +172,11 @@ export default function Login({ onLogin }: Props) {
                 {error}
               </p>
             )}
+            {info && (
+              <p className="text-emerald-700 text-[12px] bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-100">
+                {info}
+              </p>
+            )}
             <button
               type="submit"
               disabled={loading}
@@ -164,6 +184,13 @@ export default function Login({ onLogin }: Props) {
             >
               {loading ? 'ログイン中…' : 'ログインして続ける'}
               {!loading && <ArrowRight size={15} />}
+            </button>
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="w-full text-center text-[11.5px] text-slate-400 hover:text-slate-600 transition-colors pt-1"
+            >
+              パスワードをお忘れですか？
             </button>
           </form>
         </div>
