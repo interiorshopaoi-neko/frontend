@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { Navigate } from 'react-router-dom';
 import type { Session } from '@supabase/supabase-js';
 import { TrendingUp, TrendingDown, DollarSign, Users, Star, Lightbulb, Bell } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -430,5 +431,8 @@ export default function AdminDashboard() {
   }, []);
   if (!authReady) return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><p className="text-sm text-slate-400 animate-pulse">確認中...</p></div>;
   if (!session) return <AdminLogin />;
+  // 運営アカウント (user_metadata.role='admin') のみ管理画面に入れる。
+  // customer/craftsman/role 未設定 でログイン中のユーザーはトップへ。
+  if (session.user.user_metadata?.role !== 'admin') return <Navigate to="/" replace />;
   return <AdminDashboardContent />;
 }

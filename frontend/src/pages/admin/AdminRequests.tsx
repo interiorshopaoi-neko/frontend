@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { getFreshness, FRESHNESS_CLASS } from '../../lib/freshness';
-import { AdminNav } from './shared';
+import { AdminLogin, AdminNav } from './shared';
 
 const URL_FILTER_LABELS: Record<string, string> = {
   new:         '新しい案件',
@@ -1282,5 +1282,7 @@ export default function AdminRequests() {
   }
 
   if (!session) return <AdminLogin />;
+  // 運営アカウント (user_metadata.role='admin') のみ管理画面に入れる。
+  if (session.user.user_metadata?.role !== 'admin') return <Navigate to="/" replace />;
   return <RequestsList session={session} />;
 }
