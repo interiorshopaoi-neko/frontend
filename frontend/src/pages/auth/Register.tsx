@@ -48,7 +48,7 @@ export default function Register({ onLogin }: Props) {
         password,
         options: {
           data: { name, role },
-          emailRedirectTo: `${window.location.origin}/login`,
+          emailRedirectTo: `${window.location.origin}/auth/confirmed`,
         },
       });
 
