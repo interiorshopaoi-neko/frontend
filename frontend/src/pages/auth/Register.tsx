@@ -46,7 +46,10 @@ export default function Register({ onLogin }: Props) {
       const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { name, role } },
+        options: {
+          data: { name, role },
+          emailRedirectTo: `${window.location.origin}/login`,
+        },
       });
 
       if (authError) {
