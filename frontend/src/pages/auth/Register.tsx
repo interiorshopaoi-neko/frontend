@@ -122,12 +122,13 @@ export default function Register({ onLogin }: Props) {
 
       if (role === 'customer' && fromLanding) {
         navigate('/customer/estimate/flow');
-      } else if (role === 'craftsman' && fromProLp) {
-        // 職人LP起点の登録は、約束した「ショート動画で案件を探す」体験へ直接送る。
-        // justRegistered フラグで /craftsman/jobs の初回ウェルカムモーダルを発火させる。
+      } else if (role === 'craftsman') {
+        // 職人は登録経路（/register 直接・/pro-signup・/for-pros）を問わず
+        // /craftsman/jobs へ。justRegistered フラグで初回ウェルカムモーダルを発火させる
+        // （localStorage.craftsman_welcomed がセット済みの場合は表示しない）。
         navigate('/craftsman/jobs', { state: { justRegistered: true } });
       } else {
-        navigate(role === 'customer' ? '/customer' : '/craftsman');
+        navigate('/customer');
       }
     } catch (err: any) {
       setError(err?.message ?? '登録に失敗しました');
