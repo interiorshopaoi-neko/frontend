@@ -48,17 +48,19 @@ export default function Login({ onLogin }: Props) {
       }
 
       // role 解決の優先順位:
-      //   1. supabase user_metadata.role (Phase1+ で signUp された正規データ)
-      //   2. localStorage.user.role (前回ログインの値)
+      //   1. supabase user_metadata.role (admin / craftsman / customer のいずれか)
+      //   2. localStorage.user.role (前回ログインの値、customer/craftsman のみ)
       //   3. location.state.defaultRole (LP 経由のヒント)
       //   4. location.state.fromProLp === true なら craftsman
       //   5. それ以外 customer
+      // admin は P1 (user_metadata) でのみ昇格できる。fallback / state ヒントでは
+      // admin に倒れない（運営権限の意図しない昇格を防ぐ）。
       const meta = (data.user.user_metadata ?? {}) as { name?: unknown; role?: unknown };
       const fallbackRaw = (() => {
         try { return JSON.parse(localStorage.getItem('user') ?? 'null'); } catch { return null; }
       })();
       const role: Role =
-        meta.role === 'craftsman' || meta.role === 'customer'
+        meta.role === 'craftsman' || meta.role === 'customer' || meta.role === 'admin'
           ? meta.role
           : (fallbackRaw?.role === 'craftsman' || fallbackRaw?.role === 'customer')
             ? fallbackRaw.role
@@ -72,8 +74,13 @@ export default function Login({ onLogin }: Props) {
         role,
       };
 
+      const navigateTarget =
+        userData.role === 'admin'     ? '/admin/dashboard' :
+        userData.role === 'craftsman' ? '/craftsman' :
+                                        '/customer';
+
       onLogin(data.session.access_token, userData);
-      navigate(userData.role === 'customer' ? '/customer' : '/craftsman');
+      navigate(navigateTarget);
     } catch (err: any) {
       setError(err?.message ?? 'ログインに失敗しました');
     } finally {

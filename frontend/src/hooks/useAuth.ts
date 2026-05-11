@@ -32,8 +32,10 @@ function userFromSession(
   fallback: User | null,
 ): User {
   const meta = (authUser.user_metadata ?? {}) as { name?: unknown; role?: unknown };
+  // admin は user_metadata.role でのみ昇格できる（運営アカウント識別）。
+  // fallback は現状維持（customer/craftsman/admin いずれもそのまま通す）。
   const role: Role =
-    meta.role === 'craftsman' || meta.role === 'customer'
+    meta.role === 'craftsman' || meta.role === 'customer' || meta.role === 'admin'
       ? meta.role
       : (fallback?.role ?? 'customer');
   return {

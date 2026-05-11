@@ -1,4 +1,7 @@
-export type Role = 'customer' | 'craftsman';
+// 'admin' は運営アカウント用。Supabase user_metadata.role='admin' で識別する。
+// customer / craftsman の判定ロジック (role === 'customer' / role === 'craftsman') には
+// 影響を与えない設計。
+export type Role = 'customer' | 'craftsman' | 'admin';
 
 export interface User {
   id: string;
