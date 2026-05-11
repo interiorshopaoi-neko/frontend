@@ -19,6 +19,18 @@ export default function Login({ onLogin }: Props) {
   const stateRoleNormalized: Role | null =
     stateRole === 'craftsman' || stateRole === 'customer' ? stateRole : null;
 
+  // 「新規登録」へ遷移する際、職人LP由来の意図 (fromProLp / defaultRole) を
+  // Register.tsx に引き継ぐ。state が空の通常ログイン経路では undefined にして
+  // これまで通り「お客様」初期選択を維持する。
+  const registerNavState =
+    fromProLp || stateRoleNormalized
+      ? {
+          fromProLp,
+          defaultRole:
+            stateRoleNormalized ?? (fromProLp ? ('craftsman' as Role) : undefined),
+        }
+      : undefined;
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -78,7 +90,11 @@ export default function Login({ onLogin }: Props) {
             <img src="/logo-full.png" alt="PRO MATCH" className="h-7 object-contain" />
           </button>
           <button
-            onClick={() => navigate('/register')}
+            onClick={() =>
+              registerNavState
+                ? navigate('/register', { state: registerNavState })
+                : navigate('/register')
+            }
             className="text-xs font-semibold text-slate-600 hover:text-slate-900"
           >
             新規登録
@@ -147,7 +163,7 @@ export default function Login({ onLogin }: Props) {
 
         <p className="text-center text-[12px] text-slate-500 mt-5">
           まだアカウントをお持ちでない方は{' '}
-          <Link to="/register" className="text-blue-600 font-bold hover:underline">
+          <Link to="/register" state={registerNavState} className="text-blue-600 font-bold hover:underline">
             新規登録
           </Link>
         </p>
