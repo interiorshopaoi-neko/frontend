@@ -55,9 +55,11 @@ export default function App() {
             /for-pros → ログイン のように「別 role で再ログインしたい」導線を潰さない。
             ログイン後の遷移先は Login.tsx の責務（5 段階 role 解決 → navigate）。 */}
         <Route path="/login" element={<Login onLogin={login} />} />
-        <Route path="/register" element={
-          user ? <Navigate to={user.role === 'customer' ? '/corporate' : '/craftsman'} /> : <Register onLogin={login} />
-        } />
+        {/* /register も /login と同じ思想で、ログイン済みでも常に Register.tsx を表示する。
+            /for-pros → 新規登録 の職人導線や、別 role での新規登録意図を App.tsx 側の
+            先回り redirect で潰さない。登録後の遷移先は Register.tsx の責務。
+            Props 名は既存の onLogin を維持（Register.tsx 側のインターフェイスを変えないため）。 */}
+        <Route path="/register" element={<Register onLogin={login} />} />
 
         {/* お客様ルート — 現在の MVP では顧客の主導線は /corporate (依頼フォーム)。
             旧 CustomerDashboard (Layout 経由・旧 backend api.get('/estimates/my') 依存)
