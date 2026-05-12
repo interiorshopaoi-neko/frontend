@@ -1,6 +1,6 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-11 / HEAD: `308e297` (fix: restrict admin pages to admin role)
+> 最終更新: 2026-05-12 / HEAD: `28d6646` (fix: scope craftsman welcome state per user)
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -27,6 +27,8 @@ App.tsx の Route 定義が真実。**ロール別に何を見せるか**を以�
 | `/for-pros` `/pro-signup` | 職人 LP (ProSignupPage) |
 | `/login` | Login.tsx **常時表示**（e8c2715 — ログイン済みでも redirect しない） |
 | `/register` | Register.tsx **常時表示**（72a8458 — ログイン済みでも redirect しない） |
+| `/auth/confirmed` | メール確認リンク後のランディング。Supabase token_hash を処理し role 別に遷移（af2bc54） |
+| `/reset-password` | パスワードリセット入力画面（Supabase recovery token 処理） |
 | `/corporate` | 依頼フォーム (CorporateRequest) |
 | `/faq` `/support` `/terms` `/privacy` `/legal` `/policy` | 静的ページ |
 | `/craftsman/jobs` | 未ログイン → JobsLockedPreview（県+想定売上のみ）/ craftsman → CraftsmanJobsPage |
@@ -90,7 +92,85 @@ return <AdminContent />;
 
 ---
 
-## 4. 重要方針
+## 4. 認証・メール設定（Supabase Auth）
+
+### SMTP 設定
+- **送信元**: `noreply@promatch-app.jp`（表示名: PRO MATCH）
+- **SMTP プロバイダ**: Resend（Supabase Auth カスタム SMTP として設定）
+- Supabase Dashboard → Authentication → Settings → SMTP で確認可能
+
+### メールテンプレート（PRO MATCH 専用 HTML）
+| テンプレート | 状態 |
+|---|---|
+| 確認メール（Confirm signup） | PRO MATCH 専用 HTML 実装済み。デフォルト Supabase テンプレートは使用していない |
+| パスワードリセット（Reset Password） | PRO MATCH 専用 HTML 実装済み |
+| その他（Magic Link 等） | Supabase デフォルト |
+
+### /auth/confirmed 実装（af2bc54）
+- 確認メールリンク後のランディングページ
+- Supabase v2 の `onAuthStateChange` で INITIAL_SESSION / SIGNED_IN を受信
+- role 判定後に遷移先を決定:
+  - craftsman → `/craftsman/jobs`（`state: { justRegistered: true }` を付与）
+  - customer → `/corporate`
+  - 不明 → `/login`
+- **`justRegistered: true`** を state に付与する実装は `AuthConfirmed.tsx` が担う（af2bc54）
+
+### /reset-password 実装済み
+- Supabase recovery token を URL から処理し、新パスワード入力フォームを表示
+
+### admin アカウント復旧方法
+1. Supabase Dashboard → Authentication → Users → 該当ユーザー選択
+2. **User Metadata** に `{ "role": "admin" }` を追加保存
+3. コード変更不要（admin 判定は `user_metadata.role === 'admin'` のみ）
+4. 復旧後は `/login` → 自動的に `/admin/dashboard` へ navigate
+
+---
+
+## 5. 職人 WelcomeModal 導線
+
+### 概要
+- 職人が**新規登録後、初回だけ**表示されるウェルカムモーダル
+- `CraftsmanJobsPage` が `location.state.justRegistered === true` かつ localStorage キーが未記録のとき表示
+- 本番動作確認済み（2026-05-12）
+
+### 表示トリガー経路（2通り）
+| 経路 | 実装ファイル | commit |
+|---|---|---|
+| `/register` で直接登録（Email 確認 OFF 環境） | `Register.tsx` → `/craftsman/jobs` navigate に `justRegistered: true` | `6b8168b` |
+| 確認メールリンク経由（本番・Email 確認 ON） | `AuthConfirmed.tsx` → `/craftsman/jobs` navigate に `justRegistered: true` | `af2bc54` |
+
+### localStorage キー管理（28d6646）
+```
+craftsman_welcomed_${userId}   ← ユーザー別（現行）
+craftsman_welcomed              ← フォールバック（user.id 取得不可の場合のみ）
+```
+- **同じブラウザ・別職人アカウント** → 別キー → それぞれ初回1回表示される ✅
+- **同一職人・2回目以降** → キー存在 → 表示されない ✅
+- 旧キー `craftsman_welcomed`（suffix なし）は localStorage に残置のみ（削除不要）
+
+### 「通知設定をする」CTA（ca70913）
+- クリック → `/craftsman/profile#notification` へ遷移
+- `CraftsmanProfile.tsx` の通知設定セクションに `id="notification"` 付与済み → ページ内スクロールで直接到達
+
+---
+
+## 6. 事業・課金方針
+
+> 詳細な「なぜそうしたか」は `docs/DECISIONS.md` を参照。ここでは **現在の決定事項** のみ記載。
+
+| 方針 | 内容 |
+|---|---|
+| お客様は完全無料 | 依頼者側から一切費用を取らない |
+| 手数料発生タイミング | **連絡先開示時点**で手数料対象（成約後に工事金額が変わっても再計算しない） |
+| 初回2件無料 | 職人登録後、最初の2成約は手数料0円 |
+| 紹介制度（構想） | 職人が別職人を紹介 → 紹介1件につき +1件 無料枠（未実装） |
+| 工事代金の扱い | 職人とお客様が直接やり取り。PRO MATCH は預からない（金融業法対応） |
+| 手数料回収手段 | 初期フェーズは **Stripe Payment Link** 想定（未実装） |
+| 次フェーズ | 「職人紹介制度」と「手数料回収（Stripe）」 |
+
+---
+
+## 7. 重要方針
 
 ### コラボレーション原則
 - **最小差分**: 既存導線を壊さない、必要なものだけ触る、リファクタ・抽象化は禁止
@@ -111,7 +191,7 @@ return <AdminContent />;
 
 ---
 
-## 5. 旧 UI の扱い
+## 8. 旧 UI の扱い
 
 | ファイル | 状態 | 備考 |
 |---|---|---|
@@ -126,7 +206,7 @@ return <AdminContent />;
 
 ---
 
-## 6. 今後触る時の注意点
+## 9. 今後触る時の注意点
 
 ### 運営アカウントを追加する
 1. Supabase Dashboard → Authentication → Users → 該当ユーザー選択
@@ -160,10 +240,14 @@ return <AdminContent />;
 
 ---
 
-## 7. 主要 commit 履歴（直近の修正経緯）
+## 10. 主要 commit 履歴（直近の修正経緯）
 
 | commit | 件名 | 何を直したか |
 |---|---|---|
+| `28d6646` | fix: scope craftsman welcome state per user | WelcomeModal の localStorage キーをユーザー別 `craftsman_welcomed_${userId}` に変更 |
+| `ca70913` | feat: 通知設定ボタンを通知セクションへ直接スクロール | WelcomeModal「通知設定をする」→ `/craftsman/profile#notification`。CraftsmanProfile に `id="notification"` 追加 |
+| `af2bc54` | fix: AuthConfirmed navigate with justRegistered state | メール確認経由の職人登録後に WelcomeModal が表示されなかった問題を修正 |
+| `6b8168b` | fix: Register.tsx justRegistered state | `/register` 直接登録時も WelcomeModal が表示されなかった問題を修正 |
 | `308e297` | fix: restrict admin pages to admin role | /admin/* guard を role==='admin' 限定に |
 | `21e3535` | fix: support admin role for operator login | Role 型に 'admin' 追加、Login.tsx で admin → /admin/dashboard |
 | `72a8458` | fix: always render register page regardless of session | /register route を常時表示化 |
