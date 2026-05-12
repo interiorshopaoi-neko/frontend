@@ -1,6 +1,6 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-12 / HEAD: `2f75f9e` (fix: add missing job_applications columns and fix insert_customer_review)
+> 最終更新: 2026-05-12 / HEAD: `aec1ef7` (fix: allow anon to update job_applications for customer contract flow)
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -195,13 +195,48 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 本番 DB に欠落していた列を `ADD COLUMN IF NOT EXISTS` で追加済み:
 `is_contracted (boolean DEFAULT false)` / `contracted_at` / `review_requested_at` / `reviewed_at` / `service_fee`
 
+### RLS 現状（2026-05-12 確認済み）
+
+| テーブル | anon | authenticated |
+|---|---|---|
+| `estimate_requests` | SELECT ✅ INSERT ✅ | SELECT ✅ UPDATE ✅ |
+| `job_applications` | SELECT ✅ INSERT ✅ UPDATE ✅ | SELECT ✅ INSERT ✅ UPDATE ✅ |
+| `reviews` | 直接アクセス禁止 | SELECT ✅（管理者のみ） |
+
+関連 migration:
+- `20260512_fix_job_applications_rls.sql` — job_applications SELECT/UPDATE(authenticated) + SELECT(anon) 追加
+- `20260513_fix_rls_p0.sql` — job_applications INSERT(authenticated) + estimate_requests SELECT(anon) 追加
+- `20260513_fix_anon_update_job_applications.sql` — job_applications UPDATE(anon) 追加
+
+### E2E 実データ確認済み（2026-05-12）
+
+以下を実 DB（production）で検証:
+
+| 操作 | 結果 |
+|---|---|
+| anon → `estimate_requests` SELECT | ✅ 26 件取得 |
+| authenticated → `job_applications` INSERT | ✅ HTTP 201 |
+| anon → `job_applications` SELECT | ✅ 実データ表示（DEMO fallback なし） |
+| anon → `job_applications` UPDATE `is_contracted=true` | ✅ HTTP 200、DB 反映確認 |
+| 職人応募 → 顧客確認 → 成約 フル導線 | ✅ 実データで通過 |
+
+### その他修正済み（2026-05-12）
+
+- `estimate_requests.city` → `area` 不一致: 全 9 ファイル修正済み（`adcfcc5`）
+- 動画フィルタ: `job.has_video || !!job.video_url` で実 DB の `video_url` を正しく参照（`5b311c0`）
+- status='done' 案件を職人一覧から除外（`63dce09`）
+- 顧客側レビュー画面への導線（成約後 → 工事完了報告後 → レビュー投稿）追加（`34802db`）
+
 ### 未実装（次フェーズ）
 
+- 工事完了報告 → レビュー送信 → profile 反映の実データ E2E
+- DEMO fallback の分離（実案件 0 件時の挙動整理）
 - 職人プロフィールへのレビュー表示（avg_rating / review_count / top_tags）
 - 職人→お客様 / 職人→職人 レビュー
 - billing_events テーブル / 手数料回収 (Stripe)
 - 無料枠カウント / 紹介制度
 - 成約後の連絡先開示通知メール
+- メール内リンク改善（マジックリンク等）
 
 ---
 
@@ -295,6 +330,11 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 
 | commit | 件名 | 何を直したか |
 |---|---|---|
+| `aec1ef7` | fix: allow anon to update job_applications for customer contract flow | `job_applications` に `anon UPDATE` ポリシー追加。顧客（anon）が成約操作できなかった P0 を修正 |
+| `5b311c0` | fix: P0 RLS + P1 video filter for main flow | authenticated INSERT(job_applications) + anon SELECT(estimate_requests) 追加。video_url 判定で動画フィルタ修正 |
+| `adcfcc5` | fix: use area for estimate request location display | `estimate_requests.city` → `area` 参照を全 9 ファイルで修正 |
+| `63dce09` | fix: hide completed requests from craftsman jobs | `status='done'` の案件を職人案件一覧から除外 |
+| `34802db` | feat: add review navigation from contract confirmation | 成約後 → レビュー画面への導線を `RequestApplicationsPage` に追加 |
 | `2f75f9e` | fix: add missing job_applications columns and fix insert_customer_review | 本番 DB に欠落していた `is_contracted` 等 5 列を ADD COLUMN。`craftsman_id::text` キャスト修正 |
 | `0da6a52` | feat: add reviews table and wire ReviewPage to persist review data | `reviews` テーブル + `insert_customer_review()` 関数作成。ReviewPage から RPC 経由で INSERT + タグ選択 UI 追加 |
 | `72fa13c` | docs: update current state for main flow fixes | CURRENT_STATE.md 更新（本線フロー §6 追加） |
