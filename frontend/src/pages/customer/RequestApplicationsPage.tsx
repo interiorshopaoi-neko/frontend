@@ -37,6 +37,8 @@ type Application = {
   price: number | null;
   message: string | null;
   is_contracted: boolean | null;
+  review_requested_at: string | null;
+  reviewed_at: string | null;
   created_at: string;
   craftsman: CraftsmanInfo | null;
 };
@@ -61,6 +63,8 @@ const DEMO_APPS: Application[] = [
     price: 32000,
     message: '原状回復は得意分野です。翌日から対応可能です。お気軽にご相談ください。',
     is_contracted: false,
+    review_requested_at: null,
+    reviewed_at: null,
     created_at: new Date(Date.now() - 7200000).toISOString(),
     craftsman: {
       user_id: 'craftsman-1',
@@ -80,6 +84,8 @@ const DEMO_APPS: Application[] = [
     price: 27000,
     message: '週末も対応可能です。写真を確認したうえで正確な見積もりを提示できます。',
     is_contracted: false,
+    review_requested_at: null,
+    reviewed_at: null,
     created_at: new Date(Date.now() - 3600000).toISOString(),
     craftsman: {
       user_id: 'craftsman-2',
@@ -99,6 +105,8 @@ const DEMO_APPS: Application[] = [
     price: 38000,
     message: '20年の経験があります。仕上がりの品質に自信があります。アフターフォローも対応します。',
     is_contracted: false,
+    review_requested_at: null,
+    reviewed_at: null,
     created_at: new Date(Date.now() - 1800000).toISOString(),
     craftsman: {
       user_id: 'craftsman-3',
@@ -619,6 +627,27 @@ export default function RequestApplicationsPage() {
                         </button>
                       )}
                     </div>
+                  )}
+
+                  {/* レビュー導線（職人が工事完了報告後に表示） */}
+                  {isChosen && (
+                    app.reviewed_at ? (
+                      <div className="border-t border-amber-100 px-4 py-3">
+                        <div className="flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
+                          <span className="text-amber-500">⭐</span>
+                          <span className="text-xs font-bold text-amber-700">レビュー送信済み</span>
+                        </div>
+                      </div>
+                    ) : app.review_requested_at ? (
+                      <div className="border-t border-amber-100 px-4 py-3">
+                        <button
+                          onClick={() => navigate(`/request/${id}/review`)}
+                          className="w-full py-2.5 rounded-xl border border-amber-200 text-amber-700 text-xs font-bold bg-amber-50 hover:bg-amber-100 transition active:scale-[0.98]"
+                        >
+                          ⭐ 工事のレビューを書く
+                        </button>
+                      </div>
+                    ) : null
                   )}
                 </article>
               );
