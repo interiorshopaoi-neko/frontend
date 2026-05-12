@@ -12,6 +12,11 @@ interface Payload {
   room_type?: string;
   room_size?: string;
   timing?: string;
+  request_id?: string | number;
+}
+
+function sanitizeEmail(raw: string): string {
+  return raw.replace(/^mailto:/i, '').trim();
 }
 
 function formatJST(date: Date): string {
@@ -41,7 +46,32 @@ function buildHtml(
   timing: string | undefined,
   sentAt: string,
   logoUrl: string,
+  requestId?: string,
+  siteUrl?: string,
 ): string {
+  const base = (siteUrl ?? 'https://promatch-app.jp').replace(/\/$/, '');
+  const linksHtml = requestId ? `
+          <!-- アクションリンク -->
+          <tr>
+            <td style="padding:28px 32px 0;">
+              <p style="margin:0 0 14px;font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:0.1em;text-transform:uppercase;">応募が届いたら確認できます</p>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border-spacing:0 8px;">
+                <tr><td>
+                  <a href="${base}/request/${requestId}/applications"
+                     style="display:block;background:#2563eb;color:#ffffff;text-decoration:none;text-align:center;padding:14px 20px;border-radius:12px;font-size:14px;font-weight:700;">
+                    📋 &nbsp;応募状況を確認する
+                  </a>
+                </td></tr>
+                <tr><td style="padding-top:8px;">
+                  <a href="${base}/request/${requestId}/extra-info"
+                     style="display:block;background:#f8fafc;color:#475569;text-decoration:none;text-align:center;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;border:1px solid #e2e8f0;">
+                    ✏️ &nbsp;追加情報を入力する
+                  </a>
+                </td></tr>
+              </table>
+              <p style="margin:10px 0 0;font-size:11px;color:#94a3b8;text-align:center;">このURLをブックマークしておくと後から確認できます</p>
+            </td>
+          </tr>` : '';
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -146,6 +176,8 @@ function buildHtml(
             </td>
           </tr>
 
+          ${linksHtml}
+
           <!-- 安心メッセージ -->
           <tr>
             <td style="padding:24px 32px 0;">
@@ -215,7 +247,8 @@ serve(async (req) => {
     }
 
     const payload: Payload = await req.json();
-    const { to, area, work_type, room_type, room_size, timing } = payload;
+    const { area, work_type, room_type, room_size, timing, request_id } = payload;
+    const to = sanitizeEmail(payload.to ?? '');
 
     if (!to || !to.includes('@')) {
       return new Response(JSON.stringify({ error: 'invalid email' }), {
@@ -224,8 +257,9 @@ serve(async (req) => {
       });
     }
 
-    const sentAt  = formatJST(new Date());
-    const logoUrl = `${siteUrl}/logo-full.png`;
+    const sentAt    = formatJST(new Date());
+    const logoUrl   = `${siteUrl}/logo-full.png`;
+    const reqIdStr  = request_id != null ? String(request_id) : undefined;
 
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -238,7 +272,7 @@ serve(async (req) => {
         to: [to],
         reply_to: to,
         subject: '見積もり依頼を受け付けました｜PRO MATCH',
-        html: buildHtml(area, work_type, room_type, room_size, timing, sentAt, logoUrl),
+        html: buildHtml(area, work_type, room_type, room_size, timing, sentAt, logoUrl, reqIdStr, siteUrl),
       }),
     });
 

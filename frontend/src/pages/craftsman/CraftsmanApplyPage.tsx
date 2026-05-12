@@ -124,6 +124,22 @@ export default function CraftsmanApplyPage() {
       return;
     }
 
+    // 応募成功後、管理者・依頼者へ通知（fire-and-forget）
+    fetch('/api/notify-application', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        request_id:   id,
+        craftsman_id: craftsmanId,
+        message:      message.trim() || '概算金額を入力して応募しました',
+        work_type:    job?.work_type  ?? null,
+        area:         job?.area       ?? null,
+        created_at:   new Date().toISOString(),
+      }),
+    }).catch((err) => {
+      console.error('[CraftsmanApplyPage] notify-application 失敗（応募は保存済み）:', err);
+    });
+
     setDone(true);
   }
 

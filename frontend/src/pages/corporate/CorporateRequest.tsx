@@ -455,19 +455,22 @@ export default function CorporateRequest() {
       // TODO: request_logs テーブルを導入したら、ここで send_status / invoke error /
       //   Resend response を永続化する。現状は console.error のみで失敗は
       //   Supabase Edge Functions Logs か Resend Dashboard を見ないと検知できない。
-      if (contactMethod === 'メール' && contactValue.includes('@')) {
+      // mailto: プレフィックスを除去してから検証・送信する
+      const sanitizedEmail = contactValue.replace(/^mailto:/i, '').trim();
+      if (contactMethod === 'メール' && sanitizedEmail.includes('@')) {
         try {
           // supabase-js v2 の invoke は Edge Function が 4xx/5xx を返しても throw せず、
           // 戻り値の error プロパティに FunctionsHttpError を載せて返す。明示的に拾わないと
           // サイレント失敗になる（旧挙動）。throw されるのは network 障害 / relay 失敗のみ。
           const { error: invokeErr } = await supabase.functions.invoke('send-customer-email', {
             body: {
-              to:        contactValue,
+              to:         sanitizedEmail,
               area,
-              work_type: workType,
-              room_type: roomType   || undefined,
-              room_size: roomSize   || undefined,
-              timing:    timing     || undefined,
+              work_type:  workType,
+              room_type:  roomType     || undefined,
+              room_size:  roomSize     || undefined,
+              timing:     timing       || undefined,
+              request_id: inserted?.id ?? undefined,
             },
           });
           if (invokeErr) {
