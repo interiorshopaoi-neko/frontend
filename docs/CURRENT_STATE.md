@@ -1,6 +1,6 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-12 / HEAD: `aec1ef7` (fix: allow anon to update job_applications for customer contract flow)
+> 最終更新: 2026-05-12 / HEAD: `722e622` (fix: replace embedded join with 2-step fetch in CraftsmanDashboardPage)
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -220,6 +220,17 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 | anon → `job_applications` UPDATE `is_contracted=true` | ✅ HTTP 200、DB 反映確認 |
 | 職人応募 → 顧客確認 → 成約 フル導線 | ✅ 実データで通過 |
 
+### CraftsmanDashboardPage PGRST200 修正（722e622）
+
+**問題**: `select('*, estimate_requests(work_type,...)')` が PostgREST embedded join を試みて PGRST200 を throw していた。原因は `job_applications.estimate_request_id (text)` と `estimate_requests.id (bigint)` の型不一致により FK が存在しないため。結果、常に DEMO fallback に落ちていた。
+
+**修正**: embedded join を 2-step fetch に置き換え:
+1. `job_applications` を単独取得（join なし）
+2. `estimate_request_id` を数値化 → `estimate_requests.in('id', numericIds)` で個別取得
+3. インメモリでマージして `DashboardRow` に整形
+
+**実DB確認**: test user `1e19e2b2` / estimate_request `66` で両クエリがエラーなく通ることを確認。PGRST200 は発生しない。
+
 ### その他修正済み（2026-05-12）
 
 - `estimate_requests.city` → `area` 不一致: 全 9 ファイル修正済み（`adcfcc5`）
@@ -371,6 +382,7 @@ E2E / 結合テストで Supabase Auth ユーザーが必要な場合は以下�
 
 | commit | 件名 | 何を直したか |
 |---|---|---|
+| `722e622` | fix: replace embedded join with 2-step fetch in CraftsmanDashboardPage | PGRST200（FK なし embedded join）を 2-step fetch に置き換え。職人ダッシュボードが常に DEMO になっていた P0 を修正 |
 | `aec1ef7` | fix: allow anon to update job_applications for customer contract flow | `job_applications` に `anon UPDATE` ポリシー追加。顧客（anon）が成約操作できなかった P0 を修正 |
 | `5b311c0` | fix: P0 RLS + P1 video filter for main flow | authenticated INSERT(job_applications) + anon SELECT(estimate_requests) 追加。video_url 判定で動画フィルタ修正 |
 | `adcfcc5` | fix: use area for estimate request location display | `estimate_requests.city` → `area` 参照を全 9 ファイルで修正 |
