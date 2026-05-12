@@ -378,6 +378,11 @@ export default function CorporateRequest() {
   const [devErrorDetail, setDevErrorDetail] = useState<string | null>(null);
   const [newRequestId,   setNewRequestId]   = useState<string | null>(null);
 
+  // 前回の依頼 ID（localStorage から復元）
+  const [lastRequestId] = useState<string | null>(() => {
+    try { return localStorage.getItem('promatch_last_request_id'); } catch { return null; }
+  });
+
   const hasDetail = !!(timing || desireType || memo);
   const hasRoomInfo = rooms.some(r => r.workType || r.size);
 
@@ -432,6 +437,10 @@ export default function CorporateRequest() {
       console.log('[CorporateRequest] insert success, id:', inserted?.id);
       if (inserted?.id) {
         setNewRequestId(inserted.id);
+        try {
+          localStorage.setItem('promatch_last_request_id', String(inserted.id));
+          localStorage.setItem('promatch_last_request_at', new Date().toISOString());
+        } catch { /* localStorage 失敗は無視 */ }
       }
 
       // 4. 管理者へメール通知（失敗しても送信完了扱い）
@@ -599,6 +608,29 @@ export default function CorporateRequest() {
         <PageHeader />
         <StepProgress step={1} />
         <StepContent title="お部屋の動画を撮影してください" sub="10〜30秒でOK。壁・床・気になる箇所をゆっくり撮るだけ">
+
+          {/* ── 前回の依頼バナー ── */}
+          {lastRequestId && (
+            <div className="mb-5 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-4">
+              <p className="text-xs font-extrabold text-indigo-700 mb-2">📋 前回の依頼状況を確認する</p>
+              <div className="flex flex-col gap-2">
+                <a
+                  href={`/request/${lastRequestId}/applications`}
+                  className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-white border border-indigo-200 text-xs font-bold text-indigo-700 hover:bg-indigo-50 active:scale-95 transition-all"
+                >
+                  <span>応募状況を確認する</span>
+                  <span className="text-indigo-400">→</span>
+                </a>
+                <a
+                  href={`/request/${lastRequestId}/extra-info`}
+                  className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-white border border-indigo-200 text-xs font-bold text-indigo-700 hover:bg-indigo-50 active:scale-95 transition-all"
+                >
+                  <span>追加情報を入力する</span>
+                  <span className="text-indigo-400">→</span>
+                </a>
+              </div>
+            </div>
+          )}
 
           {/* ── 撮影前チェックリスト ── */}
           <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
