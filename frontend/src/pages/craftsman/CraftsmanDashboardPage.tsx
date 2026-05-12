@@ -17,7 +17,12 @@ type DashboardRow = {
   reviewed_at: string | null;
   service_fee: number | null;
   created_at: string;
-  estimate_requests: { work_type: string | null; city: string | null } | null;
+  estimate_requests: {
+    work_type: string | null;
+    city: string | null;
+    contact_value: string | null;   // 成約後に職人へ開示（メールのみ）
+    contact_method: string | null;  // 開示判定用（電話・LINE でも email のみ出す）
+  } | null;
 };
 
 type StatusLabel =
@@ -57,7 +62,7 @@ const DEMO: DashboardRow[] = [
     is_contracted: false, contracted_at: null, review_requested_at: null, reviewed_at: null,
     service_fee: null,
     created_at: new Date(Date.now() - 86400000).toISOString(),
-    estimate_requests: { work_type: 'クロス張替え', city: '太田市' },
+    estimate_requests: { work_type: 'クロス張替え', city: '太田市', contact_value: null, contact_method: null },
   },
   {
     id: 'demo-d2',
@@ -66,7 +71,7 @@ const DEMO: DashboardRow[] = [
     is_contracted: false, contracted_at: null, review_requested_at: null, reviewed_at: null,
     service_fee: 2000,
     created_at: new Date(Date.now() - 172800000).toISOString(),
-    estimate_requests: { work_type: '床CF張替え', city: '伊勢崎市' },
+    estimate_requests: { work_type: '床CF張替え', city: '伊勢崎市', contact_value: null, contact_method: null },
   },
   {
     id: 'demo-d3',
@@ -77,7 +82,7 @@ const DEMO: DashboardRow[] = [
     reviewed_at: null,
     service_fee: 1000,
     created_at: new Date(Date.now() - 345600000).toISOString(),
-    estimate_requests: { work_type: 'クロス補修', city: '前橋市' },
+    estimate_requests: { work_type: 'クロス補修', city: '前橋市', contact_value: null, contact_method: null },
   },
   {
     id: 'demo-d4',
@@ -87,7 +92,7 @@ const DEMO: DashboardRow[] = [
     review_requested_at: null, reviewed_at: null,
     service_fee: 1000,
     created_at: new Date(Date.now() - 518400000).toISOString(),
-    estimate_requests: { work_type: '床補修', city: '高崎市' },
+    estimate_requests: { work_type: '床補修', city: '高崎市', contact_value: null, contact_method: null },
   },
   {
     id: 'demo-d5',
@@ -99,7 +104,7 @@ const DEMO: DashboardRow[] = [
     reviewed_at: new Date(Date.now() - 259200000).toISOString(),
     service_fee: 3000,
     created_at: new Date(Date.now() - 950400000).toISOString(),
-    estimate_requests: { work_type: 'クロス全面張替え', city: '桐生市' },
+    estimate_requests: { work_type: 'クロス全面張替え', city: '桐生市', contact_value: null, contact_method: null },
   },
   {
     id: 'demo-d6',
@@ -108,7 +113,7 @@ const DEMO: DashboardRow[] = [
     is_contracted: false, contracted_at: null, review_requested_at: null, reviewed_at: null,
     service_fee: null,
     created_at: new Date(Date.now() - 691200000).toISOString(),
-    estimate_requests: { work_type: '補修工事', city: '沼田市' },
+    estimate_requests: { work_type: '補修工事', city: '沼田市', contact_value: null, contact_method: null },
   },
 ];
 
@@ -162,10 +167,12 @@ function SummaryCard({ icon, value, label, accent }: {
 
 export default function CraftsmanDashboardPage() {
   const navigate = useNavigate();
-  const [apps,    setApps]    = useState<DashboardRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isDemo,  setIsDemo]  = useState(false);
-  const [filter,  setFilter]  = useState<StatusLabel>('全て');
+  const [apps,        setApps]        = useState<DashboardRow[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [isDemo,      setIsDemo]      = useState(false);
+  const [filter,      setFilter]      = useState<StatusLabel>('全て');
+  // 成約後メールアドレス開示トグル（将来 billing_events を挟む場合はここに差し込む）
+  const [openEmailId, setOpenEmailId] = useState<string | null>(null);
   const userId = getUserId();
 
   useEffect(() => {
@@ -176,7 +183,7 @@ export default function CraftsmanDashboardPage() {
 
       const { data, error } = await supabase
         .from('job_applications')
-        .select('*, estimate_requests(work_type, city)')
+        .select('*, estimate_requests(work_type, city, contact_value, contact_method)')
         .eq('craftsman_id', userId)
         .order('created_at', { ascending: false });
 
@@ -310,6 +317,9 @@ export default function CraftsmanDashboardPage() {
               const workType = app.estimate_requests?.work_type ?? '内装工事';
               const city     = app.estimate_requests?.city ?? 'エリア未設定';
               const isSensitive = app._status === '成約済み' || app._status === '工事完了';
+              // 成約後メール開示: contact_value が @ を含む場合のみ表示。電話/LINE は出さない。
+              const contactValue  = app.estimate_requests?.contact_value ?? null;
+              const isContactEmail = (contactValue ?? '').includes('@');
 
               return (
                 <article key={app.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
@@ -365,8 +375,36 @@ export default function CraftsmanDashboardPage() {
                   {isSensitive && (
                     <div className="border-t border-slate-100 bg-green-50 px-4 py-2.5">
                       <p className="text-[11px] text-green-700 font-bold">
-                        {app._status === '工事完了' ? '✅ 工事完了 — 実績として記録されました' : '🤝 成約済み — 詳細は直接やりとりしてください'}
+                        {app._status === '工事完了' ? '✅ 工事完了 — 実績として記録されました' : '🤝 成約済み — 依頼者とメールでやり取りできます'}
                       </p>
+                    </div>
+                  )}
+
+                  {/* 成約後メールアドレス開示（電話・LINEは表示しない。将来 billing_events をここに差し込む） */}
+                  {isSensitive && !isDemo && (
+                    <div className="border-t border-green-100 px-4 py-3">
+                      {openEmailId === app.id ? (
+                        <div className="rounded-xl bg-green-50 border border-green-200 px-3 py-2.5">
+                          <p className="text-[10px] font-bold text-green-700 mb-1.5">
+                            成約済みのため、メールアドレスを確認できます
+                          </p>
+                          {isContactEmail ? (
+                            <p className="text-sm font-bold text-slate-900 break-all">{contactValue}</p>
+                          ) : (
+                            <p className="text-sm text-slate-500">メールアドレス未登録</p>
+                          )}
+                          <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+                            やり取りはメールで行ってください。
+                          </p>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setOpenEmailId(app.id)}
+                          className="w-full py-2.5 rounded-xl border border-green-200 text-green-700 text-xs font-bold bg-green-50 hover:bg-green-100 transition active:scale-[0.98]"
+                        >
+                          📧 依頼者のメールアドレスを確認する
+                        </button>
+                      )}
                     </div>
                   )}
 

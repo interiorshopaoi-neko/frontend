@@ -25,6 +25,7 @@ type CraftsmanInfo = {
   has_tools: boolean | null;
   bio: string | null;
   profile_image_url: string | null;
+  email?: string | null;  // 成約後のみ取得（get_my_craftsman_profile 経由）
 };
 
 type Application = {
@@ -228,6 +229,8 @@ export default function RequestApplicationsPage() {
   const [confirming,    setConfirming]    = useState<Application | null>(null);
   const [contracting,   setContracting]   = useState(false);
   const [contractedId,  setContractedId]  = useState<string | null>(null);
+  // 成約後メールアドレス開示トグル（将来 billing_events をここに差し込む）
+  const [openEmailId,   setOpenEmailId]   = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -271,6 +274,27 @@ export default function RequestApplicationsPage() {
       const craftsmenMap = Object.fromEntries(
         (craftsmenData ?? []).map(c => [c.user_id, c as CraftsmanInfo])
       );
+
+      // 成約済み職人のメールアドレスを取得（電話・LINEは取得しない）
+      // get_my_craftsman_profile は anon から呼べる SECURITY DEFINER 関数。
+      // 将来 billing_events を挟む場合はこの fetch の前に課金確認を差し込む。
+      const contractedIds = appData
+        .filter((a: any) => a.is_contracted && a.craftsman_id)
+        .map((a: any) => a.craftsman_id as string);
+
+      if (contractedIds.length > 0) {
+        const emailFetches = await Promise.all(
+          contractedIds.map((uid: string) =>
+            supabase.rpc('get_my_craftsman_profile', { p_user_id: uid })
+          )
+        );
+        contractedIds.forEach((uid: string, i: number) => {
+          const profile = emailFetches[i].data?.[0];
+          if (craftsmenMap[uid]) {
+            craftsmenMap[uid] = { ...craftsmenMap[uid], email: profile?.email ?? null };
+          }
+        });
+      }
 
       setApps(
         appData.map(a => ({
@@ -366,8 +390,8 @@ export default function RequestApplicationsPage() {
               <p className="text-sm font-extrabold text-green-800">成約しました！</p>
             </div>
             <p className="text-xs text-green-700 leading-relaxed ml-7">
-              職人さんが確認次第、連絡先をお互いに共有します。<br />
-              それまでは個人情報は開示されません。
+              成約済みのため、職人のメールアドレスを確認できます。<br />
+              カード内の「📧 職人のメールアドレスを確認する」からご確認ください。
             </p>
           </div>
         )}
@@ -561,6 +585,32 @@ export default function RequestApplicationsPage() {
                       </button>
                     )}
                   </div>
+
+                  {/* 成約後メールアドレス開示（電話・LINEは表示しない。将来 billing_events をここに差し込む） */}
+                  {isChosen && !isDemo && (
+                    <div className="border-t border-green-100 px-4 py-3">
+                      {openEmailId === app.id ? (
+                        <div className="rounded-xl bg-green-50 border border-green-200 px-3 py-2.5">
+                          <p className="text-[10px] font-bold text-green-700 mb-1.5">
+                            成約済みのため、メールアドレスを確認できます
+                          </p>
+                          <p className="text-sm font-bold text-slate-900 break-all">
+                            {c?.email ?? 'メールアドレス未登録'}
+                          </p>
+                          <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+                            やり取りはメールで行ってください。
+                          </p>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setOpenEmailId(app.id)}
+                          className="w-full py-2.5 rounded-xl border border-green-200 text-green-700 text-xs font-bold bg-green-50 hover:bg-green-100 transition active:scale-[0.98]"
+                        >
+                          📧 職人のメールアドレスを確認する
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </article>
               );
             })}
@@ -570,8 +620,8 @@ export default function RequestApplicationsPage() {
         {/* 注意書き */}
         <div className="mt-6 rounded-2xl bg-slate-100 px-4 py-3">
           <p className="text-[11px] text-slate-400 text-center leading-relaxed">
-            🔒 電話番号・住所などの個人情報は成約後に当事者間で共有されます。<br />
-            成約前に個人情報が公開されることはありません。
+            🔒 成約後にメールアドレスのみ開示されます。<br />
+            電話番号・住所などは開示されません。
           </p>
         </div>
       </div>
