@@ -12,6 +12,7 @@ interface Payload {
   room_type?: string;
   room_size?: string;
   timing?: string;
+  request_id?: number | string;
 }
 
 function formatJST(date: Date): string {
@@ -41,7 +42,38 @@ function buildHtml(
   timing: string | undefined,
   sentAt: string,
   logoUrl: string,
+  siteUrl: string,
+  requestId: number | string | undefined,
 ): string {
+  const linksHtml = requestId ? `
+          <!-- リンクセクション -->
+          <tr>
+            <td style="padding:24px 32px 0;">
+              <p style="margin:0 0 12px;font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:0.1em;text-transform:uppercase;">依頼の確認・追加情報</p>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:12px;overflow:hidden;border:1px solid #e0e7ff;">
+                <tr>
+                  <td style="padding:14px 20px;background:#eef2ff;border-bottom:1px solid #e0e7ff;">
+                    <a href="${siteUrl}/request/${requestId}/applications"
+                       style="display:block;font-size:14px;font-weight:700;color:#4338ca;text-decoration:none;">
+                      📋 応募状況を確認する →
+                    </a>
+                    <p style="margin:4px 0 0;font-size:11px;color:#6366f1;">職人からの応募が届いたらここから確認できます</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 20px;background:#f8fafc;">
+                    <a href="${siteUrl}/request/${requestId}/extra-info"
+                       style="display:block;font-size:14px;font-weight:700;color:#0f766e;text-decoration:none;">
+                      ✏️ 追加情報を入力する →
+                    </a>
+                    <p style="margin:4px 0 0;font-size:11px;color:#0d9488;">部屋の広さ・家具状況などを追加すると精度が上がります（任意）</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+` : '';
+
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -146,6 +178,8 @@ function buildHtml(
             </td>
           </tr>
 
+          ${linksHtml}
+
           <!-- 安心メッセージ -->
           <tr>
             <td style="padding:24px 32px 0;">
@@ -215,7 +249,7 @@ serve(async (req) => {
     }
 
     const payload: Payload = await req.json();
-    const { to, area, work_type, room_type, room_size, timing } = payload;
+    const { to, area, work_type, room_type, room_size, timing, request_id } = payload;
 
     if (!to || !to.includes('@')) {
       return new Response(JSON.stringify({ error: 'invalid email' }), {
@@ -225,7 +259,7 @@ serve(async (req) => {
     }
 
     const sentAt  = formatJST(new Date());
-    const logoUrl = 'https://frontend-alpha-gray-75.vercel.app/logo-full.png';
+    const logoUrl = `${siteUrl}/logo-full.png`;
 
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -238,14 +272,14 @@ serve(async (req) => {
         to: [to],
         reply_to: to,
         subject: '見積もり依頼を受け付けました｜PRO MATCH',
-        html: buildHtml(area, work_type, room_type, room_size, timing, sentAt, logoUrl),
+        html: buildHtml(area, work_type, room_type, room_size, timing, sentAt, logoUrl, siteUrl, request_id),
       }),
     });
 
     if (!res.ok) {
       const body = await res.text();
       console.error('[send-customer-email] Resend error:', res.status, body);
-      return new Response(JSON.stringify({ error: 'resend failed', status: res.status }), {
+      return new Response(JSON.stringify({ error: 'resend failed', status: res.status, detail: body }), {
         status: 500,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
