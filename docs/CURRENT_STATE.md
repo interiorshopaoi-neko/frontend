@@ -269,6 +269,7 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 - `/admin/*` の厳密 RLS 強化（current は frontend guard のみ）
 - 既存 `role === 'customer'` / `role === 'craftsman'` 比較ロジック
 - multilingual i18n（en/zh/ko/vi）— legacy remnants、warning は無視可
+- **本番ユーザーへの Admin API password 変更**（下記 E2E ポリシー参照）
 
 ### 事業方針（PRO MATCH 職人集客戦略）
 - **登録前一部公開**: JobsLockedPreview で県レベル+想定売上のみ表示
@@ -323,6 +324,46 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 1. **緊急 / 最速**: `vercel promote <1つ前の deployment URL>`（git は触らない、数十秒で alias 切替）
 2. **きれいに巻き戻し**: `git push origin <previous_sha>:main --force-with-lease`
 3. **履歴を残す**: `git revert <sha> && git push`
+
+### E2E テストポリシー（2026-05-12 制定）
+
+#### 本番アカウント（破壊的操作禁止）
+
+| アカウント | 用途 | 禁止操作 |
+|---|---|---|
+| `interior.shop.aoi+craftsman@gmail.com` | 本番確認用・職人ロール | Admin API password 変更、削除、banned |
+| `interior.shop.aoi+craftsman12@gmail.com` | 本番確認用・職人ロール | 同上 |
+| `interior.shop.aoi@gmail.com` | 運営（craftsmen プロフィール所有者） | 同上 |
+| `interior.shop.aoi+admin@gmail.com` / `+admin2@gmail.com` | 管理者 | 同上 |
+
+**禁止事項（絶対）**:
+- `PUT /auth/v1/admin/users/:id` で本番ユーザーのパスワードを変更しない
+- Admin API で本番ユーザーの `email`, `user_metadata`, `app_metadata` を変更しない
+- 本番ユーザーの削除・ban 操作をしない
+
+> 背景: 2026-05-12 の E2E テスト中に `interior.shop.aoi+craftsman@gmail.com` のパスワードを  
+> `e2etest_pass_2026` に Admin API で上書きした結果、本番ログインができなくなった。  
+> 復旧には本人が `/login` → 「パスワードをお忘れですか？」→ リセットメール で対応が必要。
+
+#### E2E 専用テストユーザー（使い捨て）
+
+E2E / 結合テストで Supabase Auth ユーザーが必要な場合は以下の命名規則で作成し、テスト後に Admin API で削除する。
+
+| role | メール例 |
+|---|---|
+| craftsman | `e2e-craftsman-YYYYMMDD@promatch-app.jp` |
+| customer | `e2e-customer-YYYYMMDD@promatch-app.jp` |
+| admin | `e2e-admin-YYYYMMDD@promatch-app.jp` |
+
+**手順**:
+1. `POST /auth/v1/admin/users` で作成（本番ユーザーとは別メール）
+2. テスト実行
+3. `DELETE /auth/v1/admin/users/:id` で削除
+4. `job_applications` / `reviews` / `craftsmen` の残留テストデータも service_role で削除
+
+#### テスト後クリーンアップ必須
+
+テスト中に作成した実 DB データ（`job_applications`, `reviews`, `craftsmen` 行）は必ず service_role で削除する。本番ユーザーの job_applications は削除しない。
 
 ---
 
