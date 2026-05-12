@@ -71,7 +71,7 @@ export default function AuthConfirmed() {
 
       {/* CTA ボタン */}
       <button
-        onClick={() => navigate(dest)}
+        onClick={() => navigate(dest, role === 'craftsman' ? { state: { justRegistered: true } } : undefined)}
         disabled={!ready}
         className="w-full max-w-xs py-3.5 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600
                    hover:from-blue-700 hover:to-indigo-700 disabled:opacity-40
