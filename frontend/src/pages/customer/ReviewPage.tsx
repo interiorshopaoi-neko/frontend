@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
 
 // ─── Star Rating ──────────────────────────────────────────────────────────────
 
@@ -28,19 +29,21 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 
 export default function ReviewPage() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();  // estimate_request_id
 
-  const [rating,    setRating]    = useState(0);
-  const [comment,   setComment]   = useState('');
-  const [again,     setAgain]     = useState<boolean | null>(null);
-  const [checks,    setChecks]    = useState({ platform: false, person: false, noRedirect: false });
-  const [submitted, setSubmitted] = useState(false);
-  const [error,     setError]     = useState('');
+  const [rating,      setRating]      = useState(0);
+  const [comment,     setComment]     = useState('');
+  const [again,       setAgain]       = useState<boolean | null>(null);
+  const [checks,      setChecks]      = useState({ platform: false, person: false, noRedirect: false });
+  const [submitted,   setSubmitted]   = useState(false);
+  const [submitting,  setSubmitting]  = useState(false);
+  const [error,       setError]       = useState('');
 
   function toggleCheck(key: keyof typeof checks) {
     setChecks(prev => ({ ...prev, [key]: !prev[key] }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     if (rating === 0) { setError('評価（星）を選択してください'); return; }
@@ -48,8 +51,36 @@ export default function ReviewPage() {
       setError('すべての確認項目にチェックを入れてください');
       return;
     }
-    // デモ送信（DB保存なし）
+
+    setSubmitting(true);
+
+    // estimate_request_id が取得できる場合、is_contracted の application に reviewed_at を記録
+    // application が見つからない場合（デモ URL 等）は送信完了として扱う
+    if (id) {
+      const { data: apps } = await supabase
+        .from('job_applications')
+        .select('id')
+        .eq('estimate_request_id', id)
+        .eq('is_contracted', true)
+        .limit(1);
+
+      if (apps && apps.length > 0) {
+        const { error: updateError } = await supabase
+          .from('job_applications')
+          .update({ reviewed_at: new Date().toISOString() })
+          .eq('id', apps[0].id);
+
+        if (updateError) {
+          setError('送信に失敗しました。もう一度お試しください。');
+          setSubmitting(false);
+          return;
+        }
+      }
+      // application 未発見（デモ URL など）はそのまま完了へ
+    }
+
     setSubmitted(true);
+    setSubmitting(false);
   }
 
   if (submitted) {
@@ -190,9 +221,15 @@ export default function ReviewPage() {
           {/* 送信 */}
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white rounded-2xl py-4 text-base font-extrabold shadow-sm shadow-blue-200 transition active:scale-[0.99]"
+            disabled={submitting}
+            className="w-full bg-blue-600 text-white rounded-2xl py-4 text-base font-extrabold shadow-sm shadow-blue-200 transition active:scale-[0.99] disabled:opacity-60"
           >
-            レビューを送る
+            {submitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                送信中...
+              </span>
+            ) : 'レビューを送る'}
           </button>
 
           <p className="text-center text-[11px] text-slate-400 leading-relaxed">

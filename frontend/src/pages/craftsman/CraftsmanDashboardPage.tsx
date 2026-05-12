@@ -172,7 +172,9 @@ export default function CraftsmanDashboardPage() {
   const [isDemo,      setIsDemo]      = useState(false);
   const [filter,      setFilter]      = useState<StatusLabel>('全て');
   // 成約後メールアドレス開示トグル（将来 billing_events を挟む場合はここに差し込む）
-  const [openEmailId, setOpenEmailId] = useState<string | null>(null);
+  const [openEmailId,   setOpenEmailId]   = useState<string | null>(null);
+  // 工事完了報告ローディング
+  const [reportingId,   setReportingId]   = useState<string | null>(null);
   const userId = getUserId();
 
   useEffect(() => {
@@ -195,6 +197,26 @@ export default function CraftsmanDashboardPage() {
       setLoading(false);
     })();
   }, [userId]);
+
+  // ── 工事完了報告（成約済み → 依頼者確認中 へ）────────────────────────────
+  // review_requested_at を更新。将来 billing_events をここに差し込む。
+  async function reportCompletion(appId: string) {
+    setReportingId(appId);
+    const now = new Date().toISOString();
+    if (!isDemo) {
+      const { error } = await supabase
+        .from('job_applications')
+        .update({ review_requested_at: now })
+        .eq('id', appId);
+      if (error) {
+        alert('エラーが発生しました。もう一度お試しください。');
+        setReportingId(null);
+        return;
+      }
+    }
+    setApps(prev => prev.map(a => a.id === appId ? { ...a, review_requested_at: now } : a));
+    setReportingId(null);
+  }
 
   const withStatus = apps.map(a => ({ ...a, _status: deriveStatus(a) }));
 
@@ -405,6 +427,24 @@ export default function CraftsmanDashboardPage() {
                           📧 依頼者のメールアドレスを確認する
                         </button>
                       )}
+                    </div>
+                  )}
+
+                  {/* 工事完了報告ボタン（成約済みのみ。reviewed_at / review_requested_at がある場合は非表示） */}
+                  {app._status === '成約済み' && (
+                    <div className="border-t border-slate-100 px-4 py-3">
+                      <button
+                        onClick={() => reportCompletion(app.id)}
+                        disabled={reportingId === app.id}
+                        className="w-full py-2.5 rounded-xl border border-emerald-200 text-emerald-700 text-xs font-bold bg-emerald-50 hover:bg-emerald-100 transition active:scale-[0.98] disabled:opacity-60"
+                      >
+                        {reportingId === app.id ? (
+                          <span className="flex items-center justify-center gap-1.5">
+                            <span className="w-3.5 h-3.5 border-2 border-emerald-300 border-t-emerald-600 rounded-full animate-spin inline-block" />
+                            更新中...
+                          </span>
+                        ) : '✅ 工事完了を報告する（依頼者にレビューを依頼）'}
+                      </button>
                     </div>
                   )}
 
