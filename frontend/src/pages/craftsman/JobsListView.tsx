@@ -65,7 +65,7 @@ function getPriority(job: Job) {
   let score = 0;
   if (job.urgency === 'today')               score += 3;
   if (job.urgency === 'tomorrow')            score += 2;
-  if (job.has_video)                         score += 2;
+  if (job.has_video || !!job.video_url)       score += 2;
   if ((job.distance_km ?? 999) <= 10)        score += 2;
   if (job.has_photos)                        score += 1;
   return Math.min(5, score);
@@ -89,11 +89,11 @@ export default function JobsListView({ jobs, loading }: Props) {
     return jobs
       .filter(job => {
         if (filter === 'today') return job.urgency === 'today' || job.urgency === 'tomorrow';
-        if (filter === 'video') return job.has_video;
+        if (filter === 'video') return job.has_video || !!job.video_url;
         return true;
       })
       .sort((a, b) => {
-        const vp = Number(b.has_video) - Number(a.has_video);
+        const vp = Number(b.has_video || !!b.video_url) - Number(a.has_video || !!a.video_url);
         if (vp !== 0) return vp;
         return getPriority(b) - getPriority(a);
       });
@@ -180,7 +180,7 @@ export default function JobsListView({ jobs, loading }: Props) {
               const isToday    = job.urgency === 'today';
               const isTomorrow = job.urgency === 'tomorrow';
               const isSoon     = job.urgency === 'soon';
-              const hasMedia   = job.has_video || job.has_photos || job.has_floor_plan;
+              const hasMedia   = job.has_video || !!job.video_url || job.has_photos || job.has_floor_plan;
               const freshness  = getFreshnessBadge(job);
               const postedAt   = timeAgo(job.created_at);
 
@@ -209,7 +209,7 @@ export default function JobsListView({ jobs, loading }: Props) {
                         数日以内
                       </span>
                     )}
-                    {job.has_video && (
+                    {(job.has_video || !!job.video_url) && (
                       <span className="bg-blue-50 text-blue-700 text-xs font-bold px-2.5 py-1 rounded-full">
                         ▶ 動画あり
                       </span>
@@ -279,7 +279,7 @@ export default function JobsListView({ jobs, loading }: Props) {
                     )}
                     {hasMedia && (
                       <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">
-                        {[job.has_video && '動画', job.has_photos && '写真', job.has_floor_plan && '図面'].filter(Boolean).join(' · ')}
+                        {[(job.has_video || !!job.video_url) && '動画', job.has_photos && '写真', job.has_floor_plan && '図面'].filter(Boolean).join(' · ')}
                       </span>
                     )}
                     {job.damage_level && (
