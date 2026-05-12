@@ -17,7 +17,7 @@ type Request = {
   id: string;
   created_at: string;
   work_type: string | null;
-  city: string | null;
+  area: string | null;
   status: string | null;
   has_video: boolean | null;
   has_photos: boolean | null;
@@ -50,17 +50,17 @@ type Application = {
   service_fee: number | null;
   // Phase3 の "今すぐ行けます" など、応募メッセージ。
   message?: string | null;
-  estimate_requests?: { work_type: string | null; city: string | null } | null;
+  estimate_requests?: { work_type: string | null; area: string | null } | null;
 };
 
 // ─── Demo fallback data ───────────────────────────────────────────────────────
 
 const DEMO_REQUESTS: Request[] = [
-  { id: 'r1', created_at: new Date().toISOString(), work_type: 'クロス張替え', city: '大阪市北区', status: 'open', has_video: true, has_photos: true, urgency: 'soon' },
-  { id: 'r2', created_at: new Date().toISOString(), work_type: 'クッションフロア', city: '大阪市住吉区', status: 'open', has_video: false, has_photos: true, urgency: 'today' },
-  { id: 'r3', created_at: new Date(Date.now() - 86400000).toISOString(), work_type: '床張替え', city: '堺市堺区', status: 'matched', has_video: true, has_photos: false, urgency: 'tomorrow' },
-  { id: 'r4', created_at: new Date(Date.now() - 172800000).toISOString(), work_type: 'クロス張替え', city: '大阪市北区', status: 'open', has_video: false, has_photos: false, urgency: null },
-  { id: 'r5', created_at: new Date(Date.now() - 259200000).toISOString(), work_type: '補修', city: '堺市東区', status: 'open', has_video: true, has_photos: true, urgency: 'soon' },
+  { id: 'r1', created_at: new Date().toISOString(), work_type: 'クロス張替え', area: '大阪市北区', status: 'open', has_video: true, has_photos: true, urgency: 'soon' },
+  { id: 'r2', created_at: new Date().toISOString(), work_type: 'クッションフロア', area: '大阪市住吉区', status: 'open', has_video: false, has_photos: true, urgency: 'today' },
+  { id: 'r3', created_at: new Date(Date.now() - 86400000).toISOString(), work_type: '床張替え', area: '堺市堺区', status: 'matched', has_video: true, has_photos: false, urgency: 'tomorrow' },
+  { id: 'r4', created_at: new Date(Date.now() - 172800000).toISOString(), work_type: 'クロス張替え', area: '大阪市北区', status: 'open', has_video: false, has_photos: false, urgency: null },
+  { id: 'r5', created_at: new Date(Date.now() - 259200000).toISOString(), work_type: '補修', area: '堺市東区', status: 'open', has_video: true, has_photos: true, urgency: 'soon' },
 ];
 
 const DEMO_CRAFTSMEN: Craftsman[] = [
@@ -70,9 +70,9 @@ const DEMO_CRAFTSMEN: Craftsman[] = [
 ];
 
 const DEMO_APPLICATIONS: Application[] = [
-  { id: 'a1', created_at: new Date().toISOString(), estimate_request_id: 'r1', craftsman_id: 'c1', status: 'available', price: 45000, service_fee: 1500, message: '今すぐ行けます', estimate_requests: { work_type: 'クロス張替え', city: '大阪市北区' } },
-  { id: 'a2', created_at: new Date().toISOString(), estimate_request_id: 'r1', craftsman_id: 'c2', status: 'available', price: 38000, service_fee: 1500, message: '明日対応可能です', estimate_requests: { work_type: 'クロス張替え', city: '大阪市北区' } },
-  { id: 'a3', created_at: new Date(Date.now() - 86400000).toISOString(), estimate_request_id: 'r3', craftsman_id: 'c1', status: 'matched', price: 72000, service_fee: 1500, message: null, estimate_requests: { work_type: '床張替え', city: '堺市堺区' } },
+  { id: 'a1', created_at: new Date().toISOString(), estimate_request_id: 'r1', craftsman_id: 'c1', status: 'available', price: 45000, service_fee: 1500, message: '今すぐ行けます', estimate_requests: { work_type: 'クロス張替え', area: '大阪市北区' } },
+  { id: 'a2', created_at: new Date().toISOString(), estimate_request_id: 'r1', craftsman_id: 'c2', status: 'available', price: 38000, service_fee: 1500, message: '明日対応可能です', estimate_requests: { work_type: 'クロス張替え', area: '大阪市北区' } },
+  { id: 'a3', created_at: new Date(Date.now() - 86400000).toISOString(), estimate_request_id: 'r3', craftsman_id: 'c1', status: 'matched', price: 72000, service_fee: 1500, message: null, estimate_requests: { work_type: '床張替え', area: '堺市堺区' } },
 ];
 
 // ─── Analysis functions ───────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ function calculateAverageApplicationPrice(applications: Application[]): number {
 
 function calculateTopArea(requests: Request[]): string {
   const count: Record<string, number> = {};
-  requests.forEach(r => { if (r.city) count[r.city] = (count[r.city] ?? 0) + 1; });
+  requests.forEach(r => { if (r.area) count[r.area] = (count[r.area] ?? 0) + 1; });
   const sorted = Object.entries(count).sort((a, b) => b[1] - a[1]);
   return sorted[0]?.[0] ?? '—';
 }
@@ -166,9 +166,9 @@ function AdminDashboardPageContent({ session }: { session: Session }) {
     (async () => {
       try {
         const [{ data: reqs }, { data: crafts }, { data: apps }] = await Promise.all([
-          supabase.from('estimate_requests').select('id,created_at,work_type,city,status,has_video,has_photos,urgency,meta').order('created_at', { ascending: false }).limit(100),
+          supabase.from('estimate_requests').select('id,created_at,work_type,area,status,has_video,has_photos,urgency,meta').order('created_at', { ascending: false }).limit(100),
           supabase.from('craftsmen').select('id,created_at,shop_name,full_name,service_area,work_types,experience_years,user_id,email').order('created_at', { ascending: false }).limit(100),
-          supabase.from('job_applications').select('id,created_at,estimate_request_id,craftsman_id,status,price,service_fee,message,estimate_requests(work_type,city)').order('created_at', { ascending: false }).limit(200),
+          supabase.from('job_applications').select('id,created_at,estimate_request_id,craftsman_id,status,price,service_fee,message,estimate_requests(work_type,area)').order('created_at', { ascending: false }).limit(200),
         ]);
 
         const hasData = (reqs?.length ?? 0) + (crafts?.length ?? 0) + (apps?.length ?? 0) > 0;
@@ -313,8 +313,8 @@ function AdminDashboardPageContent({ session }: { session: Session }) {
                     {/* 対象案件 (work_type / city) */}
                     <div className="rounded-lg bg-slate-50 px-2.5 py-1.5 text-[11px] text-slate-600 leading-tight">
                       <span className="font-bold text-slate-700">{a.estimate_requests?.work_type ?? '工事内容不明'}</span>
-                      {a.estimate_requests?.city && (
-                        <span className="text-slate-500"> · {a.estimate_requests.city}</span>
+                      {a.estimate_requests?.area && (
+                        <span className="text-slate-500"> · {a.estimate_requests.area}</span>
                       )}
                     </div>
 
@@ -414,7 +414,7 @@ function AdminDashboardPageContent({ session }: { session: Session }) {
                 <p className="text-xs font-bold text-slate-400 mb-1">職人不足エリア</p>
                 <p className="text-sm font-extrabold text-slate-900 leading-tight">
                   {lowResponseReqs.length > 0
-                    ? [...new Set(lowResponseReqs.map(r => r.city).filter(Boolean))].slice(0, 3).join('、') || '—'
+                    ? [...new Set(lowResponseReqs.map(r => r.area).filter(Boolean))].slice(0, 3).join('、') || '—'
                     : '現時点で問題なし'}
                 </p>
                 <p className="text-xs text-slate-400 mt-1">応募0件案件のエリア</p>
@@ -443,7 +443,7 @@ function AdminDashboardPageContent({ session }: { session: Session }) {
                     return (
                       <tr key={r.id} className={`border-b transition ${isStale ? 'bg-orange-50 border-orange-100 hover:bg-orange-100' : 'border-slate-50 hover:bg-slate-50'}`}>
                         <td className="px-4 py-3 font-bold text-slate-800 whitespace-nowrap">{r.work_type || '—'}</td>
-                        <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{r.city || '—'}</td>
+                        <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{r.area || '—'}</td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           {r.has_video
                             ? <span className="text-blue-600 font-bold text-xs">▶ あり</span>
@@ -546,7 +546,7 @@ function AdminDashboardPageContent({ session }: { session: Session }) {
                           {a.estimate_requests?.work_type || '—'}
                         </td>
                         <td className="px-4 py-3 text-slate-600 text-xs">
-                          {a.estimate_requests?.city || '—'}
+                          {a.estimate_requests?.area || '—'}
                         </td>
                         <td className="px-4 py-3 font-extrabold text-slate-900">
                           {price > 0 ? `¥${price.toLocaleString()}` : '—'}

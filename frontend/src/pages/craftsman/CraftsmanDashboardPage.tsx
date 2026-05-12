@@ -19,7 +19,7 @@ type DashboardRow = {
   created_at: string;
   estimate_requests: {
     work_type: string | null;
-    city: string | null;
+    area: string | null;
     contact_value: string | null;   // 成約後に職人へ開示（メールのみ）
     contact_method: string | null;  // 開示判定用（電話・LINE でも email のみ出す）
   } | null;
@@ -62,7 +62,7 @@ const DEMO: DashboardRow[] = [
     is_contracted: false, contracted_at: null, review_requested_at: null, reviewed_at: null,
     service_fee: null,
     created_at: new Date(Date.now() - 86400000).toISOString(),
-    estimate_requests: { work_type: 'クロス張替え', city: '太田市', contact_value: null, contact_method: null },
+    estimate_requests: { work_type: 'クロス張替え', area: '太田市', contact_value: null, contact_method: null },
   },
   {
     id: 'demo-d2',
@@ -71,7 +71,7 @@ const DEMO: DashboardRow[] = [
     is_contracted: false, contracted_at: null, review_requested_at: null, reviewed_at: null,
     service_fee: 2000,
     created_at: new Date(Date.now() - 172800000).toISOString(),
-    estimate_requests: { work_type: '床CF張替え', city: '伊勢崎市', contact_value: null, contact_method: null },
+    estimate_requests: { work_type: '床CF張替え', area: '伊勢崎市', contact_value: null, contact_method: null },
   },
   {
     id: 'demo-d3',
@@ -82,7 +82,7 @@ const DEMO: DashboardRow[] = [
     reviewed_at: null,
     service_fee: 1000,
     created_at: new Date(Date.now() - 345600000).toISOString(),
-    estimate_requests: { work_type: 'クロス補修', city: '前橋市', contact_value: null, contact_method: null },
+    estimate_requests: { work_type: 'クロス補修', area: '前橋市', contact_value: null, contact_method: null },
   },
   {
     id: 'demo-d4',
@@ -92,7 +92,7 @@ const DEMO: DashboardRow[] = [
     review_requested_at: null, reviewed_at: null,
     service_fee: 1000,
     created_at: new Date(Date.now() - 518400000).toISOString(),
-    estimate_requests: { work_type: '床補修', city: '高崎市', contact_value: null, contact_method: null },
+    estimate_requests: { work_type: '床補修', area: '高崎市', contact_value: null, contact_method: null },
   },
   {
     id: 'demo-d5',
@@ -104,7 +104,7 @@ const DEMO: DashboardRow[] = [
     reviewed_at: new Date(Date.now() - 259200000).toISOString(),
     service_fee: 3000,
     created_at: new Date(Date.now() - 950400000).toISOString(),
-    estimate_requests: { work_type: 'クロス全面張替え', city: '桐生市', contact_value: null, contact_method: null },
+    estimate_requests: { work_type: 'クロス全面張替え', area: '桐生市', contact_value: null, contact_method: null },
   },
   {
     id: 'demo-d6',
@@ -113,7 +113,7 @@ const DEMO: DashboardRow[] = [
     is_contracted: false, contracted_at: null, review_requested_at: null, reviewed_at: null,
     service_fee: null,
     created_at: new Date(Date.now() - 691200000).toISOString(),
-    estimate_requests: { work_type: '補修工事', city: '沼田市', contact_value: null, contact_method: null },
+    estimate_requests: { work_type: '補修工事', area: '沼田市', contact_value: null, contact_method: null },
   },
 ];
 
@@ -185,7 +185,7 @@ export default function CraftsmanDashboardPage() {
 
       const { data, error } = await supabase
         .from('job_applications')
-        .select('*, estimate_requests(work_type, city, contact_value, contact_method)')
+        .select('*, estimate_requests(work_type, area, contact_value, contact_method)')
         .eq('craftsman_id', userId)
         .order('created_at', { ascending: false });
 
@@ -337,7 +337,7 @@ export default function CraftsmanDashboardPage() {
           ) : (
             filtered.map(app => {
               const workType = app.estimate_requests?.work_type ?? '内装工事';
-              const city     = app.estimate_requests?.city ?? 'エリア未設定';
+              const city     = app.estimate_requests?.area ?? 'エリア未設定';
               const isSensitive = app._status === '成約済み' || app._status === '工事完了';
               // 成約後メール開示: contact_value が @ を含む場合のみ表示。電話/LINE は出さない。
               const contactValue  = app.estimate_requests?.contact_value ?? null;

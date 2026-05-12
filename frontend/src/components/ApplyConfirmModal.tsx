@@ -69,7 +69,7 @@ export default function ApplyConfirmModal({ job, onCancel, onConfirm }: Props) {
         <div className="px-6 pt-4 pb-2 space-y-2.5">
           {[
             { label: '施工内容',     value: job.work_type || '内装工事'  },
-            { label: 'エリア',       value: job.city       || 'エリア未設定' },
+            { label: 'エリア',       value: job.area       || 'エリア未設定' },
             { label: '想定売上目安', value: revenue                      },
             { label: '希望時期',     value: timing                       },
           ].map(({ label, value }) => (

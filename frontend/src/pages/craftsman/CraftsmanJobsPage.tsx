@@ -44,7 +44,7 @@ export type JobMeta = {
 export type Job = {
   id: string;
   work_type?: string;
-  city?: string;
+  area?: string;
   room_size?: string;
   damage_level?: 'low' | 'middle' | 'high';
   urgency?: 'today' | 'tomorrow' | 'soon' | 'normal';
@@ -71,7 +71,7 @@ const DEMO_JOBS: Job[] = [
   {
     id: 'demo-1',
     work_type: 'クロス張替え',
-    city: '太田市',
+    area: '太田市',
     room_size: '6畳',
     damage_level: 'low',
     urgency: 'today',
@@ -88,7 +88,7 @@ const DEMO_JOBS: Job[] = [
   {
     id: 'demo-2',
     work_type: '床補修',
-    city: '伊勢崎市',
+    area: '伊勢崎市',
     room_size: '8畳',
     damage_level: 'middle',
     urgency: 'tomorrow',
@@ -105,7 +105,7 @@ const DEMO_JOBS: Job[] = [
   {
     id: 'demo-3',
     work_type: 'クロス補修',
-    city: '前橋市',
+    area: '前橋市',
     room_size: '4.5畳',
     damage_level: 'low',
     urgency: 'today',
@@ -121,7 +121,7 @@ const DEMO_JOBS: Job[] = [
   {
     id: 'demo-4',
     work_type: 'クロス張替え',
-    city: '高崎市',
+    area: '高崎市',
     room_size: '10畳',
     damage_level: 'high',
     urgency: 'soon',
@@ -137,7 +137,7 @@ const DEMO_JOBS: Job[] = [
   {
     id: 'demo-5',
     work_type: '床工事',
-    city: '桐生市',
+    area: '桐生市',
     room_size: '12畳',
     damage_level: 'middle',
     urgency: 'normal',
