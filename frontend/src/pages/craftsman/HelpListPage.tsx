@@ -71,9 +71,11 @@ export default function HelpListPage() {
         .order('work_date', { ascending: true });
 
       if (error || !data || data.length === 0) {
-        setRequests(DEMO);
-        setAppCounts(DEMO_APP_COUNTS);
-        setIsDemo(true);
+        if (import.meta.env.DEV) {
+          setRequests(DEMO);
+          setAppCounts(DEMO_APP_COUNTS);
+          setIsDemo(true);
+        }
       } else {
         setRequests(data as HelpRequest[]);
         // 応募数を集計

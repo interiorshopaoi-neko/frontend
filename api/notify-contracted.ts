@@ -86,7 +86,7 @@ function buildCraftsmanHtml(params: {
           <tr><td align="center" style="padding:0 0 12px;">
             <a href="${escHtml(dashboardUrl)}"
                style="display:inline-block;background:#1d4ed8;color:#ffffff;font-size:15px;font-weight:800;text-decoration:none;padding:16px 36px;border-radius:12px;letter-spacing:0.02em;">
-              ダッシュボードで確認する →
+              案件管理を開く →
             </a>
           </td></tr>
         </table>
@@ -102,6 +102,7 @@ function buildCraftsmanHtml(params: {
               ${['✅ 依頼者へは必ずメールで最初のご連絡をしてください',
                  '✅ 連絡先は成約した依頼にのみ開示されます',
                  '✅ 工事完了後は「工事完了を報告する」をお忘れなく',
+                 '✅ 不明点はダッシュボードのお問い合わせよりご連絡ください',
                 ].map(t => `<tr><td style="font-size:13px;color:#1e40af;padding:3px 0;line-height:1.5;">${t}</td></tr>`).join('')}
             </table>
           </td></tr>
@@ -138,13 +139,14 @@ function buildCraftsmanText(params: {
     `${workType}（${area}）の依頼者があなたを選択しました。`,
     'まずはメールで日程を調整してください。',
     '',
-    '▼ ダッシュボードで確認する',
+    '▼ 案件管理を開く',
     dashboardUrl,
     '',
     '── PRO MATCH からのお願い ──',
     '・依頼者へは必ずメールで最初のご連絡をしてください',
     '・連絡先は成約した依頼にのみ開示されます',
     '・工事完了後は「工事完了を報告する」をお忘れなく',
+    '・不明点はダッシュボードのお問い合わせよりご連絡ください',
     '',
     'このメールはシステムから自動送信されています。',
   ].join('\n');

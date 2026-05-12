@@ -548,7 +548,7 @@ export default function RequestApplicationsPage() {
                     </a>
                     {isChosen ? (
                       <div className="flex-1 flex items-center justify-center bg-green-50 border border-green-200 rounded-xl py-2.5 text-xs font-extrabold text-green-700">
-                        ✓ 成約済み
+                        ✓ この職人に依頼中
                       </div>
                     ) : (
                       <button
@@ -564,6 +564,17 @@ export default function RequestApplicationsPage() {
                       </button>
                     )}
                   </div>
+
+                  {/* 成約後ガイダンス */}
+                  {isChosen && (
+                    <div className="border-t border-green-100 bg-green-50 px-4 py-3">
+                      <ul className="space-y-1">
+                        <li className="text-[11px] text-green-800 font-bold leading-relaxed">📧 まずはメールで日程・詳細を調整してください</li>
+                        <li className="text-[11px] text-slate-500 leading-relaxed">🔒 電話番号・LINEは表示されません</li>
+                        <li className="text-[11px] text-slate-500 leading-relaxed">⭐ 工事完了後にレビューを依頼できます</li>
+                      </ul>
+                    </div>
+                  )}
                 </article>
               );
             })}

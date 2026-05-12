@@ -91,8 +91,7 @@ export default function CraftsmanApplicationsPage() {
       const craftsmanId = stored ? JSON.parse(stored).id : null;
 
       if (!craftsmanId) {
-        setApps(DEMO);
-        setIsDemo(true);
+        if (import.meta.env.DEV) { setApps(DEMO); setIsDemo(true); }
         setLoading(false);
         return;
       }
@@ -105,8 +104,7 @@ export default function CraftsmanApplicationsPage() {
         .order('created_at', { ascending: false });
 
       if (appError || !appData || appData.length === 0) {
-        setApps(DEMO);
-        setIsDemo(true);
+        if (import.meta.env.DEV) { setApps(DEMO); setIsDemo(true); }
         setLoading(false);
         return;
       }

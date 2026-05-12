@@ -171,7 +171,8 @@ export default function CraftsmanDashboardPage() {
   useEffect(() => {
     (async () => {
       if (!userId) {
-        setApps(DEMO); setIsDemo(true); setLoading(false); return;
+        if (import.meta.env.DEV) { setApps(DEMO); setIsDemo(true); }
+        setLoading(false); return;
       }
 
       // Step 1: job_applications（FK制約なしのためJOIN不可 → 別クエリでマージ）
@@ -182,7 +183,7 @@ export default function CraftsmanDashboardPage() {
         .order('created_at', { ascending: false });
 
       if (appError || !appData || appData.length === 0) {
-        setApps(DEMO); setIsDemo(true);
+        if (import.meta.env.DEV) { setApps(DEMO); setIsDemo(true); }
         setLoading(false);
         return;
       }
@@ -380,10 +381,19 @@ export default function CraftsmanDashboardPage() {
 
                   {/* 成約情報バナー */}
                   {isSensitive && (
-                    <div className="border-t border-slate-100 bg-green-50 px-4 py-2.5">
-                      <p className="text-[11px] text-green-700 font-bold">
-                        {app._status === '工事完了' ? '✅ 工事完了 — 実績として記録されました' : '🤝 成約済み — 詳細は直接やりとりしてください'}
-                      </p>
+                    <div className="border-t border-slate-100 bg-green-50 px-4 py-3">
+                      {app._status === '工事完了' ? (
+                        <p className="text-[11px] text-green-700 font-bold">✅ 工事完了 — 実績として記録されました</p>
+                      ) : (
+                        <>
+                          <p className="text-[11px] text-green-700 font-bold mb-1.5">🤝 成約済み</p>
+                          <ul className="space-y-0.5">
+                            <li className="text-[11px] text-green-800 leading-relaxed">📧 まずはメールで日程・詳細を調整してください</li>
+                            <li className="text-[11px] text-slate-500 leading-relaxed">🔒 電話番号・LINEは表示されません</li>
+                            <li className="text-[11px] text-slate-500 leading-relaxed">⭐ 工事完了後にレビュー依頼へ進めます</li>
+                          </ul>
+                        </>
+                      )}
                     </div>
                   )}
 
