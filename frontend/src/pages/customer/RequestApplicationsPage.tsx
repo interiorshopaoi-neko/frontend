@@ -7,7 +7,7 @@ import { supabase } from '../../lib/supabase';
 type EstimateRequest = {
   id: string;
   work_type: string | null;
-  city: string | null;
+  area: string | null; city?: string | null;
   room_size: string | null;
   urgency: string | null;
   preferred_date: string | null;
@@ -42,7 +42,7 @@ type Application = {
 const DEMO_REQUEST: EstimateRequest = {
   id: 'demo-req-1',
   work_type: 'クロス張替え',
-  city: '太田市',
+  area: '太田市',
   room_size: '6畳',
   urgency: 'soon',
   preferred_date: '3日以内',
@@ -376,7 +376,7 @@ export default function RequestApplicationsPage() {
               </div>
               <div className="rounded-xl bg-slate-50 px-3 py-2">
                 <p className="text-[10px] text-slate-400">エリア</p>
-                <p className="text-sm font-extrabold text-slate-900 mt-0.5">{request.city ?? '—'}</p>
+                <p className="text-sm font-extrabold text-slate-900 mt-0.5">{request.area ?? request.city ?? '—'}</p>
               </div>
               {request.room_size && (
                 <div className="rounded-xl bg-slate-50 px-3 py-2">

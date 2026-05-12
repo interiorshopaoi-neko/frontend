@@ -13,7 +13,7 @@ type ApplicationRow = {
   review_requested_at: string | null;
   reviewed_at: string | null;
   created_at: string;
-  estimate_requests: { work_type: string | null; city: string | null } | null;
+  estimate_requests: { work_type: string | null; area: string | null } | null;
 };
 
 const DEMO: ApplicationRow[] = [
@@ -28,7 +28,7 @@ const DEMO: ApplicationRow[] = [
     review_requested_at: null,
     reviewed_at: null,
     created_at: new Date(Date.now() - 86400000).toISOString(),
-    estimate_requests: { work_type: 'クロス張替え', city: '太田市' },
+    estimate_requests: { work_type: 'クロス張替え', area: '太田市' },
   },
   {
     id: 'demo-a2',
@@ -41,7 +41,7 @@ const DEMO: ApplicationRow[] = [
     review_requested_at: new Date(Date.now() - 86400000).toISOString(),
     reviewed_at: null,
     created_at: new Date(Date.now() - 259200000).toISOString(),
-    estimate_requests: { work_type: '床CF張替え', city: '伊勢崎市' },
+    estimate_requests: { work_type: '床CF張替え', area: '伊勢崎市' },
   },
 ];
 
@@ -97,18 +97,33 @@ export default function CraftsmanApplicationsPage() {
         return;
       }
 
-      const { data, error } = await supabase
+      // FK制約なしのためJOIN不可 → 別クエリでマージ
+      const { data: appData, error: appError } = await supabase
         .from('job_applications')
-        .select('*, estimate_requests(work_type, city)')
+        .select('*')
         .eq('craftsman_id', craftsmanId)
         .order('created_at', { ascending: false });
 
-      if (error || !data || data.length === 0) {
+      if (appError || !appData || appData.length === 0) {
         setApps(DEMO);
         setIsDemo(true);
-      } else {
-        setApps(data as ApplicationRow[]);
+        setLoading(false);
+        return;
       }
+
+      const requestIds = [...new Set(appData.map((a: any) => a.estimate_request_id))];
+      const { data: reqData } = await supabase
+        .from('estimate_requests')
+        .select('id, work_type, area')
+        .in('id', requestIds);
+
+      const reqMap = new Map((reqData ?? []).map((r: any) => [String(r.id), r]));
+      const merged = appData.map((a: any) => ({
+        ...a,
+        estimate_requests: reqMap.get(String(a.estimate_request_id)) ?? null,
+      }));
+
+      setApps(merged as ApplicationRow[]);
       setLoading(false);
     })();
   }, []);
@@ -184,7 +199,7 @@ export default function CraftsmanApplicationsPage() {
           <div className="space-y-3">
             {apps.map(app => {
               const workType = app.estimate_requests?.work_type ?? '内装工事';
-              const city     = app.estimate_requests?.city ?? 'エリア未設定';
+              const city     = app.estimate_requests?.area ?? 'エリア未設定';
               return (
                 <article key={app.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                   <div className="px-4 pt-4 pb-3">

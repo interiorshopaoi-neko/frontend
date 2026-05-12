@@ -28,7 +28,8 @@ export type JobMeta = {
 export type Job = {
   id: string;
   work_type?: string;
-  city?: string;
+  area?: string;   // DB column name (estimate_requests.area)
+  city?: string;   // legacy alias kept for DEMO_JOBS compat
   room_size?: string;
   damage_level?: 'low' | 'middle' | 'high';
   urgency?: 'today' | 'tomorrow' | 'soon' | 'normal';

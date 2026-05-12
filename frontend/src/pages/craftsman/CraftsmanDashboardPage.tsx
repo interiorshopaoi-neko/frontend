@@ -17,7 +17,7 @@ type DashboardRow = {
   reviewed_at: string | null;
   service_fee: number | null;
   created_at: string;
-  estimate_requests: { work_type: string | null; city: string | null } | null;
+  estimate_requests: { work_type: string | null; area: string | null } | null;
 };
 
 type StatusLabel =
@@ -57,7 +57,7 @@ const DEMO: DashboardRow[] = [
     is_contracted: false, contracted_at: null, review_requested_at: null, reviewed_at: null,
     service_fee: null,
     created_at: new Date(Date.now() - 86400000).toISOString(),
-    estimate_requests: { work_type: 'クロス張替え', city: '太田市' },
+    estimate_requests: { work_type: 'クロス張替え', area: '太田市' },
   },
   {
     id: 'demo-d2',
@@ -66,7 +66,7 @@ const DEMO: DashboardRow[] = [
     is_contracted: false, contracted_at: null, review_requested_at: null, reviewed_at: null,
     service_fee: 2000,
     created_at: new Date(Date.now() - 172800000).toISOString(),
-    estimate_requests: { work_type: '床CF張替え', city: '伊勢崎市' },
+    estimate_requests: { work_type: '床CF張替え', area: '伊勢崎市' },
   },
   {
     id: 'demo-d3',
@@ -77,7 +77,7 @@ const DEMO: DashboardRow[] = [
     reviewed_at: null,
     service_fee: 1000,
     created_at: new Date(Date.now() - 345600000).toISOString(),
-    estimate_requests: { work_type: 'クロス補修', city: '前橋市' },
+    estimate_requests: { work_type: 'クロス補修', area: '前橋市' },
   },
   {
     id: 'demo-d4',
@@ -87,7 +87,7 @@ const DEMO: DashboardRow[] = [
     review_requested_at: null, reviewed_at: null,
     service_fee: 1000,
     created_at: new Date(Date.now() - 518400000).toISOString(),
-    estimate_requests: { work_type: '床補修', city: '高崎市' },
+    estimate_requests: { work_type: '床補修', area: '高崎市' },
   },
   {
     id: 'demo-d5',
@@ -99,7 +99,7 @@ const DEMO: DashboardRow[] = [
     reviewed_at: new Date(Date.now() - 259200000).toISOString(),
     service_fee: 3000,
     created_at: new Date(Date.now() - 950400000).toISOString(),
-    estimate_requests: { work_type: 'クロス全面張替え', city: '桐生市' },
+    estimate_requests: { work_type: 'クロス全面張替え', area: '桐生市' },
   },
   {
     id: 'demo-d6',
@@ -108,7 +108,7 @@ const DEMO: DashboardRow[] = [
     is_contracted: false, contracted_at: null, review_requested_at: null, reviewed_at: null,
     service_fee: null,
     created_at: new Date(Date.now() - 691200000).toISOString(),
-    estimate_requests: { work_type: '補修工事', city: '沼田市' },
+    estimate_requests: { work_type: '補修工事', area: '沼田市' },
   },
 ];
 
@@ -174,17 +174,34 @@ export default function CraftsmanDashboardPage() {
         setApps(DEMO); setIsDemo(true); setLoading(false); return;
       }
 
-      const { data, error } = await supabase
+      // Step 1: job_applications（FK制約なしのためJOIN不可 → 別クエリでマージ）
+      const { data: appData, error: appError } = await supabase
         .from('job_applications')
-        .select('*, estimate_requests(work_type, city)')
+        .select('*')
         .eq('craftsman_id', userId)
         .order('created_at', { ascending: false });
 
-      if (error || !data || data.length === 0) {
+      if (appError || !appData || appData.length === 0) {
         setApps(DEMO); setIsDemo(true);
-      } else {
-        setApps(data as DashboardRow[]);
+        setLoading(false);
+        return;
       }
+
+      // Step 2: estimate_requests を一括取得してマージ
+      const requestIds = [...new Set(appData.map((a: any) => a.estimate_request_id))];
+      const { data: reqData } = await supabase
+        .from('estimate_requests')
+        .select('id, work_type, area')
+        .in('id', requestIds);
+
+      const reqMap = new Map((reqData ?? []).map((r: any) => [String(r.id), r]));
+
+      const merged = appData.map((a: any) => ({
+        ...a,
+        estimate_requests: reqMap.get(String(a.estimate_request_id)) ?? null,
+      }));
+
+      setApps(merged as DashboardRow[]);
       setLoading(false);
     })();
   }, [userId]);
@@ -308,7 +325,7 @@ export default function CraftsmanDashboardPage() {
           ) : (
             filtered.map(app => {
               const workType = app.estimate_requests?.work_type ?? '内装工事';
-              const city     = app.estimate_requests?.city ?? 'エリア未設定';
+              const city     = app.estimate_requests?.area ?? 'エリア未設定';
               const isSensitive = app._status === '成約済み' || app._status === '工事完了';
 
               return (

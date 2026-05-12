@@ -176,7 +176,7 @@ export default function CraftsmanApplyPage() {
             </h2>
           </div>
           <div className="grid grid-cols-2 gap-3 px-5 pb-4">
-            <InfoBox label="エリア" value={job?.city || '未設定'} />
+            <InfoBox label="エリア" value={(job as any)?.area || job?.city || '未設定'} />
             <InfoBox
               label="希望時期"
               value={job?.preferred_date || labelUrgency(job?.urgency)}
