@@ -1,7 +1,7 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-13 / HEAD: `549e4bf` (merge: STOP C E2E 修正を origin/main に統合)
-> bundle: `index-DV_dEHtH.js` / Vercel: promatch-app.jp
+> 最終更新: 2026-05-13 / HEAD: `6580a0d` (feat: 受付完了メール・応募通知メール HTML リデザイン)
+> bundle: `index-CKnqd64_.js` / Vercel: promatch-app.jp
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -246,6 +246,28 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 **Supabase Function**: `send-customer-email` デプロイ済み  
 **Vercel**: デプロイ Ready 確認済み
 
+### メールデザイン統一（2026-05-13）
+
+| メール | 対象ファイル | commit |
+|---|---|---|
+| 応募通知メール（依頼者へ） | `api/notify-application.ts` | `aee9372` |
+| 受付完了メール（依頼者へ） | `supabase/functions/send-customer-email/index.ts` | `6580a0d` |
+
+**共通デザイン仕様（両メール統一済み）**:
+- ヘッダー: flat `#1e40af` + `PRO MATCH` ラベル + タイトル
+- CTA ボタン化: 「応募状況を確認する →」（青）/ 「追加情報を入力する」（グレー）
+- 安心ポイント: `#eff6ff` カード（5項目）
+- 生 URL・罫線（`─────`）廃止
+- `promatch-app.jp` 以外の URL なし
+- プレーンテキスト版フォールバック (`text:` パラメータ) 追加
+- `esc()` / `escHtml()` による XSS エスケープ適用
+- `send-customer-email`: `request_id` なし時は CTA 非表示
+- 送信元: `noreply@promatch-app.jp` 維持
+
+**実送信テスト結果（2026-05-13 本番）**:
+- `notify-application`: `{"ok":true,"adminOk":true,"customerOk":true}` ✅
+- `send-customer-email`: `{"ok":true,"id":"13fc874b-..."}` ✅
+
 ### 職人案件ページ UX 修正（e30f426）
 
 - デフォルトタブ `'video'` → `'list'`（実案件がすぐ見える）
@@ -333,8 +355,9 @@ build 成功 `index-BRWVBYPn.js`
 - 職人→お客様 / 職人→職人 レビュー
 - billing_events テーブル / 手数料回収 (Stripe)
 - 無料枠カウント / 紹介制度
-- 成約後の連絡先開示通知メール
-- メール内リンク改善（マジックリンク等）
+- 成約通知メール（連絡先開示タイミングで職人・お客様双方へ）
+- 工事完了 / レビュー依頼メール
+- メールテンプレートのさらなる細部改善
 
 ---
 
@@ -469,6 +492,9 @@ E2E / 結合テストで Supabase Auth ユーザーが必要な場合は以下�
 
 | commit | 件名 | 何を直したか |
 |---|---|---|
+| `6580a0d` | feat(email): 受付完了メールを応募通知メールと同トーンにリデザイン | `send-customer-email` を HTML カード型に。CTA ボタン2つ・安心ポイント Blue・text フォールバック追加。`esc()` XSS 対策。deploy + 実送信 OK |
+| `aee9372` | feat(email): 依頼者応募通知メールを HTML カード型にリデザイン | `notify-application.ts` を HTML メール化。CTAボタン・安心ポイントカード・text フォールバック。`escHtml()` 追加 |
+| `9d04bc3` | fix(api): notify-application の Supabase 認証キーを環境変数から読むよう修正 | `sb_publishable_*`（非JWT）のハードコードを廃止。`process.env.SUPABASE_ANON_KEY` → `VITE_SUPABASE_ANON_KEY` フォールバック順で読む。env 未設定時は即 500 |
 | `1e81c96` | feat: video E2E fixes + flow status banner + DEMO fallback separation | SwipeView.showFirstCome に video_url 追加。ListViewの動画フィルター空状態改善。RequestApplicationsPage にフロー状態バナー追加。CraftsmanApplicationsPage DEMO 分離 |
 | `7eb498c` | fix: separate error/empty/demo states in 3 craftsman pages | PROD での DEMO 自動表示を禁止。エラー時はエラー表示、0件は空状態。DEV のみ DEMO fallback |
 | `1d2124d` | feat: show last-request banner on /corporate via localStorage | 依頼送信成功後に `promatch_last_request_id` を localStorage 保存。Step 1 先頭に前回依頼バナー表示 |
