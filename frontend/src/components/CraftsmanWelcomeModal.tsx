@@ -42,7 +42,7 @@ export default function CraftsmanWelcomeModal({ onClose }: Props) {
 
   const goProfile = () => {
     onClose();
-    navigate('/craftsman/profile');
+    navigate('/craftsman/profile#notification');
   };
 
   return (

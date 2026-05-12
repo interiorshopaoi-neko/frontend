@@ -402,32 +402,34 @@ export default function CraftsmanProfile() {
 
           <div className="border-t border-slate-100 my-4" />
 
-          <Field label="通知設定">
-            <BoolToggle
-              label="新着案件の通知を受け取る"
-              sub="対応エリアに案件が届いたとき通知"
-              enabled={form.notification_enabled}
-              onChange={v => set('notification_enabled', v)}
-            />
-            {form.notification_enabled && (
-              <div className="mt-3">
-                <label className="text-[11px] text-slate-400 font-semibold">
-                  通知先メールアドレス（任意）
-                </label>
-                <input
-                  type="email"
-                  inputMode="email"
-                  value={form.email}
-                  onChange={e => set('email', e.target.value)}
-                  placeholder="example@gmail.com"
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-                <p className="mt-1 text-[11px] text-slate-400">
-                  新着案件の通知メールを受け取るアドレスです。未入力の場合は通知されません。
-                </p>
-              </div>
-            )}
-          </Field>
+          <div id="notification">
+            <Field label="通知設定">
+              <BoolToggle
+                label="新着案件の通知を受け取る"
+                sub="対応エリアに案件が届いたとき通知"
+                enabled={form.notification_enabled}
+                onChange={v => set('notification_enabled', v)}
+              />
+              {form.notification_enabled && (
+                <div className="mt-3">
+                  <label className="text-[11px] text-slate-400 font-semibold">
+                    通知先メールアドレス（任意）
+                  </label>
+                  <input
+                    type="email"
+                    inputMode="email"
+                    value={form.email}
+                    onChange={e => set('email', e.target.value)}
+                    placeholder="example@gmail.com"
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    新着案件の通知メールを受け取るアドレスです。未入力の場合は通知されません。
+                  </p>
+                </div>
+              )}
+            </Field>
+          </div>
         </div>
 
         {/* ── 自己紹介・公開情報 ───────────────────────── */}
