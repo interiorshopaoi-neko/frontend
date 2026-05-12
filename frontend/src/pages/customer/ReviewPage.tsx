@@ -27,17 +27,25 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
+// ─── タグ定義（お客様→職人）────────────────────────────────────────────────
+const CUSTOMER_TAGS = ['丁寧', '返信が早い', '仕上がりが綺麗', '安心できた', '時間通り', '説明が丁寧'] as const;
+
 export default function ReviewPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();  // estimate_request_id
 
   const [rating,      setRating]      = useState(0);
+  const [tags,        setTags]        = useState<string[]>([]);
   const [comment,     setComment]     = useState('');
   const [again,       setAgain]       = useState<boolean | null>(null);
   const [checks,      setChecks]      = useState({ platform: false, person: false, noRedirect: false });
   const [submitted,   setSubmitted]   = useState(false);
   const [submitting,  setSubmitting]  = useState(false);
   const [error,       setError]       = useState('');
+
+  function toggleTag(tag: string) {
+    setTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+  }
 
   function toggleCheck(key: keyof typeof checks) {
     setChecks(prev => ({ ...prev, [key]: !prev[key] }));
@@ -54,9 +62,8 @@ export default function ReviewPage() {
 
     setSubmitting(true);
 
-    // estimate_request_id が取得できる場合、is_contracted の application に reviewed_at を記録
-    // application が見つからない場合（デモ URL 等）は送信完了として扱う
     if (id) {
+      // ① estimate_request_id → job_applications.id を取得
       const { data: apps } = await supabase
         .from('job_applications')
         .select('id')
@@ -65,15 +72,23 @@ export default function ReviewPage() {
         .limit(1);
 
       if (apps && apps.length > 0) {
-        const { error: updateError } = await supabase
-          .from('job_applications')
-          .update({ reviewed_at: new Date().toISOString() })
-          .eq('id', apps[0].id);
+        // ② insert_customer_review() 経由で reviews INSERT + reviewed_at 更新
+        const { error: rpcError } = await supabase.rpc('insert_customer_review', {
+          p_application_id:  apps[0].id,
+          p_reviewer_id:     '',           // MVP: 顧客 UUID 未実装のため空文字
+          p_rating:          rating,
+          p_tags:            tags,
+          p_comment:         comment || null,
+          p_would_use_again: again,
+        });
 
-        if (updateError) {
-          setError('送信に失敗しました。もう一度お試しください。');
-          setSubmitting(false);
-          return;
+        if (rpcError) {
+          // UNIQUE 制約違反（重複）は「すでに送信済み」として完了扱い
+          if (!rpcError.message.includes('duplicate') && !rpcError.message.includes('unique')) {
+            setError('送信に失敗しました。もう一度お試しください。');
+            setSubmitting(false);
+            return;
+          }
         }
       }
       // application 未発見（デモ URL など）はそのまま完了へ
@@ -143,6 +158,30 @@ export default function ReviewPage() {
                 {['', '残念でした', 'やや不満', '普通', '良かった', 'とても良かった'][rating]}
               </p>
             )}
+          </section>
+
+          {/* タグ選択 */}
+          <section className="bg-white rounded-3xl shadow-sm ring-1 ring-slate-200 p-5">
+            <p className="text-sm font-extrabold text-slate-900 mb-3">
+              当てはまるものを選んでください
+              <span className="ml-1.5 text-xs font-normal text-slate-400">任意・複数可</span>
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {CUSTOMER_TAGS.map(tag => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => toggleTag(tag)}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-bold border transition ${
+                    tags.includes(tag)
+                      ? 'border-amber-400 bg-amber-50 text-amber-700'
+                      : 'border-slate-200 bg-white text-slate-500'
+                  }`}
+                >
+                  {tags.includes(tag) ? '✓ ' : ''}{tag}
+                </button>
+              ))}
+            </div>
           </section>
 
           {/* コメント */}
