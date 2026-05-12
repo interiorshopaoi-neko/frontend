@@ -1,6 +1,7 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-12 / HEAD: `1e81c96` (feat: video E2E fixes + flow status banner + DEMO fallback separation)
+> 最終更新: 2026-05-13 / HEAD: `549e4bf` (merge: STOP C E2E 修正を origin/main に統合)
+> bundle: `index-DV_dEHtH.js` / Vercel: promatch-app.jp
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -501,3 +502,8 @@ E2E / 結合テストで Supabase Auth ユーザーが必要な場合は以下�
 | `069b0b3` | fix: always show homepage at root | `/` を HomePage 固定（logged-in customer redirect 撤去） |
 | `266125a` | feat: Phase UI-3-A | /craftsman を /craftsman/jobs へ redirect |
 | `e26216b` | fix: customer landing redirects to corporate flow | /customer を /corporate へ redirect |
+| `e8cbee5` | fix(dashboard): 二段クエリでPGRST200回避・city→area全ページ修正 | job_applications↔estimate_requests FK不在 → 2ステップfetch。全craftsman/customerページのcity→area統一 |
+| `31008c7` | fix(review): ReviewPage DB書き込み対応 | reviewed_at 更新実装（デモモードから脱却） |
+| `4e62278` | fix(review): reviews テーブルへの書き込みを追加 | reviews INSERT + RLS INSERT ポリシー追加 |
+| `e4606e8` | fix(profile): avg_rating/review_count をプロフィールUIに表示 | RPC返値の評価統計を Craftsman型に追加・UIに反映 |
+| `549e4bf` | merge: STOP C E2E 修正を origin/main に統合 | 上記4コミット + 前セッション75コミットをマージ |
