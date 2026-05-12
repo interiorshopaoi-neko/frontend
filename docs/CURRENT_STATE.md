@@ -1,6 +1,6 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-12 / HEAD: `722e622` (fix: replace embedded join with 2-step fetch in CraftsmanDashboardPage)
+> 最終更新: 2026-05-12 / HEAD: `2dd4bc9` (fix: use verified domain sender for customer notification email)
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -231,6 +231,27 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 
 **実DB確認**: test user `1e19e2b2` / estimate_request `66` で両クエリがエラーなく通ることを確認。PGRST200 は発生しない。
 
+### メール通知・導線修正（ea4c5c9 / 2dd4bc9）
+
+| 修正内容 | 実装 |
+|---|---|
+| 依頼受付メールに応募確認リンク追加 | `send-customer-email` に `request_id` を追加。メール本文に「応募状況を確認する」`/request/:id/applications` ボタンと「追加情報を入力する」`/request/:id/extra-info` ボタンを挿入 |
+| `contact_value` の `mailto:` 除去 | `CorporateRequest.tsx` と `send-customer-email` 両方で `sanitizeEmail()` を適用 |
+| 職人応募時に依頼者へ通知メール送信 | `notify-application.ts` が Supabase REST で `contact_value` を取得し、`noreply@promatch-app.jp` から依頼者へ応募通知メールを送信 |
+| CraftsmanApplyPage 経由でも通知 | `handleSubmit` 成功後に `/api/notify-application` を fire-and-forget で呼び出し |
+| 管理者通知は維持 | `onboarding@resend.dev` → `ADMIN_TO` への通知は変更なし |
+
+**テスト結果（本番エンドポイント）**: `adminOk: true, customerOk: true` ✅  
+**Supabase Function**: `send-customer-email` デプロイ済み  
+**Vercel**: デプロイ Ready 確認済み
+
+### 職人案件ページ UX 修正（e30f426）
+
+- デフォルトタブ `'video'` → `'list'`（実案件がすぐ見える）
+- LIVEバー「本日12件」固定 → `jobs.length` 件の動的表示
+- 売上表記「想定売上」→「参考目安」＋免責テキスト追加
+- loading/empty 文言から「動画」を削除
+
 ### その他修正済み（2026-05-12）
 
 - `estimate_requests.city` → `area` 不一致: 全 9 ファイル修正済み（`adcfcc5`）
@@ -240,8 +261,11 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 
 ### 未実装（次フェーズ）
 
-- 工事完了報告 → レビュー送信 → profile 反映の実データ E2E
+- 依頼一覧ページ（お客様が後から応募確認ページへ戻る手段）
+- `EstimateComplete.tsx` の extra-info リンクが `demo` 固定のまま
 - DEMO fallback の分離（実案件 0 件時の挙動整理）
+- 応募数バッジ（依頼者が確認前に応募数を把握できる通知）
+- 工事完了報告 → レビュー送信 → profile 反映の実データ E2E
 - 職人プロフィールへのレビュー表示（avg_rating / review_count / top_tags）
 - 職人→お客様 / 職人→職人 レビュー
 - billing_events テーブル / 手数料回収 (Stripe)
@@ -382,6 +406,9 @@ E2E / 結合テストで Supabase Auth ユーザーが必要な場合は以下�
 
 | commit | 件名 | 何を直したか |
 |---|---|---|
+| `2dd4bc9` | fix: use verified domain sender for customer notification email | 依頼者通知メールの FROM を `noreply@promatch-app.jp` に変更。`onboarding@resend.dev` ではアカウント外アドレスに送れないため |
+| `ea4c5c9` | feat: add customer email notifications for request and application | 受付メールに応募確認リンク追加。職人応募時に依頼者通知。CraftsmanApplyPage でも通知。`mailto:` サニタイズ |
+| `e30f426` | fix: improve craftsman jobs page first-view UX | デフォルトタブ list 化。LIVEバー動的件数。売上「参考目安」表記 |
 | `722e622` | fix: replace embedded join with 2-step fetch in CraftsmanDashboardPage | PGRST200（FK なし embedded join）を 2-step fetch に置き換え。職人ダッシュボードが常に DEMO になっていた P0 を修正 |
 | `aec1ef7` | fix: allow anon to update job_applications for customer contract flow | `job_applications` に `anon UPDATE` ポリシー追加。顧客（anon）が成約操作できなかった P0 を修正 |
 | `5b311c0` | fix: P0 RLS + P1 video filter for main flow | authenticated INSERT(job_applications) + anon SELECT(estimate_requests) 追加。video_url 判定で動画フィルタ修正 |
