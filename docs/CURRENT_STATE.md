@@ -1,6 +1,6 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-12 / HEAD: `bdd3f4e` (feat: add completion report and review status flow)
+> 最終更新: 2026-05-12 / HEAD: `2f75f9e` (fix: add missing job_applications columns and fix insert_customer_review)
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -31,7 +31,7 @@ App.tsx の Route 定義が真実。**ロール別に何を見せるか**を以�
 | `/reset-password` | パスワードリセット入力画面（Supabase recovery token 処理） |
 | `/corporate` | 依頼フォーム (CorporateRequest)。送信成功後に `/request/:id/extra-info` および `/request/:id/applications` へのボタンを表示（07d715b） |
 | `/request/:id/applications` | お客様向け応募確認・職人選定。成約後に職人のメールアドレス（のみ）を開示（d5dd890） |
-| `/request/:id/review` | お客様向けレビュー送信。送信で `job_applications.reviewed_at` を更新（bdd3f4e） |
+| `/request/:id/review` | お客様向けレビュー送信。`insert_customer_review()` RPC 経由で `reviews` INSERT + `reviewed_at` 更新（0da6a52） |
 | `/faq` `/support` `/terms` `/privacy` `/legal` `/policy` | 静的ページ |
 | `/craftsman/jobs` | 未ログイン → JobsLockedPreview（県+想定売上のみ）/ craftsman → CraftsmanJobsPage |
 | `/pro/jobs` | 同上（旧 path） |
@@ -167,7 +167,7 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 | 応募確認・職人選定 | `RequestApplicationsPage.tsx`。`job_applications.is_contracted = true` で成約 | — |
 | 成約後の連絡先開示 | **メールアドレスのみ**開示。電話番号・LINE は表示しない | `d5dd890` |
 | 職人側の工事完了報告 | `CraftsmanDashboardPage.tsx` の成約済みカードに「工事完了を報告する」ボタン → `review_requested_at = now()` を更新 | `bdd3f4e` |
-| お客様レビュー送信 | `ReviewPage.tsx` で送信 → `job_applications.reviewed_at = now()` を更新 | `bdd3f4e` |
+| お客様レビュー送信 | `ReviewPage.tsx` で送信 → `insert_customer_review()` RPC 経由で `reviews` INSERT + `reviewed_at` 更新。タグ選択 UI あり | `0da6a52` |
 | ステータス遷移 | `deriveStatus()` が `is_contracted` / `review_requested_at` / `reviewed_at` を参照して自動判定 | — |
 
 ### 連絡先開示の設計方針
@@ -178,11 +178,29 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 - デモモード（`isDemo: true`）では開示 UI を非表示
 - 将来 billing_events / Stripe を挟む場合は「開示ボタンの onClick」が差し込みポイント
 
+### reviews テーブル（0da6a52 / 2f75f9e）
+
+| 項目 | 内容 |
+|---|---|
+| テーブル | `public.reviews`（12 カラム: id, job_application_id, review_type, reviewer_type, reviewer_id, target_type, target_id, rating, tags, comment, would_use_again, created_at） |
+| RLS | anon 直接アクセス禁止。authenticated（管理者）のみ直接 SELECT 可 |
+| UNIQUE 制約 | `(job_application_id, reviewer_type)` — 重複投稿防止 |
+| 書き込み関数 | `insert_customer_review(p_application_id, p_reviewer_id, p_rating, p_tags, p_comment, p_would_use_again)` SECURITY DEFINER |
+| 関数の保証 | ① is_contracted=true 確認 ② reviewer_id UUID 形式検証 ③ reviews INSERT ④ reviewed_at 更新 |
+| 現在対応 | **お客様→職人のみ**（review_type='customer_to_craftsman'） |
+| 未対応 | 職人→お客様 / 職人→職人 は将来実装 |
+
+### job_applications スキーマ補完（2f75f9e）
+
+本番 DB に欠落していた列を `ADD COLUMN IF NOT EXISTS` で追加済み:
+`is_contracted (boolean DEFAULT false)` / `contracted_at` / `review_requested_at` / `reviewed_at` / `service_fee`
+
 ### 未実装（次フェーズ）
 
+- 職人プロフィールへのレビュー表示（avg_rating / review_count / top_tags）
+- 職人→お客様 / 職人→職人 レビュー
 - billing_events テーブル / 手数料回収 (Stripe)
 - 無料枠カウント / 紹介制度
-- レビュー本文・星評価・タグの本格 DB 保存（reviews テーブル）
 - 成約後の連絡先開示通知メール
 
 ---
@@ -277,6 +295,9 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 
 | commit | 件名 | 何を直したか |
 |---|---|---|
+| `2f75f9e` | fix: add missing job_applications columns and fix insert_customer_review | 本番 DB に欠落していた `is_contracted` 等 5 列を ADD COLUMN。`craftsman_id::text` キャスト修正 |
+| `0da6a52` | feat: add reviews table and wire ReviewPage to persist review data | `reviews` テーブル + `insert_customer_review()` 関数作成。ReviewPage から RPC 経由で INSERT + タグ選択 UI 追加 |
+| `72fa13c` | docs: update current state for main flow fixes | CURRENT_STATE.md 更新（本線フロー §6 追加） |
 | `bdd3f4e` | feat: add completion report and review status flow | 職人が「工事完了を報告する」→ `review_requested_at` 更新。お客様レビュー送信で `reviewed_at` 更新（DB 保存実装） |
 | `d5dd890` | feat: show matched email contacts after contract | 成約後にメールアドレスのみ開示（電話・LINE は表示しない）。お客様側・職人側の両ページに toggle UI 追加 |
 | `07d715b` | feat: add applications CTA after request submission | 依頼送信成功画面に「職人の応募を確認する」ボタンを追加 → `/request/:id/applications` へ |
