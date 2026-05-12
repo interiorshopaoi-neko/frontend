@@ -13,8 +13,14 @@ const CUSTOMER_FROM  = 'PRO MATCH <noreply@promatch-app.jp>';         // 依頼�
 const SITE_URL       = 'https://promatch-app.jp';
 
 // Supabase REST (anon key — estimate_requests に anon SELECT ポリシーが設定済み)
-const SUPABASE_URL     = 'https://lboskhjidbqxwrenwjdr.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_v2U-RibzTmtIOJnY3f5pyw_aRDL4dJG';
+// Vercel に設定済みの環境変数名に合わせてフォールバック順で読む
+// SUPABASE_URL / SUPABASE_ANON_KEY を追加した場合はそちらが優先される
+const SUPABASE_URL      = process.env.SUPABASE_URL
+                       || process.env.VITE_SUPABASE_URL
+                       || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY
+                       || process.env.VITE_SUPABASE_ANON_KEY
+                       || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 function sanitizeEmail(raw: string | undefined | null): string {
   if (!raw) return '';
@@ -24,6 +30,13 @@ function sanitizeEmail(raw: string | undefined | null): string {
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     res.status(405).end();
+    return;
+  }
+
+  // 環境変数チェック — どちらか欠けていたら即 500
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error('[notify-application] 環境変数 SUPABASE_URL / SUPABASE_ANON_KEY が未設定');
+    res.status(500).json({ error: 'missing env: SUPABASE_URL or SUPABASE_ANON_KEY' });
     return;
   }
 
