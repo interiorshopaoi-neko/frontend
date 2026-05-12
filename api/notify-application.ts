@@ -14,7 +14,6 @@ const SITE_URL       = 'https://promatch-app.jp';
 
 // Supabase REST (anon key — estimate_requests に anon SELECT ポリシーが設定済み)
 // Vercel に設定済みの環境変数名に合わせてフォールバック順で読む
-// SUPABASE_URL / SUPABASE_ANON_KEY を追加した場合はそちらが優先される
 const SUPABASE_URL      = process.env.SUPABASE_URL
                        || process.env.VITE_SUPABASE_URL
                        || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -26,6 +25,99 @@ function sanitizeEmail(raw: string | undefined | null): string {
   if (!raw) return '';
   return String(raw).replace(/^mailto:/i, '').trim();
 }
+
+// ─── HTML メールテンプレート（依頼者向け） ─────────────────────────────────────
+function buildCustomerHtml(params: {
+  workType: string;
+  area:     string;
+  appUrl:   string;
+}): string {
+  const { workType, area, appUrl } = params;
+
+  return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>職人から応募が届きました</title>
+</head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Noto Sans JP',sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+       style="background:#f1f5f9;padding:24px 0 40px;">
+  <tr><td align="center">
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+           style="max-width:560px;margin:0 auto;">
+
+      <!-- ロゴ・ヘッダー -->
+      <tr><td style="background:#1e40af;border-radius:16px 16px 0 0;padding:28px 32px 24px;text-align:center;">
+        <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.12em;color:#93c5fd;text-transform:uppercase;">PRO MATCH</p>
+        <p style="margin:0;font-size:22px;font-weight:800;color:#ffffff;line-height:1.3;">職人から応募が届きました</p>
+      </td></tr>
+
+      <!-- 本文カード -->
+      <tr><td style="background:#ffffff;padding:28px 32px 8px;">
+
+        <p style="margin:0 0 20px;font-size:15px;color:#1e293b;line-height:1.7;">
+          ご依頼の <strong style="color:#1e40af;">${escHtml(workType)}</strong>（${escHtml(area)}）に<br>
+          職人から応募が届きました。<br>
+          内容を確認して、気に入った職人を選んでください。
+        </p>
+
+        <!-- CTA ボタン -->
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+          <tr><td align="center" style="padding:4px 0 28px;">
+            <a href="${appUrl}"
+               style="display:inline-block;background:#1d4ed8;color:#ffffff;font-size:15px;font-weight:800;text-decoration:none;padding:16px 36px;border-radius:12px;letter-spacing:0.02em;">
+              応募状況を確認する →
+            </a>
+          </td></tr>
+        </table>
+
+      </td></tr>
+
+      <!-- 安心ポイント -->
+      <tr><td style="background:#ffffff;padding:0 32px 28px;">
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+               style="background:#eff6ff;border-radius:12px;padding:16px 20px;">
+          <tr><td>
+            <p style="margin:0 0 10px;font-size:11px;font-weight:700;color:#3b82f6;letter-spacing:0.08em;text-transform:uppercase;">安心ポイント</p>
+            <table cellpadding="0" cellspacing="0" role="presentation">
+              ${['✅ お客様のご利用は完全無料です',
+                 '✅ 断っても一切費用はかかりません',
+                 '✅ しつこい営業連絡はありません',
+                 '✅ 開示されるのはメールアドレスのみです',
+                ].map(t => `<tr><td style="font-size:13px;color:#1e40af;padding:3px 0;line-height:1.5;">${t}</td></tr>`).join('')}
+            </table>
+          </td></tr>
+        </table>
+      </td></tr>
+
+      <!-- フッター -->
+      <tr><td style="background:#f8fafc;border-radius:0 0 16px 16px;padding:20px 32px;text-align:center;border-top:1px solid #e2e8f0;">
+        <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#64748b;">PRO MATCH — 内装職人マッチング</p>
+        <p style="margin:0;font-size:11px;color:#94a3b8;line-height:1.6;">
+          このメールはシステムから自動送信されています。<br>
+          心当たりのない場合は無視してください。
+        </p>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+}
+
+/** HTML エスケープ（XSS防止） */
+function escHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -64,7 +156,7 @@ export default async function handler(req: any, res: any) {
   const safeCreatedAt  = typeof created_at === 'string' ? created_at : new Date().toISOString();
   const appUrl         = `${SITE_URL}/request/${safeRequestId}/applications`;
 
-  // ── A) 管理者通知（既存動作を維持） ────────────────────────────────────────
+  // ── A) 管理者通知（プレーンテキスト — 内部確認用なので簡潔に） ──────────────
   const adminBody = [
     '職人から新しい応募がありました。',
     '',
@@ -86,10 +178,10 @@ export default async function handler(req: any, res: any) {
   let adminOk = false;
   try {
     const { error } = await resend.emails.send({
-      from: ADMIN_FROM,
-      to:   [ADMIN_TO],
+      from:    ADMIN_FROM,
+      to:      [ADMIN_TO],
       subject: '【PRO MATCH】職人から応募がありました',
-      text: adminBody,
+      text:    adminBody,
     });
     if (error) {
       console.error('[notify-application] 管理者メール Resend error:', error);
@@ -100,11 +192,9 @@ export default async function handler(req: any, res: any) {
     console.error('[notify-application] 管理者メール送信例外:', err);
   }
 
-  // ── B) 依頼者通知（新規追加） ────────────────────────────────────────────────
-  // estimate_requests から contact_value を取得（anon SELECT ポリシーで読める）
+  // ── B) 依頼者通知（HTML メール） ─────────────────────────────────────────────
   let customerOk = false;
   try {
-    // request_id が数値か文字列かを吸収して Supabase に渡す
     const numId = Number(safeRequestId);
     const idParam = Number.isFinite(numId) && numId > 0 ? numId : null;
 
@@ -125,20 +215,23 @@ export default async function handler(req: any, res: any) {
         const customerEmail = sanitizeEmail(row?.contact_value);
 
         if (customerEmail && customerEmail.includes('@') && row?.contact_method === 'メール') {
-          const customerBody = [
-            '職人から応募が届きました。',
+
+          // プレーンテキスト版（HTMLメーラー未対応デバイス向けフォールバック）
+          const customerText = [
+            `【PRO MATCH】職人から応募が届きました`,
             '',
-            '以下のページで応募内容を確認し、気に入った職人を選んで成約できます。',
+            `ご依頼の ${safeWorkType}（${safeArea}）に職人から応募が届きました。`,
+            '内容を確認して、気に入った職人を選んでください。',
             '',
             `▼ 応募状況を確認する`,
             appUrl,
             '',
-            '─────────────────────────────',
-            '■ PRO MATCH（内装職人マッチング）',
+            '── 安心ポイント ──',
             '・お客様のご利用は完全無料です',
-            '・しつこい営業連絡はありません',
             '・断っても一切費用はかかりません',
-            '─────────────────────────────',
+            '・しつこい営業連絡はありません',
+            '・開示されるのはメールアドレスのみです',
+            '',
             'このメールはシステムから自動送信されています。',
           ].join('\n');
 
@@ -146,7 +239,8 @@ export default async function handler(req: any, res: any) {
             from:    CUSTOMER_FROM,
             to:      [customerEmail],
             subject: '【PRO MATCH】職人から応募が届きました',
-            text:    customerBody,
+            html:    buildCustomerHtml({ workType: safeWorkType, area: safeArea, appUrl }),
+            text:    customerText,
           });
 
           if (custErr) {
