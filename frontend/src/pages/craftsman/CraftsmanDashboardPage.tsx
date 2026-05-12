@@ -162,11 +162,44 @@ function SummaryCard({ icon, value, label, accent }: {
 
 export default function CraftsmanDashboardPage() {
   const navigate = useNavigate();
-  const [apps,    setApps]    = useState<DashboardRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isDemo,  setIsDemo]  = useState(false);
-  const [filter,  setFilter]  = useState<StatusLabel>('全て');
+  const [apps,      setApps]      = useState<DashboardRow[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [isDemo,    setIsDemo]    = useState(false);
+  const [filter,    setFilter]    = useState<StatusLabel>('全て');
+  const [reporting, setReporting] = useState<string | null>(null); // appId
   const userId = getUserId();
+
+  // 工事完了報告: review_requested_at を設定して依頼者にレビュー依頼メールを送る
+  async function handleCompleteReport(appId: string, estimateRequestId: string) {
+    if (reporting) return; // 二重送信防止
+    setReporting(appId);
+    const now = new Date().toISOString();
+
+    const { error } = await supabase
+      .from('job_applications')
+      .update({ review_requested_at: now })
+      .eq('id', appId);
+
+    setReporting(null);
+
+    if (error) {
+      console.error('[handleCompleteReport] DB error:', error);
+      alert('更新に失敗しました。もう一度お試しください。');
+      return;
+    }
+
+    // ローカルステートを楽観的更新（再フェッチなし）
+    setApps(prev => prev.map(a =>
+      a.id === appId ? { ...a, review_requested_at: now } : a
+    ));
+
+    // 依頼者へレビュー依頼メール — fire-and-forget
+    fetch('/api/notify-review-request', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ request_id: estimateRequestId, application_id: appId }),
+    }).catch(err => console.warn('[notify-review-request] fire-and-forget error:', err));
+  }
 
   useEffect(() => {
     (async () => {
@@ -394,6 +427,27 @@ export default function CraftsmanDashboardPage() {
                           </ul>
                         </>
                       )}
+                    </div>
+                  )}
+
+                  {/* 工事完了報告ボタン */}
+                  {app._status === '成約済み' && (
+                    <div className="border-t border-green-100 bg-green-50 px-4 py-3">
+                      <button
+                        onClick={() => handleCompleteReport(app.id, app.estimate_request_id)}
+                        disabled={reporting === app.id}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl py-2.5 text-xs font-extrabold transition active:scale-95 flex items-center justify-center gap-1.5"
+                      >
+                        {reporting === app.id ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                            送信中...
+                          </>
+                        ) : '✅ 工事完了を報告する'}
+                      </button>
+                      <p className="text-[10px] text-slate-400 text-center mt-1.5">
+                        押すと依頼者にレビュー依頼メールが届きます
+                      </p>
                     </div>
                   )}
 

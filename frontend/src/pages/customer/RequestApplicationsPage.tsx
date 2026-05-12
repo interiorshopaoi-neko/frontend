@@ -33,6 +33,8 @@ type Application = {
   price: number | null;
   message: string | null;
   is_contracted: boolean | null;
+  review_requested_at: string | null;
+  reviewed_at: string | null;
   created_at: string;
   craftsman: CraftsmanInfo | null;
 };
@@ -57,6 +59,8 @@ const DEMO_APPS: Application[] = [
     price: 32000,
     message: '原状回復は得意分野です。翌日から対応可能です。お気軽にご相談ください。',
     is_contracted: false,
+    review_requested_at: null,
+    reviewed_at: null,
     created_at: new Date(Date.now() - 7200000).toISOString(),
     craftsman: {
       user_id: 'craftsman-1',
@@ -76,6 +80,8 @@ const DEMO_APPS: Application[] = [
     price: 27000,
     message: '週末も対応可能です。写真を確認したうえで正確な見積もりを提示できます。',
     is_contracted: false,
+    review_requested_at: null,
+    reviewed_at: null,
     created_at: new Date(Date.now() - 3600000).toISOString(),
     craftsman: {
       user_id: 'craftsman-2',
@@ -95,6 +101,8 @@ const DEMO_APPS: Application[] = [
     price: 38000,
     message: '20年の経験があります。仕上がりの品質に自信があります。アフターフォローも対応します。',
     is_contracted: false,
+    review_requested_at: null,
+    reviewed_at: null,
     created_at: new Date(Date.now() - 1800000).toISOString(),
     craftsman: {
       user_id: 'craftsman-3',
@@ -566,13 +574,33 @@ export default function RequestApplicationsPage() {
                   </div>
 
                   {/* 成約後ガイダンス */}
-                  {isChosen && (
+                  {isChosen && !app.review_requested_at && (
                     <div className="border-t border-green-100 bg-green-50 px-4 py-3">
                       <ul className="space-y-1">
                         <li className="text-[11px] text-green-800 font-bold leading-relaxed">📧 まずはメールで日程・詳細を調整してください</li>
                         <li className="text-[11px] text-slate-500 leading-relaxed">🔒 電話番号・LINEは表示されません</li>
-                        <li className="text-[11px] text-slate-500 leading-relaxed">⭐ 工事完了後にレビューを依頼できます</li>
+                        <li className="text-[11px] text-slate-500 leading-relaxed">⭐ 工事完了後に職人からレビュー依頼が届きます</li>
                       </ul>
+                    </div>
+                  )}
+
+                  {/* レビュー依頼パネル */}
+                  {isChosen && app.review_requested_at && !app.reviewed_at && (
+                    <div className="border-t border-amber-100 bg-amber-50 px-4 py-3">
+                      <p className="text-[11px] text-amber-700 font-bold mb-2">⭐ 工事が完了しました。レビューをお願いします</p>
+                      <a
+                        href={`/request/${id}/review`}
+                        className="block w-full text-center bg-amber-500 hover:bg-amber-600 text-white rounded-xl py-2.5 text-xs font-extrabold transition active:scale-95"
+                      >
+                        レビューを書く →
+                      </a>
+                    </div>
+                  )}
+
+                  {/* レビュー完了パネル */}
+                  {isChosen && app.reviewed_at && (
+                    <div className="border-t border-emerald-100 bg-emerald-50 px-4 py-2.5">
+                      <p className="text-[11px] text-emerald-700 font-bold">✅ レビュー済み — ありがとうございました</p>
                     </div>
                   )}
                 </article>
