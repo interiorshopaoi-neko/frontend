@@ -81,9 +81,10 @@ function formatDate(iso: string) {
 
 export default function CraftsmanApplicationsPage() {
   const navigate = useNavigate();
-  const [apps, setApps] = useState<ApplicationRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isDemo, setIsDemo] = useState(false);
+  const [apps,       setApps]       = useState<ApplicationRow[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [isDemo,     setIsDemo]     = useState(false);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -91,8 +92,8 @@ export default function CraftsmanApplicationsPage() {
       const craftsmanId = stored ? JSON.parse(stored).id : null;
 
       if (!craftsmanId) {
-        setApps(DEMO);
-        setIsDemo(true);
+        // DEV のみ DEMO fallback。本番は空状態（Auth ガードで対応）
+        if (import.meta.env.DEV) { setApps(DEMO); setIsDemo(true); }
         setLoading(false);
         return;
       }
@@ -103,10 +104,12 @@ export default function CraftsmanApplicationsPage() {
         .eq('craftsman_id', craftsmanId)
         .order('created_at', { ascending: false });
 
-      if (error || !data || data.length === 0) {
-        setApps(DEMO);
-        setIsDemo(true);
+      if (error || !data) {
+        // DEV のみ DEMO fallback。本番はエラー表示。
+        if (import.meta.env.DEV) { setApps(DEMO); setIsDemo(true); }
+        else { setFetchError(true); }
       } else {
+        // 0件は空状態（DEMO fallback なし）
         setApps(data as ApplicationRow[]);
       }
       setLoading(false);
@@ -168,6 +171,12 @@ export default function CraftsmanApplicationsPage() {
         {loading ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500 text-sm">
             読み込み中...
+          </div>
+        ) : fetchError ? (
+          <div className="bg-white rounded-2xl border border-red-100 p-10 text-center shadow-sm">
+            <p className="text-3xl mb-2">⚠️</p>
+            <p className="text-sm font-bold text-slate-700">データの取得に失敗しました</p>
+            <p className="text-xs text-slate-400 mt-1">時間を置いて再度お試しください</p>
           </div>
         ) : apps.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center shadow-sm">

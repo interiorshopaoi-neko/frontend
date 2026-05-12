@@ -122,6 +122,29 @@ const DEMO_APPS: Application[] = [
   },
 ];
 
+// ─── Flow state banner ────────────────────────────────────────────────────────
+
+type FlowState = 'waiting' | 'selecting' | 'contracted' | 'review' | 'done';
+
+function getFlowState(apps: Application[], contracted?: Application): FlowState {
+  if (apps.length === 0) return 'waiting';
+  if (!contracted) return 'selecting';
+  if (contracted.reviewed_at) return 'done';
+  if (contracted.review_requested_at) return 'review';
+  return 'contracted';
+}
+
+const FLOW_BANNER: Record<FlowState, {
+  icon: string; title: string; sub: string;
+  bg: string; border: string; titleCls: string; subCls: string;
+}> = {
+  waiting:    { icon: '⏳', title: '職人からの応募を受付中です',              sub: '通常数時間〜1日以内に届きます',                     bg: 'bg-blue-50',    border: 'border-blue-200',    titleCls: 'text-blue-900',    subCls: 'text-blue-600'   },
+  selecting:  { icon: '👇', title: '応募が届きました。気になる職人を選んでください', sub: 'プロフィールを確認してから「この職人にお願いする」を押してください', bg: 'bg-indigo-50',  border: 'border-indigo-200',  titleCls: 'text-indigo-900',  subCls: 'text-indigo-600' },
+  contracted: { icon: '🤝', title: '成約済み — 職人とメールで日程を相談してください', sub: 'カード内の「📧」ボタンから職人のメールアドレスを確認できます',    bg: 'bg-green-50',   border: 'border-green-200',   titleCls: 'text-green-900',   subCls: 'text-green-600'  },
+  review:     { icon: '⭐', title: '工事が完了しました。レビューを送りましょう',   sub: '工事への評価が職人の実績として表示されます',               bg: 'bg-amber-50',   border: 'border-amber-200',   titleCls: 'text-amber-900',   subCls: 'text-amber-700'  },
+  done:       { icon: '✅', title: 'すべて完了しました！ありがとうございました',   sub: 'レビューは職人のプロフィールに表示されます',               bg: 'bg-emerald-50', border: 'border-emerald-200', titleCls: 'text-emerald-900', subCls: 'text-emerald-600'},
+};
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const URGENCY_LABEL: Record<string, string> = {
@@ -373,6 +396,8 @@ export default function RequestApplicationsPage() {
     ? Math.min(...pricedApps.map(a => a.price!))
     : null;
   const contracted = apps.find(a => a.is_contracted);
+  const flowState  = getFlowState(apps, contracted);
+  const flowBanner = FLOW_BANNER[flowState];
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -456,6 +481,17 @@ export default function RequestApplicationsPage() {
                 💬 {request.customer_note}
               </p>
             )}
+          </div>
+        )}
+
+        {/* フロー状態バナー */}
+        {!isDemo && (
+          <div className={`rounded-2xl border px-4 py-3 mb-4 flex items-start gap-3 ${flowBanner.bg} ${flowBanner.border}`}>
+            <span className="text-xl flex-shrink-0 mt-0.5">{flowBanner.icon}</span>
+            <div>
+              <p className={`text-sm font-extrabold ${flowBanner.titleCls}`}>{flowBanner.title}</p>
+              <p className={`text-xs mt-0.5 leading-relaxed ${flowBanner.subCls}`}>{flowBanner.sub}</p>
+            </div>
           </div>
         )}
 

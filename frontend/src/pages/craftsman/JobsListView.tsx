@@ -157,18 +157,36 @@ export default function JobsListView({ jobs, loading }: Props) {
           </>
         ) : sortedJobs.length === 0 ? (
           <div className="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200">
-            <div className="inline-flex items-center gap-1.5 mb-3">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 animate-ping" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
-              </span>
-              <span className="text-[10px] font-black tracking-widest text-blue-600">SEARCHING</span>
-            </div>
-            <p className="text-sm font-bold text-slate-800 mb-1.5">近くの案件を探しています…</p>
-            <p className="text-[11.5px] text-slate-500 leading-relaxed">
-              新しい案件が入り次第、ここに表示されます。<br />
-              通知をONにすると、いち早くお知らせします。
-            </p>
+            {filter === 'video' ? (
+              <>
+                <p className="text-3xl mb-3">🎬</p>
+                <p className="text-sm font-bold text-slate-800 mb-1.5">現在、動画つき案件はありません</p>
+                <p className="text-[11.5px] text-slate-500 leading-relaxed mb-3">
+                  動画なし案件は「全て」タブで確認できます。
+                </p>
+                <button
+                  onClick={() => setFilter('all')}
+                  className="text-xs font-bold text-blue-600 underline"
+                >
+                  全案件を表示する →
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="inline-flex items-center gap-1.5 mb-3">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 animate-ping" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                  </span>
+                  <span className="text-[10px] font-black tracking-widest text-blue-600">SEARCHING</span>
+                </div>
+                <p className="text-sm font-bold text-slate-800 mb-1.5">近くの案件を探しています…</p>
+                <p className="text-[11.5px] text-slate-500 leading-relaxed">
+                  新しい案件が入り次第、ここに表示されます。<br />
+                  通知をONにすると、いち早くお知らせします。
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-4">

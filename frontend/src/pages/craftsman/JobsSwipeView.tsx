@@ -70,7 +70,8 @@ function SwipeSlide({ job, idx, total, applied, submitting, onApply }: SlideProp
   const revenue         = estimateRevenue(job);
   const swipeProgress   = Math.min(1, Math.max(0, dragX / 130));
   const showSlotWarning = job.urgency === 'today' || job.urgency === 'tomorrow';
-  const showFirstCome   = job.has_video || job.has_photos;
+  // has_video は DEMO 専用フラグ。実 DB では video_url の有無で動画案件を判定する。
+  const showFirstCome   = !!(job.has_video || job.has_photos || job.video_url);
   const isNew           = isNewPost(job.created_at);
   const postedAt        = timeAgo(job.created_at);
 
