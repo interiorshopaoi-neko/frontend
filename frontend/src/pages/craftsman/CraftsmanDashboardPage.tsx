@@ -183,17 +183,63 @@ export default function CraftsmanDashboardPage() {
         setApps(DEMO); setIsDemo(true); setLoading(false); return;
       }
 
-      const { data, error } = await supabase
+      // ── Step 1: job_applications を単独取得 ──────────────────────────────────
+      // estimate_requests との embedded join は FK 不在 + 型不一致
+      // （estimate_requests.id=bigint / job_applications.estimate_request_id=text）で
+      // PostgREST PGRST200 エラーになるため、2ステップに分割する。
+      const { data: appData, error: appError } = await supabase
         .from('job_applications')
-        .select('*, estimate_requests(work_type, area, contact_value, contact_method)')
+        .select('*')
         .eq('craftsman_id', userId)
         .order('created_at', { ascending: false });
 
-      if (error || !data || data.length === 0) {
-        setApps(DEMO); setIsDemo(true);
-      } else {
-        setApps(data as DashboardRow[]);
+      if (appError || !appData) {
+        setApps(DEMO); setIsDemo(true); setLoading(false); return;
       }
+
+      // 0件は DEMO fallback（TODO: 将来は「応募なし」空状態を別途デザイン）
+      if (appData.length === 0) {
+        setApps(DEMO); setIsDemo(true); setLoading(false); return;
+      }
+
+      // ── Step 2: estimate_request_id を数値化して estimate_requests を取得 ───
+      // 'demo-1' など数値化できない ID は無視する
+      const numericIds = [
+        ...new Set(
+          appData
+            .map((a: any) => Number(a.estimate_request_id))
+            .filter((n: number) => Number.isFinite(n) && n > 0)
+        ),
+      ];
+
+      type ReqInfo = { work_type: string | null; area: string | null; contact_value: string | null; contact_method: string | null };
+      const requestMap: Record<string, ReqInfo> = {};
+
+      if (numericIds.length > 0) {
+        const { data: reqData } = await supabase
+          .from('estimate_requests')
+          .select('id, work_type, area, contact_value, contact_method')
+          .in('id', numericIds);
+        // 取得エラーは無視: application は表示し、案件情報は null にする
+        if (reqData) {
+          for (const r of reqData) {
+            requestMap[String(r.id)] = {
+              work_type:     r.work_type,
+              area:          r.area,
+              contact_value: r.contact_value,
+              contact_method: r.contact_method,
+            };
+          }
+        }
+      }
+
+      // ── Step 3: マージして DashboardRow に整形 ───────────────────────────────
+      const rows: DashboardRow[] = (appData as any[]).map(a => ({
+        ...a,
+        estimate_requests: requestMap[a.estimate_request_id] ?? null,
+      }));
+
+      setApps(rows);
       setLoading(false);
     })();
   }, [userId]);
