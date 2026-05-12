@@ -1,6 +1,6 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-12 / HEAD: `7eb498c` (fix: separate error/empty/demo states in 3 craftsman pages)
+> 最終更新: 2026-05-12 / HEAD: `1e81c96` (feat: video E2E fixes + flow status banner + DEMO fallback separation)
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -273,7 +273,47 @@ PROD では DB エラー・0件時に DEMO を自動表示しない。DEV のみ
 
 実装: 各ファイルに `fetchError` state を追加。`import.meta.env.DEV` で分岐。build 成功 `index-BW_vjj1-.js`。
 
-**残っている DEMO fallback（未対応）**: `CraftsmanApplicationsPage` / `JobsSwipeView` 内の一部 demo-id 設計
+**残っている DEMO fallback（未対応）**: `JobsSwipeView` 内の demo-id 応募（UI のみ成功扱い / DB 保存なし設計は意図的）
+
+### 動画 E2E 検証結果（1e81c96）
+
+**検証日: 2026-05-12**
+
+| 項目 | 結果 |
+|---|---|
+| Storage バケット `estimate-videos` | ✅ 公開アクセス可（HTTP 200） |
+| `estimate_requests.video_url` カラム | ✅ 存在。実案件 id=8 に動画 URL あり（クロス張り替え・神奈川県） |
+| 動画ファイル直接アクセス | ✅ `video/quicktime` 38MB、`Content-Type` 正常 |
+| video_url ベース判定 | ✅ `j.has_video \|\| j.video_url` — 実 DB には `has_video` カラムなし、`video_url` で正しく動作 |
+| video_url=null でのクラッシュ | ✅ なし（SwipeSlide は `job.video_url` の有無でプレースホルダー切替） |
+| video フィルター（一覧） | ✅ `!!job.video_url` で動画案件のみ抽出 |
+| SwipeView 動画再生 | ✅ `<video src={job.video_url} playsInline muted loop>` / IntersectionObserver で viewport 時に自動再生 |
+
+**修正内容（1e81c96）**:
+- `JobsSwipeView.showFirstCome` に `!!job.video_url` を追加（実案件で `has_video` 未定義のため）
+- `JobsListView` 動画フィルター空状態を「動画つき案件はありません」＋「全案件を表示する」CTA に改善
+
+### RequestApplicationsPage フロー状態バナー（1e81c96）
+
+応募確認ページ上部に現在のフロー状態を示すバナーを追加。DEMO モード時は非表示。
+
+| 状態 | 表示 |
+|---|---|
+| 応募 0件 | ⏳ 「職人からの応募を受付中です」 |
+| 応募あり・未成約 | 👇 「応募が届きました。気になる職人を選んでください」 |
+| 成約済み | 🤝 「成約済み — 職人とメールで日程を相談してください」 |
+| 工事完了報告後 | ⭐ 「工事が完了しました。レビューを送りましょう」 |
+| レビュー送信済み | ✅ 「すべて完了しました！ありがとうございました」 |
+
+Chrome 実データ確認済み（id=66, 2件応募あり → `selecting` 状態バナー表示 ✅）
+
+### CraftsmanApplicationsPage DEMO fallback 分離（1e81c96）
+
+- fetch error → PROD: ⚠️エラーカード / DEV: DEMO
+- userId なし → PROD: 空状態 / DEV: DEMO
+- 0件 → 常に空状態（DEMO なし）
+
+build 成功 `index-BRWVBYPn.js`
 
 ### その他修正済み（2026-05-12）
 
@@ -286,7 +326,7 @@ PROD では DB エラー・0件時に DEMO を自動表示しない。DEV のみ
 
 - 依頼一覧ページ（お客様が後から応募確認ページへ戻る手段）
 - 応募数バッジ（依頼者が確認前に応募数を把握できる通知）
-- DEMO fallback 残: `CraftsmanApplicationsPage` / `JobsSwipeView` 内
+- DEMO fallback 残: `JobsSwipeView` 内 demo-id 応募（意図的設計のため変更不要）
 - 工事完了報告 → レビュー送信 → profile 反映の実データ E2E
 - 職人プロフィールへのレビュー表示（avg_rating / review_count / top_tags）
 - 職人→お客様 / 職人→職人 レビュー
@@ -428,6 +468,7 @@ E2E / 結合テストで Supabase Auth ユーザーが必要な場合は以下�
 
 | commit | 件名 | 何を直したか |
 |---|---|---|
+| `1e81c96` | feat: video E2E fixes + flow status banner + DEMO fallback separation | SwipeView.showFirstCome に video_url 追加。ListViewの動画フィルター空状態改善。RequestApplicationsPage にフロー状態バナー追加。CraftsmanApplicationsPage DEMO 分離 |
 | `7eb498c` | fix: separate error/empty/demo states in 3 craftsman pages | PROD での DEMO 自動表示を禁止。エラー時はエラー表示、0件は空状態。DEV のみ DEMO fallback |
 | `1d2124d` | feat: show last-request banner on /corporate via localStorage | 依頼送信成功後に `promatch_last_request_id` を localStorage 保存。Step 1 先頭に前回依頼バナー表示 |
 | `1e21925` | fix: remove demo hardcode from EstimateComplete and CorporateRequest | `newRequestId` が null の場合は extra-info / applications ボタンを非表示。demo-1 固定を削除 |
