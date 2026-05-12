@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import ApplySuccessModal from '../../components/ApplySuccessModal';
+import ApplyConfirmModal from '../../components/ApplyConfirmModal';
 import type { Job } from './CraftsmanJobsPage';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -28,128 +29,21 @@ function urgencyConfig(job: Job): { text: string; cls: string } {
   return                                  { text: '💭 急ぎなし',  cls: 'bg-slate-600/80 text-white' };
 }
 
-// ─── ApplyConfirmModal ───────────────────────────────────────────────────────
-
-function urgencyLabel(u: Job['urgency']): string {
-  if (u === 'today')    return '今日希望';
-  if (u === 'tomorrow') return '明日まで';
-  if (u === 'soon')     return '数日以内';
-  return '急ぎなし';
+function timeAgo(createdAt?: string): string {
+  if (!createdAt) return '';
+  const diff = Date.now() - new Date(createdAt).getTime();
+  const mins  = Math.floor(diff / 60000);
+  if (mins <  1)  return 'たった今';
+  if (mins < 60)  return `${mins}分前`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}時間前`;
+  if (hours < 48) return '昨日投稿';
+  return `${Math.floor(hours / 24)}日前`;
 }
 
-function ApplyConfirmModal({
-  job,
-  onConfirm,
-  onCancel,
-}: {
-  job: Job;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  const revenue = estimateRevenue(job);
-  const timing  = job.meta?.extra_info?.timing ?? urgencyLabel(job.urgency);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center"
-      style={{ background: 'rgba(0,0,0,0.65)' }}
-      onClick={onCancel}
-    >
-      <div
-        className="w-full max-w-lg bg-white rounded-t-3xl overflow-hidden"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 12px)' }}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* ハンドル */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 bg-slate-200 rounded-full" />
-        </div>
-
-        {/* ヘッダー */}
-        <div className="px-6 pt-3 pb-4 border-b border-slate-100">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">応募確認</p>
-          <h2 className="text-lg font-extrabold text-slate-900 leading-snug">
-            {job.work_type || '内装工事'}
-          </h2>
-          <p className="text-sm text-slate-500 mt-0.5 flex items-center gap-1">
-            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-            </svg>
-            {job.city || 'エリア未設定'}
-          </p>
-        </div>
-
-        {/* 案件詳細 */}
-        <div className="px-6 py-4 space-y-2.5">
-          {/* 想定売上目安 */}
-          <div className="flex items-center justify-between rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3">
-            <p className="text-xs font-bold text-amber-700">💰 想定売上目安</p>
-            <p className="text-xl font-extrabold text-amber-800 tabular-nums">{revenue}</p>
-          </div>
-
-          {/* サブ情報 */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
-              <p className="text-[10px] font-bold text-slate-400 mb-0.5">希望時期</p>
-              <p className="text-sm font-bold text-slate-700">{timing}</p>
-            </div>
-            {job.room_size && (
-              <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
-                <p className="text-[10px] font-bold text-slate-400 mb-0.5">広さ</p>
-                <p className="text-sm font-bold text-slate-700">{job.room_size}</p>
-              </div>
-            )}
-          </div>
-
-          {/* メディア */}
-          {(job.has_video || job.has_photos) && (
-            <div className="flex gap-2">
-              {job.has_video && (
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-violet-700 bg-violet-50 border border-violet-100 rounded-full px-3 py-1">
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                  動画あり
-                </span>
-              )}
-              {job.has_photos && (
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-full px-3 py-1">
-                  📷 写真あり
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* 安心バッジ */}
-          <div className="rounded-2xl bg-emerald-50 border border-emerald-100 px-4 py-3 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="text-emerald-500 text-sm">✓</span>
-              <p className="text-xs font-semibold text-emerald-800">応募だけでは料金は発生しません</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-emerald-500 text-sm">✓</span>
-              <p className="text-xs font-semibold text-emerald-800">手数料は成約時にのみ発生します</p>
-            </div>
-          </div>
-        </div>
-
-        {/* CTA */}
-        <div className="px-6 pb-4 flex flex-col gap-2.5">
-          <button
-            onClick={onConfirm}
-            className="w-full bg-blue-600 text-white rounded-2xl py-4 text-base font-extrabold shadow-sm shadow-blue-200 transition active:scale-[0.99]"
-          >
-            この案件に応募する
-          </button>
-          <button
-            onClick={onCancel}
-            className="w-full bg-slate-100 text-slate-600 rounded-2xl py-3.5 text-sm font-bold transition active:scale-[0.99]"
-          >
-            キャンセル
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+function isNewPost(createdAt?: string): boolean {
+  if (!createdAt) return false;
+  return (Date.now() - new Date(createdAt).getTime()) / 3600000 <= 2;
 }
 
 // ─── SwipeSlide ───────────────────────────────────────────────────────────────
@@ -177,6 +71,8 @@ function SwipeSlide({ job, idx, total, applied, submitting, onApply }: SlideProp
   const swipeProgress   = Math.min(1, Math.max(0, dragX / 130));
   const showSlotWarning = job.urgency === 'today' || job.urgency === 'tomorrow';
   const showFirstCome   = job.has_video || job.has_photos;
+  const isNew           = isNewPost(job.created_at);
+  const postedAt        = timeAgo(job.created_at);
 
   // 非passive touchリスナーで水平ドラッグを確実に検知
   useEffect(() => {
@@ -298,12 +194,19 @@ function SwipeSlide({ job, idx, total, applied, submitting, onApply }: SlideProp
         </div>
       )}
 
-      {/* トップバー：緊急度 + カウンター */}
-      <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
-        <span className={`px-3 py-1.5 rounded-full text-xs font-extrabold shadow-lg backdrop-blur-sm ${urgency.cls}`}>
-          {urgency.text}
-        </span>
-        <span className="text-white/50 text-xs font-mono bg-black/30 backdrop-blur-sm px-2.5 py-1 rounded-full">
+      {/* トップバー：鮮度バッジ + 緊急度 + カウンター */}
+      <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10 gap-2">
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          {isNew && (
+            <span className="px-2.5 py-1 rounded-full text-xs font-extrabold shadow-lg backdrop-blur-sm bg-amber-400 text-white flex-shrink-0">
+              🔥 新着
+            </span>
+          )}
+          <span className={`px-3 py-1.5 rounded-full text-xs font-extrabold shadow-lg backdrop-blur-sm ${urgency.cls}`}>
+            {urgency.text}
+          </span>
+        </div>
+        <span className="text-white/50 text-xs font-mono bg-black/30 backdrop-blur-sm px-2.5 py-1 rounded-full flex-shrink-0">
           {idx + 1} / {total}
         </span>
       </div>
@@ -370,6 +273,7 @@ function SwipeSlide({ job, idx, total, applied, submitting, onApply }: SlideProp
           {job.room_size && <span className="text-white/60">📐 {job.room_size}</span>}
           {job.has_photos && <span className="text-white/60">📷 写真あり</span>}
           {job.has_floor_plan && <span className="text-white/60">📋 図面あり</span>}
+          {postedAt && <span className="text-white/40 text-xs ml-auto">🕐 {postedAt}</span>}
         </div>
 
         {/* 補助ボタン */}
@@ -421,7 +325,7 @@ export default function JobsSwipeView({ jobs }: Props) {
   const [currentIdx,      setCurrentIdx]      = useState(0);
   const [modalOpen,       setModalOpen]       = useState(false);
   const [lastAppliedJob,  setLastAppliedJob]  = useState<Job | null>(null);
-  const [confirmingJob,   setConfirmingJob]   = useState<Job | null>(null);
+  const [confirmJob,      setConfirmJob]      = useState<Job | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // スクロール位置を追跡
@@ -474,16 +378,16 @@ export default function JobsSwipeView({ jobs }: Props) {
 
   return (
     <>
-      {/* 応募確認モーダル */}
-      {confirmingJob && (
+      {/* 応募前確認モーダル */}
+      {confirmJob && (
         <ApplyConfirmModal
-          job={confirmingJob}
+          job={confirmJob}
+          onCancel={() => setConfirmJob(null)}
           onConfirm={() => {
-            const job = confirmingJob;
-            setConfirmingJob(null);
+            const job = confirmJob;
+            setConfirmJob(null);
             applyJob(job);
           }}
-          onCancel={() => setConfirmingJob(null)}
         />
       )}
 
@@ -515,7 +419,7 @@ export default function JobsSwipeView({ jobs }: Props) {
             total={videoJobs.length}
             applied={appliedIds.has(job.id)}
             submitting={submittingId === job.id}
-            onApply={() => !appliedIds.has(job.id) && !submittingId && setConfirmingJob(job)}
+            onApply={() => setConfirmJob(job)}
           />
         ))}
       </div>
