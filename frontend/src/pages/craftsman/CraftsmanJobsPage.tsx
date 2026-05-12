@@ -166,9 +166,10 @@ export default function CraftsmanJobsPage() {
   // 描画用の jobs / isDemo は下の useMemo で realJobs から派生させ、
   // 「実案件 0 件のときだけ DEMO_JOBS を表示」「1 件以上あれば demo を完全非表示」
   // の規則を 1 箇所で表現する。これにより demo と実データが混ざる状態を作れない。
-  const [realJobs, setRealJobs] = useState<Job[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [tab,      setTab]      = useState<Tab>('list');
+  const [realJobs,   setRealJobs]   = useState<Job[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+  const [tab,        setTab]        = useState<Tab>('list');
 
   // ── 登録直後だけ表示するウェルカムモーダル（PR1の justRegistered 経路） ──
   // useState の lazy initializer でマウント時に1度だけ評価する。re-render
@@ -197,8 +198,9 @@ export default function CraftsmanJobsPage() {
         .neq('status', 'done')
         .order('created_at', { ascending: false });
 
-      // error / 取得失敗は「実案件 0 件」と等価に扱う（既存の demo フォールバック動作と整合）。
       if (error || !data) {
+        // DEV: 0件として扱い DEMO_JOBS を表示。PROD: エラー表示。
+        if (!import.meta.env.DEV) setFetchError(true);
         setRealJobs([]);
       } else {
         setRealJobs(data as Job[]);
@@ -208,10 +210,11 @@ export default function CraftsmanJobsPage() {
   }, []);
 
   // ── demo / real 切替の単一の真実 ────────────────────────────────────────
-  // hasRealJobs ? realJobs : DEMO_JOBS。両者が混ざることはない。
+  // PROD: 実案件のみ。エラー・0件はエラー表示・空状態。DEMO は出さない。
+  // DEV:  実案件 0件 or エラー時は DEMO_JOBS にフォールバック。
   const hasRealJobs = realJobs.length > 0;
-  const jobs        = hasRealJobs ? realJobs : DEMO_JOBS;
-  const isDemo      = !loading && !hasRealJobs;
+  const isDemo      = !loading && !fetchError && !hasRealJobs && import.meta.env.DEV;
+  const jobs        = hasRealJobs ? realJobs : (isDemo ? DEMO_JOBS : []);
   const videoCount  = jobs.filter((j) => j.has_video || j.video_url).length;
 
   return (
@@ -297,7 +300,13 @@ export default function CraftsmanJobsPage() {
 
       {/* ── コンテンツ ── */}
       <div className="flex-1 overflow-hidden">
-        {tab === 'list' ? (
+        {fetchError ? (
+          <div className="flex flex-col items-center justify-center h-full text-center px-6">
+            <p className="text-4xl mb-3">⚠️</p>
+            <p className="text-sm font-bold text-slate-700">データの取得に失敗しました</p>
+            <p className="text-xs text-slate-400 mt-1">時間を置いて再度お試しください</p>
+          </div>
+        ) : tab === 'list' ? (
           <JobsListView jobs={jobs} loading={loading} />
         ) : (
           <JobsSwipeView jobs={jobs} />

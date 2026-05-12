@@ -237,6 +237,7 @@ export default function RequestApplicationsPage() {
   const [apps,          setApps]          = useState<Application[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [isDemo,        setIsDemo]        = useState(false);
+  const [fetchError,    setFetchError]    = useState(false);
   const [confirming,    setConfirming]    = useState<Application | null>(null);
   const [contracting,   setContracting]   = useState(false);
   const [contractedId,  setContractedId]  = useState<string | null>(null);
@@ -262,9 +263,14 @@ export default function RequestApplicationsPage() {
         .order('created_at', { ascending: true });
 
       if (appError || !reqData) {
-        setRequest(DEMO_REQUEST);
-        setApps(DEMO_APPS);
-        setIsDemo(true);
+        // DEV のみ DEMO fallback。本番はエラー表示。
+        if (import.meta.env.DEV) {
+          setRequest(DEMO_REQUEST);
+          setApps(DEMO_APPS);
+          setIsDemo(true);
+        } else {
+          setFetchError(true);
+        }
         setLoading(false);
         return;
       }
@@ -344,6 +350,16 @@ export default function RequestApplicationsPage() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="w-7 h-7 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-6 text-center">
+        <p className="text-4xl mb-3">⚠️</p>
+        <p className="text-sm font-bold text-slate-700">データの取得に失敗しました</p>
+        <p className="text-xs text-slate-400 mt-1">時間を置いて再度お試しください</p>
       </div>
     );
   }

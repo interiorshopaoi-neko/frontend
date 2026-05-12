@@ -170,6 +170,7 @@ export default function CraftsmanDashboardPage() {
   const [apps,        setApps]        = useState<DashboardRow[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [isDemo,      setIsDemo]      = useState(false);
+  const [fetchError,  setFetchError]  = useState(false);
   const [filter,      setFilter]      = useState<StatusLabel>('全て');
   // 成約後メールアドレス開示トグル（将来 billing_events を挟む場合はここに差し込む）
   const [openEmailId,   setOpenEmailId]   = useState<string | null>(null);
@@ -180,7 +181,9 @@ export default function CraftsmanDashboardPage() {
   useEffect(() => {
     (async () => {
       if (!userId) {
-        setApps(DEMO); setIsDemo(true); setLoading(false); return;
+        // DEV のみ DEMO fallback。本番はそのまま空状態（ログイン誘導は別途 Auth ガードで対応）
+        if (import.meta.env.DEV) { setApps(DEMO); setIsDemo(true); }
+        setLoading(false); return;
       }
 
       // ── Step 1: job_applications を単独取得 ──────────────────────────────────
@@ -194,13 +197,13 @@ export default function CraftsmanDashboardPage() {
         .order('created_at', { ascending: false });
 
       if (appError || !appData) {
-        setApps(DEMO); setIsDemo(true); setLoading(false); return;
+        // DEV のみ DEMO fallback。本番はエラー表示。
+        if (import.meta.env.DEV) { setApps(DEMO); setIsDemo(true); }
+        else { setFetchError(true); }
+        setLoading(false); return;
       }
 
-      // 0件は DEMO fallback（TODO: 将来は「応募なし」空状態を別途デザイン）
-      if (appData.length === 0) {
-        setApps(DEMO); setIsDemo(true); setLoading(false); return;
-      }
+      // 0件は空状態（DEMO fallback なし）
 
       // ── Step 2: estimate_request_id を数値化して estimate_requests を取得 ───
       // 'demo-1' など数値化できない ID は無視する
@@ -364,6 +367,12 @@ export default function CraftsmanDashboardPage() {
           {loading ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-slate-400 text-sm">
               読み込み中...
+            </div>
+          ) : fetchError ? (
+            <div className="bg-white rounded-2xl border border-red-100 p-10 text-center shadow-sm">
+              <p className="text-3xl mb-2">⚠️</p>
+              <p className="text-sm font-bold text-slate-700">データの取得に失敗しました</p>
+              <p className="text-xs text-slate-400 mt-1">時間を置いて再度お試しください</p>
             </div>
           ) : filtered.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center shadow-sm">
