@@ -494,7 +494,6 @@ export default function CorporateRequest() {
 
   // ── 送信完了画面 ───────────────────────────────────────────────────────────
   if (submitState === 'success') {
-    const extraId = newRequestId ?? 'demo-1';
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center px-6 text-center"
@@ -526,28 +525,30 @@ export default function CorporateRequest() {
 
         {/* 追加情報CTA */}
         <div className="max-w-xs w-full space-y-3">
-          <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-left">
-            <p className="text-xs font-bold text-blue-800 mb-0.5">さらに正確な見積もりにできます</p>
-            <p className="text-[11px] text-blue-600 leading-relaxed">部屋ごとの情報（広さ・状態・家具量など）を追加すると、職人がより正確な概算を出せます。</p>
-          </div>
-          <button
-            onClick={() => navigate(`/request/${extraId}/extra-info`)}
-            className="w-full py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-sm transition-all shadow-sm"
-          >
-            部屋ごとの情報を追加する →
-          </button>
           {newRequestId && (
-            <div>
+            <>
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-left">
+                <p className="text-xs font-bold text-blue-800 mb-0.5">さらに正確な見積もりにできます</p>
+                <p className="text-[11px] text-blue-600 leading-relaxed">部屋ごとの情報（広さ・状態・家具量など）を追加すると、職人がより正確な概算を出せます。</p>
+              </div>
               <button
-                onClick={() => navigate(`/request/${newRequestId}/applications`)}
-                className="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-sm transition-all shadow-sm"
+                onClick={() => navigate(`/request/${newRequestId}/extra-info`)}
+                className="w-full py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-sm transition-all shadow-sm"
               >
-                職人の応募を確認する
+                部屋ごとの情報を追加する →
               </button>
-              <p className="text-[11px] text-slate-400 text-center mt-1.5 leading-relaxed">
-                応募が届いたら、このページから職人を確認して選べます。
-              </p>
-            </div>
+              <div>
+                <button
+                  onClick={() => navigate(`/request/${newRequestId}/applications`)}
+                  className="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-sm transition-all shadow-sm"
+                >
+                  職人の応募を確認する
+                </button>
+                <p className="text-[11px] text-slate-400 text-center mt-1.5 leading-relaxed">
+                  応募が届いたら、このページから職人を確認して選べます。
+                </p>
+              </div>
+            </>
           )}
           <button
             onClick={() => navigate('/')}
