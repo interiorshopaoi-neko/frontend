@@ -533,6 +533,19 @@ export default function CorporateRequest() {
           >
             部屋ごとの情報を追加する →
           </button>
+          {newRequestId && (
+            <div>
+              <button
+                onClick={() => navigate(`/request/${newRequestId}/applications`)}
+                className="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-sm transition-all shadow-sm"
+              >
+                職人の応募を確認する
+              </button>
+              <p className="text-[11px] text-slate-400 text-center mt-1.5 leading-relaxed">
+                応募が届いたら、このページから職人を確認して選べます。
+              </p>
+            </div>
+          )}
           <button
             onClick={() => navigate('/')}
             className="w-full py-3 rounded-2xl border border-slate-200 text-slate-500 font-semibold text-sm hover:bg-white transition-all"
