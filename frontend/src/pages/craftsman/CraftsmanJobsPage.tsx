@@ -168,7 +168,7 @@ export default function CraftsmanJobsPage() {
   // の規則を 1 箇所で表現する。これにより demo と実データが混ざる状態を作れない。
   const [realJobs, setRealJobs] = useState<Job[]>([]);
   const [loading,  setLoading]  = useState(true);
-  const [tab,      setTab]      = useState<Tab>('video');
+  const [tab,      setTab]      = useState<Tab>('list');
 
   // ── 登録直後だけ表示するウェルカムモーダル（PR1の justRegistered 経路） ──
   // useState の lazy initializer でマウント時に1度だけ評価する。re-render
@@ -232,9 +232,13 @@ export default function CraftsmanJobsPage() {
             : <span className="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider bg-amber-400/15 text-amber-300 border border-amber-400/30">DEMO表示中</span>
           )}
         </div>
-        <p className="text-[11px] text-white/85 font-semibold">
-          本日 <span className="font-black text-white">12件</span>の動画案件が公開されています
-        </p>
+        {!loading && (
+          <p className="text-[11px] text-white/85 font-semibold">
+            {jobs.length > 0
+              ? <>現在 <span className="font-black text-white">{jobs.length}件</span>の案件を掲載中</>
+              : '新着案件を受付中'}
+          </p>
+        )}
       </div>
 
       {/* ── ヘッダー ── */}

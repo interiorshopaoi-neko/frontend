@@ -135,7 +135,7 @@ export default function JobsListView({ jobs, loading }: Props) {
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
               </span>
               <p className="text-[11.5px] text-slate-600 font-semibold">
-                近くの動画案件を探しています…
+                近くの案件を読み込んでいます…
               </p>
             </div>
             <div className="space-y-3">
@@ -164,7 +164,7 @@ export default function JobsListView({ jobs, loading }: Props) {
               </span>
               <span className="text-[10px] font-black tracking-widest text-blue-600">SEARCHING</span>
             </div>
-            <p className="text-sm font-bold text-slate-800 mb-1.5">近くの動画案件を探しています…</p>
+            <p className="text-sm font-bold text-slate-800 mb-1.5">近くの案件を探しています…</p>
             <p className="text-[11.5px] text-slate-500 leading-relaxed">
               新しい案件が入り次第、ここに表示されます。<br />
               通知をONにすると、いち早くお知らせします。
@@ -254,10 +254,10 @@ export default function JobsListView({ jobs, loading }: Props) {
                     )}
                   </div>
 
-                  {/* ── 売上ブロック（メイン） ── */}
+                  {/* ── 売上ブロック（参考目安） ── */}
                   <div className="mx-4 mb-3 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white px-4 py-3.5 shadow-sm shadow-blue-200">
                     <div className="flex items-center justify-between mb-1.5">
-                      <p className="text-[11px] text-blue-200 font-bold">想定売上</p>
+                      <p className="text-[11px] text-blue-200 font-bold">参考目安</p>
                       <p className="text-2xl font-extrabold tracking-tight">{fmt(revenue)}</p>
                     </div>
                     <div className="flex items-center justify-between mb-2">
@@ -268,6 +268,7 @@ export default function JobsListView({ jobs, loading }: Props) {
                       <p className="text-[11px] text-blue-200 font-bold">手取り目安</p>
                       <p className="text-xl font-extrabold text-emerald-300">{fmt(takHome)}</p>
                     </div>
+                    <p className="mt-2 text-[10px] text-blue-300/70 text-right">※現場状況・仕様により変動します</p>
                   </div>
 
                   {/* ── クイック情報チップ ── */}

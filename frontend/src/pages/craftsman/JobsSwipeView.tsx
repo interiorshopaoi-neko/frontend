@@ -243,7 +243,7 @@ function SwipeSlide({ job, idx, total, applied, submitting, onApply }: SlideProp
 
         <div className="text-center bg-black/40 backdrop-blur-xl rounded-3xl px-10 py-6 border border-white/10 shadow-2xl">
           <p className="text-white/60 text-[11px] font-bold uppercase tracking-[0.15em] mb-1">
-            想定売上目安
+            参考目安
           </p>
           <p
             className="text-white font-extrabold leading-none tabular-nums"
@@ -456,10 +456,10 @@ export default function JobsSwipeView({ jobs }: Props) {
           </span>
           <span className="text-[10px] font-black tracking-widest text-emerald-300">SEARCHING</span>
         </div>
-        <p className="text-base font-bold">近くの動画案件を探しています…</p>
+        <p className="text-base font-bold">動画つき案件を探しています…</p>
         <p className="text-[12px] text-slate-400 leading-relaxed">
-          新しい案件が入り次第、ここに表示されます。<br />
-          通知をONにすると、いち早くお知らせします。
+          動画つき案件が入り次第、ここに表示されます。<br />
+          一覧タブでは動画なし案件もまとめて確認できます。
         </p>
         <div className="mt-2 grid grid-cols-3 gap-2 w-full max-w-xs">
           {[0, 1, 2].map((i) => (
