@@ -56,13 +56,48 @@ export default function ReviewPage() {
 
     setSubmitting(true);
 
-    // job_applications の reviewed_at を更新
+    // Step 1: job_applications を取得（craftsman_id と id を得る）
+    const { data: appRows, error: fetchError } = await supabase
+      .from('job_applications')
+      .select('id, craftsman_id')
+      .eq('estimate_request_id', id)
+      .eq('is_contracted', true)
+      .is('reviewed_at', null)   // 二重送信防止
+      .limit(1);
+
+    if (fetchError || !appRows || appRows.length === 0) {
+      setSubmitting(false);
+      setError('対象の案件が見つかりません。既にレビュー済みか、成約前の可能性があります。');
+      return;
+    }
+
+    const app = appRows[0];
+
+    // Step 2: reviews テーブルに挿入
+    const { error: reviewError } = await supabase
+      .from('reviews')
+      .insert({
+        job_application_id: app.id,
+        review_type:   'customer_to_craftsman',
+        reviewer_type: 'customer',
+        reviewer_id:   String(id),        // estimate_request_id を reviewer 識別子として使用
+        target_type:   'craftsman',
+        target_id:     app.craftsman_id,  // craftsmen.user_id と一致
+        rating:        rating,
+        comment:       comment.trim() || null,
+        would_use_again: again,
+      });
+
+    if (reviewError) {
+      console.error('reviews insert error:', reviewError);
+      // reviews 書き込み失敗でも reviewed_at は更新する（部分的成功を許容）
+    }
+
+    // Step 3: job_applications の reviewed_at を更新
     const { error: dbError } = await supabase
       .from('job_applications')
       .update({ reviewed_at: new Date().toISOString() })
-      .eq('estimate_request_id', id)
-      .eq('is_contracted', true)
-      .is('reviewed_at', null);   // 二重送信防止
+      .eq('id', app.id);
 
     setSubmitting(false);
 
