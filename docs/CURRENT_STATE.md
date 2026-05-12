@@ -1,6 +1,6 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-12 / HEAD: `2dd4bc9` (fix: use verified domain sender for customer notification email)
+> 最終更新: 2026-05-12 / HEAD: `7eb498c` (fix: separate error/empty/demo states in 3 craftsman pages)
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -252,6 +252,29 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 - 売上表記「想定売上」→「参考目安」＋免責テキスト追加
 - loading/empty 文言から「動画」を削除
 
+### /corporate 前回依頼バナー（1d2124d）
+
+- 依頼送信成功時に `promatch_last_request_id` / `promatch_last_request_at` を localStorage に保存（try/catch — 送信成功に影響しない）
+- Step 1 先頭で `lastRequestId` があるときだけインジゴバナーを表示
+- バナーに「応募状況を確認する → `/request/:id/applications`」「追加情報を入力する → `/request/:id/extra-info`」リンク
+
+### 本番 DEMO fallback 分離（7eb498c）
+
+PROD では DB エラー・0件時に DEMO を自動表示しない。DEV のみ DEMO fallback を許容する。
+
+| ページ | 旧（常に DEMO） | 新 |
+|---|---|---|
+| CraftsmanDashboardPage: fetch error | → DEMO | PROD: ⚠️エラーカード / DEV: DEMO |
+| CraftsmanDashboardPage: userId なし | → DEMO | PROD: 空状態 / DEV: DEMO |
+| CraftsmanDashboardPage: 0件 | → DEMO | 常に空状態 |
+| RequestApplicationsPage: fetch error / reqData なし | → DEMO | PROD: ⚠️エラー画面 / DEV: DEMO |
+| CraftsmanJobsPage: fetch error | 0件扱い→DEMO | PROD: ⚠️エラー画面 / DEV: DEMO |
+| CraftsmanJobsPage: 0件 | → DEMO | PROD: 空状態 / DEV: DEMO |
+
+実装: 各ファイルに `fetchError` state を追加。`import.meta.env.DEV` で分岐。build 成功 `index-BW_vjj1-.js`。
+
+**残っている DEMO fallback（未対応）**: `CraftsmanApplicationsPage` / `JobsSwipeView` 内の一部 demo-id 設計
+
 ### その他修正済み（2026-05-12）
 
 - `estimate_requests.city` → `area` 不一致: 全 9 ファイル修正済み（`adcfcc5`）
@@ -262,9 +285,8 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 ### 未実装（次フェーズ）
 
 - 依頼一覧ページ（お客様が後から応募確認ページへ戻る手段）
-- `EstimateComplete.tsx` の extra-info リンクが `demo` 固定のまま
-- DEMO fallback の分離（実案件 0 件時の挙動整理）
 - 応募数バッジ（依頼者が確認前に応募数を把握できる通知）
+- DEMO fallback 残: `CraftsmanApplicationsPage` / `JobsSwipeView` 内
 - 工事完了報告 → レビュー送信 → profile 反映の実データ E2E
 - 職人プロフィールへのレビュー表示（avg_rating / review_count / top_tags）
 - 職人→お客様 / 職人→職人 レビュー
@@ -406,6 +428,9 @@ E2E / 結合テストで Supabase Auth ユーザーが必要な場合は以下�
 
 | commit | 件名 | 何を直したか |
 |---|---|---|
+| `7eb498c` | fix: separate error/empty/demo states in 3 craftsman pages | PROD での DEMO 自動表示を禁止。エラー時はエラー表示、0件は空状態。DEV のみ DEMO fallback |
+| `1d2124d` | feat: show last-request banner on /corporate via localStorage | 依頼送信成功後に `promatch_last_request_id` を localStorage 保存。Step 1 先頭に前回依頼バナー表示 |
+| `1e21925` | fix: remove demo hardcode from EstimateComplete and CorporateRequest | `newRequestId` が null の場合は extra-info / applications ボタンを非表示。demo-1 固定を削除 |
 | `2dd4bc9` | fix: use verified domain sender for customer notification email | 依頼者通知メールの FROM を `noreply@promatch-app.jp` に変更。`onboarding@resend.dev` ではアカウント外アドレスに送れないため |
 | `ea4c5c9` | feat: add customer email notifications for request and application | 受付メールに応募確認リンク追加。職人応募時に依頼者通知。CraftsmanApplyPage でも通知。`mailto:` サニタイズ |
 | `e30f426` | fix: improve craftsman jobs page first-view UX | デフォルトタブ list 化。LIVEバー動的件数。売上「参考目安」表記 |
