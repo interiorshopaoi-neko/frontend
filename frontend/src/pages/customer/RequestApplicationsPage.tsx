@@ -297,6 +297,16 @@ export default function RequestApplicationsPage() {
         setContracting(false);
         return;
       }
+
+      // 成約通知メール（職人へ）— fire-and-forget。成約保存には影響しない
+      fetch('/api/notify-contracted', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          request_id:     id,
+          application_id: confirming.id,
+        }),
+      }).catch(err => console.warn('[notify-contracted] fire-and-forget error:', err));
     }
 
     setContractedId(confirming.id);
