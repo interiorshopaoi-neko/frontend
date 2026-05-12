@@ -194,6 +194,7 @@ export default function CraftsmanJobsPage() {
       const { data, error } = await supabase
         .from('estimate_requests')
         .select('*')
+        .neq('status', 'done')
         .order('created_at', { ascending: false });
 
       // error / 取得失敗は「実案件 0 件」と等価に扱う（既存の demo フォールバック動作と整合）。
