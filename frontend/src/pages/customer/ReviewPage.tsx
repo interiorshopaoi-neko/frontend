@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
 
 // ─── Star Rating ──────────────────────────────────────────────────────────────
 
@@ -27,12 +28,14 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function ReviewPage() {
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
+  const { id }    = useParams<{ id: string }>();   // estimate_request_id
 
   const [rating,    setRating]    = useState(0);
   const [comment,   setComment]   = useState('');
   const [again,     setAgain]     = useState<boolean | null>(null);
   const [checks,    setChecks]    = useState({ platform: false, person: false, noRedirect: false });
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error,     setError]     = useState('');
 
@@ -40,15 +43,35 @@ export default function ReviewPage() {
     setChecks(prev => ({ ...prev, [key]: !prev[key] }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+
     if (rating === 0) { setError('評価（星）を選択してください'); return; }
     if (!checks.platform || !checks.person || !checks.noRedirect) {
       setError('すべての確認項目にチェックを入れてください');
       return;
     }
-    // デモ送信（DB保存なし）
+    if (!id) { setError('URLが不正です'); return; }
+
+    setSubmitting(true);
+
+    // job_applications の reviewed_at を更新
+    const { error: dbError } = await supabase
+      .from('job_applications')
+      .update({ reviewed_at: new Date().toISOString() })
+      .eq('estimate_request_id', id)
+      .eq('is_contracted', true)
+      .is('reviewed_at', null);   // 二重送信防止
+
+    setSubmitting(false);
+
+    if (dbError) {
+      console.error('review update error:', dbError);
+      setError('送信に失敗しました。もう一度お試しください。');
+      return;
+    }
+
     setSubmitted(true);
   }
 
@@ -178,10 +201,13 @@ export default function ReviewPage() {
                 </label>
               ))}
             </div>
+            {error && (
+              <p className="mt-2 text-xs text-red-500 font-medium">{error}</p>
+            )}
           </section>
 
-          {/* エラー */}
-          {error && (
+          {/* エラー（評価未選択など） */}
+          {error && !error.includes('確認項目') && (
             <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-2.5">
               <p className="text-sm text-red-600 font-medium">{error}</p>
             </div>
@@ -190,9 +216,10 @@ export default function ReviewPage() {
           {/* 送信 */}
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white rounded-2xl py-4 text-base font-extrabold shadow-sm shadow-blue-200 transition active:scale-[0.99]"
+            disabled={submitting}
+            className="w-full bg-blue-600 text-white rounded-2xl py-4 text-base font-extrabold shadow-sm shadow-blue-200 transition active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            レビューを送る
+            {submitting ? '送信中...' : 'レビューを送る'}
           </button>
 
           <p className="text-center text-[11px] text-slate-400 leading-relaxed">
