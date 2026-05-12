@@ -7,9 +7,10 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const ADMIN_TO   = 'interior.shop.aoi@gmail.com';
-const ADMIN_FROM = 'Aoi Interior <onboarding@resend.dev>';
-const SITE_URL   = 'https://promatch-app.jp';
+const ADMIN_TO       = 'interior.shop.aoi@gmail.com';
+const ADMIN_FROM     = 'Aoi Interior <onboarding@resend.dev>';        // 管理者通知用（テスト送信元）
+const CUSTOMER_FROM  = 'PRO MATCH <noreply@promatch-app.jp>';         // 依頼者通知用（本番ドメイン）
+const SITE_URL       = 'https://promatch-app.jp';
 
 // Supabase REST (anon key — estimate_requests に anon SELECT ポリシーが設定済み)
 const SUPABASE_URL     = 'https://lboskhjidbqxwrenwjdr.supabase.co';
@@ -129,7 +130,7 @@ export default async function handler(req: any, res: any) {
           ].join('\n');
 
           const { error: custErr } = await resend.emails.send({
-            from:    ADMIN_FROM,
+            from:    CUSTOMER_FROM,
             to:      [customerEmail],
             subject: '【PRO MATCH】職人から応募が届きました',
             text:    customerBody,
