@@ -25,7 +25,10 @@ type CraftsmanInfo = {
   has_tools: boolean | null;
   bio: string | null;
   profile_image_url: string | null;
-  email?: string | null;  // 成約後のみ取得（get_my_craftsman_profile 経由）
+  email?: string | null;       // 成約後のみ取得（get_my_craftsman_profile 経由）
+  avg_rating?: number | null;  // reviews 集計
+  review_count?: number | null;
+  top_tags?: string[] | null;
 };
 
 type Application = {
@@ -504,6 +507,12 @@ export default function RequestApplicationsPage() {
                           )}
                           {c?.has_car && <Chip color="green">🚗 車あり</Chip>}
                           {c?.has_tools && <Chip color="green">🔧 道具あり</Chip>}
+                          {c?.review_count != null && c.review_count > 0 && c.avg_rating != null && (
+                            <span className="inline-flex items-center gap-1 text-xs font-extrabold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">
+                              ★ {Number(c.avg_rating).toFixed(1)}
+                              <span className="font-normal text-amber-500">（{c.review_count}件）</span>
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

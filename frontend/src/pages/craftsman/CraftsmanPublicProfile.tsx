@@ -22,6 +22,10 @@ type Craftsman = {
   has_car: boolean | null;
   has_tools: boolean | null;
   public_profile_enabled: boolean | null;
+  // review stats
+  avg_rating: number | null;
+  review_count: number | null;
+  top_tags: string[] | null;
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -248,16 +252,30 @@ export default function CraftsmanPublicProfile() {
 
         {/* ── 実績・評価 ── */}
         <Section title="実績・評価">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-slate-50 px-3 py-3 text-center">
-              <p className="text-[10px] text-slate-400 mb-1">成約実績</p>
-              <p className="text-xl font-extrabold text-slate-900">0件</p>
+          {c.review_count != null && c.review_count > 0 ? (
+            <div className="space-y-3">
+              {/* 星 + 件数 */}
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-extrabold text-slate-900">
+                  ★ {c.avg_rating != null ? Number(c.avg_rating).toFixed(1) : '—'}
+                </span>
+                <span className="text-sm text-slate-500 font-bold">（{c.review_count}件）</span>
+              </div>
+              {/* タグ */}
+              {c.top_tags && c.top_tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {c.top_tags.map(tag => (
+                    <Chip key={tag} color="amber">✓ {tag}</Chip>
+                  ))}
+                </div>
+              )}
             </div>
+          ) : (
             <div className="rounded-xl bg-slate-50 px-3 py-3 text-center">
               <p className="text-[10px] text-slate-400 mb-1">レビュー</p>
-              <p className="text-sm font-bold text-slate-500 mt-1">まだありません</p>
+              <p className="text-sm font-bold text-slate-500">まだありません</p>
             </div>
-          </div>
+          )}
         </Section>
 
         {/* 注意書き */}
