@@ -1,6 +1,6 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-12 / HEAD: `28d6646` (fix: scope craftsman welcome state per user)
+> 最終更新: 2026-05-12 / HEAD: `bdd3f4e` (feat: add completion report and review status flow)
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -29,7 +29,9 @@ App.tsx の Route 定義が真実。**ロール別に何を見せるか**を以�
 | `/register` | Register.tsx **常時表示**（72a8458 — ログイン済みでも redirect しない） |
 | `/auth/confirmed` | メール確認リンク後のランディング。Supabase token_hash を処理し role 別に遷移（af2bc54） |
 | `/reset-password` | パスワードリセット入力画面（Supabase recovery token 処理） |
-| `/corporate` | 依頼フォーム (CorporateRequest) |
+| `/corporate` | 依頼フォーム (CorporateRequest)。送信成功後に `/request/:id/extra-info` および `/request/:id/applications` へのボタンを表示（07d715b） |
+| `/request/:id/applications` | お客様向け応募確認・職人選定。成約後に職人のメールアドレス（のみ）を開示（d5dd890） |
+| `/request/:id/review` | お客様向けレビュー送信。送信で `job_applications.reviewed_at` を更新（bdd3f4e） |
 | `/faq` `/support` `/terms` `/privacy` `/legal` `/policy` | 静的ページ |
 | `/craftsman/jobs` | 未ログイン → JobsLockedPreview（県+想定売上のみ）/ craftsman → CraftsmanJobsPage |
 | `/pro/jobs` | 同上（旧 path） |
@@ -154,7 +156,38 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 
 ---
 
-## 6. 事業・課金方針
+## 6. 本線フロー（依頼 → 応募 → 成約 → 完了 → レビュー）
+
+### 現在の実装状態（2026-05-12 時点）
+
+| ステップ | 実装 | commit |
+|---|---|---|
+| 依頼送信 | `CorporateRequest.tsx` で `create_estimate_request` RPC を呼び出し | — |
+| 送信後に応募確認画面へ進む | 送信成功画面に「職人の応募を確認する」ボタン → `/request/:id/applications` | `07d715b` |
+| 応募確認・職人選定 | `RequestApplicationsPage.tsx`。`job_applications.is_contracted = true` で成約 | — |
+| 成約後の連絡先開示 | **メールアドレスのみ**開示。電話番号・LINE は表示しない | `d5dd890` |
+| 職人側の工事完了報告 | `CraftsmanDashboardPage.tsx` の成約済みカードに「工事完了を報告する」ボタン → `review_requested_at = now()` を更新 | `bdd3f4e` |
+| お客様レビュー送信 | `ReviewPage.tsx` で送信 → `job_applications.reviewed_at = now()` を更新 | `bdd3f4e` |
+| ステータス遷移 | `deriveStatus()` が `is_contracted` / `review_requested_at` / `reviewed_at` を参照して自動判定 | — |
+
+### 連絡先開示の設計方針
+
+- **開示対象: メールアドレスのみ**（電話番号・LINE は表示しない）
+- お客様側: `get_my_craftsman_profile(craftsman_id)` で職人のメールを取得（DB 変更なし）
+- 職人側: `estimate_requests.contact_value` が `@` を含む場合のみ表示
+- デモモード（`isDemo: true`）では開示 UI を非表示
+- 将来 billing_events / Stripe を挟む場合は「開示ボタンの onClick」が差し込みポイント
+
+### 未実装（次フェーズ）
+
+- billing_events テーブル / 手数料回収 (Stripe)
+- 無料枠カウント / 紹介制度
+- レビュー本文・星評価・タグの本格 DB 保存（reviews テーブル）
+- 成約後の連絡先開示通知メール
+
+---
+
+## 8. 事業・課金方針
 
 > 詳細な「なぜそうしたか」は `docs/DECISIONS.md` を参照。ここでは **現在の決定事項** のみ記載。
 
@@ -170,7 +203,7 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 
 ---
 
-## 7. 重要方針
+## 9. 重要方針
 
 ### コラボレーション原則
 - **最小差分**: 既存導線を壊さない、必要なものだけ触る、リファクタ・抽象化は禁止
@@ -191,7 +224,7 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 
 ---
 
-## 8. 旧 UI の扱い
+## 10. 旧 UI の扱い
 
 | ファイル | 状態 | 備考 |
 |---|---|---|
@@ -206,7 +239,7 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 
 ---
 
-## 9. 今後触る時の注意点
+## 11. 今後触る時の注意点
 
 ### 運営アカウントを追加する
 1. Supabase Dashboard → Authentication → Users → 該当ユーザー選択
@@ -240,10 +273,14 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 
 ---
 
-## 10. 主要 commit 履歴（直近の修正経緯）
+## 12. 主要 commit 履歴（直近の修正経緯）
 
 | commit | 件名 | 何を直したか |
 |---|---|---|
+| `bdd3f4e` | feat: add completion report and review status flow | 職人が「工事完了を報告する」→ `review_requested_at` 更新。お客様レビュー送信で `reviewed_at` 更新（DB 保存実装） |
+| `d5dd890` | feat: show matched email contacts after contract | 成約後にメールアドレスのみ開示（電話・LINE は表示しない）。お客様側・職人側の両ページに toggle UI 追加 |
+| `07d715b` | feat: add applications CTA after request submission | 依頼送信成功画面に「職人の応募を確認する」ボタンを追加 → `/request/:id/applications` へ |
+| `567d04e` | docs: update current state for auth and billing policy | docs/CURRENT_STATE.md を認証・メール・課金方針に合わせて更新 |
 | `28d6646` | fix: scope craftsman welcome state per user | WelcomeModal の localStorage キーをユーザー別 `craftsman_welcomed_${userId}` に変更 |
 | `ca70913` | feat: 通知設定ボタンを通知セクションへ直接スクロール | WelcomeModal「通知設定をする」→ `/craftsman/profile#notification`。CraftsmanProfile に `id="notification"` 追加 |
 | `af2bc54` | fix: AuthConfirmed navigate with justRegistered state | メール確認経由の職人登録後に WelcomeModal が表示されなかった問題を修正 |
