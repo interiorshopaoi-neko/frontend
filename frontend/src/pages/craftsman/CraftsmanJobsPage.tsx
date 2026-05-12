@@ -6,6 +6,20 @@ import JobsSwipeView from './JobsSwipeView';
 import BottomNav from '../../components/BottomNav';
 import CraftsmanWelcomeModal from '../../components/CraftsmanWelcomeModal';
 
+// ─── WelcomeModal 再表示防止キー（ユーザー別）────────────────────────────────
+// localStorage.user は useAuth が書く {id, name, email, role} の JSON 文字列。
+// useState lazy initializer は同期実行のため Supabase の非同期 session は使えないが、
+// localStorage からは同期で user.id を取得できる。
+function getStoredUserId(): string | null {
+  try {
+    const raw = localStorage.getItem('user');
+    return raw ? (JSON.parse(raw) as { id?: string }).id ?? null : null;
+  } catch { return null; }
+}
+function welcomeKey(userId: string | null): string {
+  return userId ? `craftsman_welcomed_${userId}` : 'craftsman_welcomed';
+}
+
 // ─── Job type（子コンポーネントで import して使う）────────────────────────────
 
 export type RoomInfo = {
@@ -164,12 +178,12 @@ export default function CraftsmanJobsPage() {
   const [showWelcome, setShowWelcome] = useState<boolean>(() => {
     const justRegistered = (location.state as any)?.justRegistered === true;
     const alreadyWelcomed = typeof window !== 'undefined'
-      && localStorage.getItem('craftsman_welcomed') !== null;
+      && localStorage.getItem(welcomeKey(getStoredUserId())) !== null;
     return justRegistered && !alreadyWelcomed;
   });
   const dismissWelcome = useCallback(() => {
     try {
-      localStorage.setItem('craftsman_welcomed', new Date().toISOString());
+      localStorage.setItem(welcomeKey(getStoredUserId()), new Date().toISOString());
     } catch { /* localStorage unavailable */ }
     setShowWelcome(false);
   }, []);
