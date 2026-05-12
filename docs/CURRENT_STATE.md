@@ -1,7 +1,7 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-13 / HEAD: `6580a0d` (feat: 受付完了メール・応募通知メール HTML リデザイン)
-> bundle: `index-CKnqd64_.js` / Vercel: promatch-app.jp
+> 最終更新: 2026-05-13 / HEAD: `fa42335` (UX: DEMOガード追加・成約後ガイダンス・メール4項目化)
+> bundle: `index-CYOG6_fp.js` / Vercel: promatch-app.jp
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -167,7 +167,7 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 | 送信後に応募確認画面へ進む | 送信成功画面に「職人の応募を確認する」ボタン → `/request/:id/applications` | `07d715b` |
 | 応募確認・職人選定 | `RequestApplicationsPage.tsx`。`job_applications.is_contracted = true` で成約 | — |
 | 成約後の連絡先開示 | **メールアドレスのみ**開示。電話番号・LINE は表示しない | `d5dd890` |
-| 職人側の工事完了報告 | `CraftsmanDashboardPage.tsx` の成約済みカードに「工事完了を報告する」ボタン → `review_requested_at = now()` を更新 | `bdd3f4e` |
+| 職人側の工事完了報告 | **未実装**。`review_requested_at` カラムは存在するが、現 `main` ブランチに書き込みボタンなし（過去 worktree `pensive-hermann` で実装されたが未マージ） | — |
 | お客様レビュー送信 | `ReviewPage.tsx` で送信 → `insert_customer_review()` RPC 経由で `reviews` INSERT + `reviewed_at` 更新。タグ選択 UI あり | `0da6a52` |
 | ステータス遷移 | `deriveStatus()` が `is_contracted` / `review_requested_at` / `reviewed_at` を参照して自動判定 | — |
 
@@ -252,8 +252,9 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 |---|---|---|
 | 応募通知メール（依頼者へ） | `api/notify-application.ts` | `aee9372` |
 | 受付完了メール（依頼者へ） | `supabase/functions/send-customer-email/index.ts` | `6580a0d` |
+| 成約通知メール（職人へ） | `api/notify-contracted.ts` | `ba59afe` → `fa42335` |
 
-**共通デザイン仕様（両メール統一済み）**:
+**共通デザイン仕様（全メール統一済み）**:
 - ヘッダー: flat `#1e40af` + `PRO MATCH` ラベル + タイトル
 - CTA ボタン化: 「応募状況を確認する →」（青）/ 「追加情報を入力する」（グレー）
 - 安心ポイント: `#eff6ff` カード（5項目）
@@ -345,18 +346,29 @@ build 成功 `index-BRWVBYPn.js`
 - status='done' 案件を職人一覧から除外（`63dce09`）
 - 顧客側レビュー画面への導線（成約後 → 工事完了報告後 → レビュー投稿）追加（`34802db`）
 
+### 成約後ガイダンス UX・DEMO fallback 修正（fa42335 / 2026-05-13）
+
+| 変更 | 内容 |
+|---|---|
+| `notify-contracted.ts` | CTA を「案件管理を開く →」に変更。安心ポイントを 4 項目に統一（不明点サポート追記） |
+| `CraftsmanDashboardPage` DEMO guard | `!userId` / `appError or 0件` 時の DEMO 表示を `import.meta.env.DEV` 限定に制限（PROD で誤 DEMO 非表示） |
+| `CraftsmanApplicationsPage` DEMO guard | 同上 |
+| `HelpListPage` DEMO guard | error / 0件 時の DEMO を DEV 限定に |
+| Dashboard 成約カード | 成約済みカードに 3 行ガイダンス追加: 📧 メール日程調整 / 🔒 電話番号・LINE 非表示 / ⭐ 工事完了後レビュー |
+| RequestApplicationsPage 成約後 | ボタン名「✓ この職人に依頼中」に変更。成約カード下に同 3 行ガイダンスパネル追加 |
+
 ### 未実装（次フェーズ）
 
 - 依頼一覧ページ（お客様が後から応募確認ページへ戻る手段）
 - 応募数バッジ（依頼者が確認前に応募数を把握できる通知）
 - DEMO fallback 残: `JobsSwipeView` 内 demo-id 応募（意図的設計のため変更不要）
+- **「工事完了を報告する」ボタン未実装** — `review_requested_at` 列は存在するが、現 `main` にフロントボタンなし。送信もない（過去 worktree `pensive-hermann` に実装あり、未マージ）
+- **工事完了 → お客様へのレビュー依頼メール未実装** — 職人が完了報告した際に依頼者へ「レビューをお願いします」メールを送る仕組みが存在しない
 - 工事完了報告 → レビュー送信 → profile 反映の実データ E2E
 - 職人プロフィールへのレビュー表示（avg_rating / review_count / top_tags）
 - 職人→お客様 / 職人→職人 レビュー
 - billing_events テーブル / 手数料回収 (Stripe)
 - 無料枠カウント / 紹介制度
-- 成約通知メール（連絡先開示タイミングで職人・お客様双方へ）
-- 工事完了 / レビュー依頼メール
 - メールテンプレートのさらなる細部改善
 
 ---
@@ -492,6 +504,8 @@ E2E / 結合テストで Supabase Auth ユーザーが必要な場合は以下�
 
 | commit | 件名 | 何を直したか |
 |---|---|---|
+| `fa42335` | UX: DEMOガード追加・成約後ガイダンス・メール4項目化 | Dashboard/Applications/HelpList DEMO を DEV 限定化。成約カードに日程調整・連絡先制限・レビュー案内追加。notify-contracted CTA 変更・安心ポイント 4 項目化 |
+| `ba59afe` | feat: 成約通知メール（職人へ）API 新設 + wire-up | `api/notify-contracted.ts` 新設。`get_craftsman_email_for_contracted` SECURITY DEFINER RPC。RequestApplicationsPage で fire-and-forget 呼び出し |
 | `6580a0d` | feat(email): 受付完了メールを応募通知メールと同トーンにリデザイン | `send-customer-email` を HTML カード型に。CTA ボタン2つ・安心ポイント Blue・text フォールバック追加。`esc()` XSS 対策。deploy + 実送信 OK |
 | `aee9372` | feat(email): 依頼者応募通知メールを HTML カード型にリデザイン | `notify-application.ts` を HTML メール化。CTAボタン・安心ポイントカード・text フォールバック。`escHtml()` 追加 |
 | `9d04bc3` | fix(api): notify-application の Supabase 認証キーを環境変数から読むよう修正 | `sb_publishable_*`（非JWT）のハードコードを廃止。`process.env.SUPABASE_ANON_KEY` → `VITE_SUPABASE_ANON_KEY` フォールバック順で読む。env 未設定時は即 500 |
