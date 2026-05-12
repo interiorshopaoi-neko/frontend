@@ -456,12 +456,13 @@ export default function CorporateRequest() {
         try {
           await supabase.functions.invoke('send-customer-email', {
             body: {
-              to:        contactValue,
+              to:         contactValue,
               area,
-              work_type: workType,
-              room_type: roomType   || undefined,
-              room_size: roomSize   || undefined,
-              timing:    timing     || undefined,
+              work_type:  workType,
+              room_type:  roomType   || undefined,
+              room_size:  roomSize   || undefined,
+              timing:     timing     || undefined,
+              request_id: inserted?.id,
             },
           });
         } catch (customerMailErr) {

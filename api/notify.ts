@@ -26,12 +26,12 @@ export default async function handler(req: any, res: any) {
     `連絡先　　：${contact_value  ?? '—'}`,
     '',
     '▼ 管理画面で確認',
-    'https://frontend-alpha-gray-75.vercel.app/admin/requests',
+    'https://promatch-app.jp/admin/requests',
   ].join('\n');
 
   try {
     const { error } = await resend.emails.send({
-      from: 'Aoi Interior <onboarding@resend.dev>',
+      from: 'PRO MATCH 管理 <noreply@promatch-app.jp>',
       to:   ['interior.shop.aoi@gmail.com'],
       subject: '新しい見積もり依頼が届きました',
       text: body,

@@ -1,6 +1,6 @@
 # PRO MATCH — 現在の実装状況
 
-> 最終更新：2026年5月
+> 最終更新：2026年5月12日
 
 ---
 
@@ -11,6 +11,7 @@
 |---|---|---|
 | トップページ | `/` | 動画ファーストLP。BottomNav(subtle)あり |
 | 動画フォーム依頼 | `/corporate` | マルチステップ7ステップ依頼フォーム（動画・写真・複数部屋対応） |
+| 受付完了メール | `send-customer-email` Edge Function | `noreply@promatch-app.jp` から送信。request_id付きリンク2本含む（応募確認・追加情報）|
 | 追加情報入力 | `/request/:id/extra-info` | 依頼送信後の任意情報（家具・駐車・材料等）。meta JSONB 保存 |
 | 見積もりフロー | `/customer/estimate/flow` | 旧フロー（残存） |
 | レビューページ | `/request/:id/review` | 星評価・確認チェックリスト（デモのみ・DB保存なし） |
@@ -89,3 +90,44 @@
 | `craftsmen` | 職人プロフィール |
 
 > **原則：Supabaseのスキーマ変更はしない**
+
+---
+
+## メール送信の現在状態（2026-05-12確認済み）
+
+### Resendドメイン検証
+| ドメイン | 状態 |
+|---|---|
+| `promatch-app.jp` | ✅ **verified済み** |
+| `onboarding@resend.dev` | テスト用。Resend登録メール(`interior.shop.aoi@gmail.com`)宛のみ可。本番不可 |
+
+### 送信元アドレス
+| ファイル | FROM | 状態 |
+|---|---|---|
+| `supabase/functions/send-customer-email` | `Deno.env.get('FROM_EMAIL')` → `noreply@promatch-app.jp` | ✅ verified・本番稼働中 |
+| `supabase/functions/send-craftsman-notification` | `Deno.env.get('FROM_EMAIL')` → `noreply@promatch-app.jp` | ✅ verified・本番稼働中 |
+| `api/notify.ts`（Vercel）| `PRO MATCH 管理 <noreply@promatch-app.jp>` | ✅ verified・管理者通知用 |
+
+### Supabase シークレット（`send-customer-email` / `send-craftsman-notification` 共有）
+| シークレット名 | 値 | 最終更新 |
+|---|---|---|
+| `FROM_EMAIL` | `noreply@promatch-app.jp` | 2026-05-12（v16 deploy時） |
+| `RESEND_API_KEY` | Resend APIキー（masked） | 2026-05-07 |
+| `SITE_URL` | `https://promatch-app.jp` | 設定済み |
+
+### Edge Function バージョン
+| 関数 | バージョン | 更新日時(UTC) |
+|---|---|---|
+| `send-customer-email` | v16 | 2026-05-12 |
+| `send-craftsman-notification` | v6 | 2026-05-09 |
+
+### 実装済み機能（2026-05-12）
+- ✅ `send-customer-email` に `request_id` ベースのリンク2本追加
+  - `📋 応募状況を確認する → /request/:id/applications`
+  - `✏️ 追加情報を入力する → /request/:id/extra-info`
+- ✅ `CorporateRequest.tsx` が `request_id` を Edge Function に渡すよう修正（フロントデプロイ済み）
+- ✅ `api/notify.ts` の FROM を `onboarding@resend.dev` → `noreply@promatch-app.jp` に変更・管理画面URL修正
+
+### ⚠️ 注意事項
+- `onboarding@resend.dev` は絶対に本番で使わない。Resendのテスト送信者で制限あり
+- `noreply@promatch-app.jp` ならどのアドレス宛でも送信可能（verified済みのため）
