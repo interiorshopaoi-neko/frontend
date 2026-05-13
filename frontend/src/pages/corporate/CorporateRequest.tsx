@@ -373,6 +373,11 @@ export default function CorporateRequest() {
     setRooms(prev => prev.map((r, i) => i === idx ? { ...r, ...patch } : r));
   }
 
+  // 前回の依頼 ID（localStorage から復元）
+  const [lastRequestId] = useState<string | null>(() => {
+    try { return localStorage.getItem('promatch_last_request_id'); } catch { return null; }
+  });
+
   // 送信状態
   const [submitState,    setSubmitState]    = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [devErrorDetail, setDevErrorDetail] = useState<string | null>(null);
@@ -432,6 +437,11 @@ export default function CorporateRequest() {
       console.log('[CorporateRequest] insert success, id:', inserted?.id);
       if (inserted?.id) {
         setNewRequestId(inserted.id);
+        // 前回依頼バナー用に localStorage に保存
+        try {
+          localStorage.setItem('promatch_last_request_id', String(inserted.id));
+          localStorage.setItem('promatch_last_request_at', new Date().toISOString());
+        } catch { /* localStorage 失敗は無視 */ }
       }
 
       // 4. 管理者へメール通知（失敗しても送信完了扱い）
@@ -513,8 +523,17 @@ export default function CorporateRequest() {
           ))}
         </div>
 
-        {/* 追加情報CTA */}
+        {/* CTA群 */}
         <div className="max-w-xs w-full space-y-3">
+          {/* 応募確認（request_id が取れた場合のみ） */}
+          {newRequestId && (
+            <button
+              onClick={() => navigate(`/request/${newRequestId}/applications`)}
+              className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-sm transition-all shadow-sm"
+            >
+              職人の応募を確認する →
+            </button>
+          )}
           <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-left">
             <p className="text-xs font-bold text-blue-800 mb-0.5">さらに正確な見積もりにできます</p>
             <p className="text-[11px] text-blue-600 leading-relaxed">部屋ごとの情報（広さ・状態・家具量など）を追加すると、職人がより正確な概算を出せます。</p>
@@ -574,6 +593,29 @@ export default function CorporateRequest() {
         <PageHeader />
         <StepProgress step={1} />
         <StepContent title="お部屋の動画を撮影してください" sub="10〜30秒でOK。壁・床・気になる箇所をゆっくり撮るだけ">
+
+          {/* ── 前回の依頼バナー ── */}
+          {lastRequestId && (
+            <div className="mb-5 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-4">
+              <p className="text-xs font-extrabold text-indigo-700 mb-2">📋 前回の依頼状況を確認する</p>
+              <div className="flex flex-col gap-2">
+                <a
+                  href={`/request/${lastRequestId}/applications`}
+                  className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-white border border-indigo-200 text-xs font-bold text-indigo-700 hover:bg-indigo-50 active:scale-95 transition-all"
+                >
+                  <span>応募状況を確認する</span>
+                  <span className="text-indigo-400">→</span>
+                </a>
+                <a
+                  href={`/request/${lastRequestId}/extra-info`}
+                  className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-white border border-indigo-200 text-xs font-bold text-indigo-700 hover:bg-indigo-50 active:scale-95 transition-all"
+                >
+                  <span>追加情報を入力する</span>
+                  <span className="text-indigo-400">→</span>
+                </a>
+              </div>
+            </div>
+          )}
 
           {/* ── 撮影前チェックリスト ── */}
           <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
