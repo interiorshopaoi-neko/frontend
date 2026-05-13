@@ -131,6 +131,21 @@ export default function CraftsmanApplyPage() {
       return;
     }
 
+    // fire-and-forget: 依頼者・管理者へ応募通知メール
+    // demo-* は呼ばない（isDemo チェック済み）
+    fetch('/api/notify-application', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        request_id:   id,
+        craftsman_id: craftsmanId,
+        work_type:    job?.work_type ?? '',
+        area:         (job as any)?.area ?? job?.city ?? '',
+        message:      message.trim() || null,
+        created_at:   new Date().toISOString(),
+      }),
+    }).catch(() => { /* fire-and-forget — 応募保存には影響しない */ });
+
     setDone(true);
   }
 

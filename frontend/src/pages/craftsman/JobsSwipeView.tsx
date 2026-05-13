@@ -314,9 +314,9 @@ function SwipeSlide({ job, idx, total, applied, submitting, onApply }: SlideProp
 
 // ─── Main: JobsSwipeView ──────────────────────────────────────────────────────
 
-type Props = { jobs: Job[] };
+type Props = { jobs: Job[]; isLoggedIn?: boolean };
 
-export default function JobsSwipeView({ jobs }: Props) {
+export default function JobsSwipeView({ jobs, isLoggedIn = false }: Props) {
   const navigate = useNavigate();
   const videoJobs = jobs.filter(j => j.has_video || j.video_url);
 
@@ -342,10 +342,17 @@ export default function JobsSwipeView({ jobs }: Props) {
 
   const applyJob = useCallback(async (job: Job) => {
     if (appliedIds.has(job.id) || submittingId) return;
-    setSubmittingId(job.id);
 
     const storedUser = localStorage.getItem('user');
     const craftsmanId = storedUser ? JSON.parse(storedUser).id : null;
+
+    // 未ログインはログインページへ誘導
+    if (!craftsmanId) {
+      navigate('/login', { state: { defaultRole: 'craftsman', from: `/craftsman/apply/${job.id}` } });
+      return;
+    }
+
+    setSubmittingId(job.id);
 
     const { error } = await supabase.from('job_applications').insert({
       estimate_request_id: job.id,

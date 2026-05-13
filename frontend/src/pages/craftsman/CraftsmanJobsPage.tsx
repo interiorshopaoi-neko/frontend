@@ -105,10 +105,18 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function CraftsmanJobsPage() {
-  const [jobs,    setJobs]    = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [tab,     setTab]     = useState<Tab>('video');
-  const [isDemo,  setIsDemo]  = useState(false);
+  const [jobs,       setJobs]       = useState<Job[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [tab,        setTab]        = useState<Tab>('video');
+  const [isDemo,     setIsDemo]     = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      setIsLoggedIn(!!stored && !!JSON.parse(stored).id);
+    } catch { /* ignore */ }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -142,6 +150,19 @@ export default function CraftsmanJobsPage() {
               <p className="text-xs text-amber-700 font-semibold">
                 デモ表示中 — 実際の案件が登録されると切り替わります
               </p>
+            </div>
+          )}
+          {!isLoggedIn && !loading && (
+            <div className="mb-3 rounded-xl bg-blue-50 border border-blue-200 px-3 py-2.5 flex items-center justify-between gap-2">
+              <p className="text-xs text-blue-700 font-semibold">
+                🔒 応募するには職人登録が必要です
+              </p>
+              <a
+                href="/register"
+                className="flex-shrink-0 text-xs font-extrabold text-white bg-blue-600 rounded-lg px-2.5 py-1 hover:bg-blue-700 transition"
+              >
+                無料登録
+              </a>
             </div>
           )}
 
@@ -190,9 +211,9 @@ export default function CraftsmanJobsPage() {
       {/* ── コンテンツ ── */}
       <div className="flex-1 overflow-hidden">
         {tab === 'list' ? (
-          <JobsListView jobs={jobs} loading={loading} />
+          <JobsListView jobs={jobs} loading={loading} isLoggedIn={isLoggedIn} />
         ) : (
-          <JobsSwipeView jobs={jobs} />
+          <JobsSwipeView jobs={jobs} isLoggedIn={isLoggedIn} />
         )}
       </div>
 

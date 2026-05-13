@@ -77,11 +77,11 @@ function fmt(n: number) {
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
-type Props = { jobs: Job[]; loading: boolean };
+type Props = { jobs: Job[]; loading: boolean; isLoggedIn?: boolean };
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function JobsListView({ jobs, loading }: Props) {
+export default function JobsListView({ jobs, loading, isLoggedIn = false }: Props) {
   const navigate   = useNavigate();
   const [filter, setFilter] = useState<'all' | 'today' | 'video'>('all');
 
@@ -273,10 +273,14 @@ export default function JobsListView({ jobs, loading }: Props) {
                       詳しく見る
                     </button>
                     <button
-                      onClick={() => navigate(`/craftsman/apply/${job.id}`, { state: { job } })}
+                      onClick={() =>
+                        isLoggedIn
+                          ? navigate(`/craftsman/apply/${job.id}`, { state: { job } })
+                          : navigate('/login', { state: { defaultRole: 'craftsman', from: `/craftsman/apply/${job.id}` } })
+                      }
                       className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-extrabold shadow-sm shadow-blue-200 transition active:scale-[0.98]"
                     >
-                      今すぐ応募する →
+                      {isLoggedIn ? '今すぐ応募する →' : 'ログインして応募する →'}
                     </button>
                   </div>
 
