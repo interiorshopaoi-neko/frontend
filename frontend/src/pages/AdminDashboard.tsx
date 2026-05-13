@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { TrendingUp, TrendingDown, DollarSign, Users, Star, Lightbulb, Bell } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { AdminLogin, AdminNav } from './admin/shared';
+import { AdminLogin, AdminNav, AdminUnauthorized, isAdminRole } from './admin/shared';
 
 // ── Types (DB連携時はAPIレスポンスをこの型にマップする) ───────────────────────
 
@@ -430,5 +430,6 @@ export default function AdminDashboard() {
   }, []);
   if (!authReady) return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><p className="text-sm text-slate-400 animate-pulse">確認中...</p></div>;
   if (!session) return <AdminLogin />;
+  if (!isAdminRole(session)) return <AdminUnauthorized />;
   return <AdminDashboardContent />;
 }

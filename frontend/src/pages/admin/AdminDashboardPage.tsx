@@ -4,7 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { calculateServiceFee } from '../../lib/serviceFee';
 import { getFreshness, FRESHNESS_CLASS } from '../../lib/freshness';
-import { AdminLogin, AdminNav } from './shared';
+import { AdminLogin, AdminNav, AdminUnauthorized, isAdminRole } from './shared';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -503,5 +503,6 @@ export default function AdminDashboardPage() {
 
   if (!authReady) return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><p className="text-sm text-slate-400 animate-pulse">確認中...</p></div>;
   if (!session) return <AdminLogin />;
+  if (!isAdminRole(session)) return <AdminUnauthorized />;
   return <AdminDashboardPageContent session={session} />;
 }
