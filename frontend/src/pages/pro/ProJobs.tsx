@@ -402,7 +402,7 @@ function JobCard({
 
         {/* 受付番号 */}
         <p className="mt-2 text-right text-[9px] text-slate-200 font-mono select-none">
-          #{job.id.slice(0, 8)}
+          #{String(job.id).slice(0, 8)}
         </p>
       </div>
     </div>
