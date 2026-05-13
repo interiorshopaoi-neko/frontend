@@ -1,7 +1,7 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-13 / HEAD: `b15fe31` (feat(P1): notify-application wire-up + 未認証jobs UX改善)
-> bundle: `index-CJevILsF.js` / Vercel: promatch-app.jp
+> 最終更新: 2026-05-13 / HEAD: `4205d91` (feat(billing-ux): 連絡先開示導線整合・無料枠残数UI追加)
+> bundle: `index-Qk7G5tit.js` / Vercel: promatch-app.jp
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -392,6 +392,74 @@ GRANT EXECUTE ON FUNCTION report_work_complete(uuid) TO anon, authenticated;
 - `review_requested_at` 非 null → `'依頼者確認中'`（工事完了報告済みの状態）
 - `is_contracted = true` のみ → `'成約済み'`
 
+### 課金基盤 MVP — 連絡先開示 UI・無料枠管理（743c0b7 / 4205d91 / 2026-05-13）
+
+#### 設計方針
+- **連絡先開示は UI 経由のみ** — 成約通知メールに連絡先を記載しない。職人は案件管理画面の「連絡先を確認する」ボタンから取得する。
+- **SECURITY DEFINER RPC** でアトミックにクレジット消費 + billing_event INSERT + 連絡先返却。RLS でテーブルへの直接アクセスを全拒否。
+- **初回 2 件無料**。`free_credits_remaining` を FOR UPDATE ロックして競合防止。UNIQUE(application_id) で二重課金防止。
+
+#### DB 変更（migration: `20260513_billing_events.sql`）
+
+| 追加 | 内容 |
+|---|---|
+| `public.billing_events` テーブル | craftsman_id, application_id, event_type, is_free, free_reason, Stripe 予約列、RLS 全拒否 |
+| `craftsmen.free_credits_remaining` | DEFAULT 2（新規登録時の無料枠） |
+| `craftsmen.referral_bonus_credits` | DEFAULT 0（紹介ボーナス用） |
+| `craftsmen.total_contacts_used` | DEFAULT 0（累計分析用） |
+| `craftsmen.referred_by` | 紹介元 user_id（将来実装） |
+| `claim_free_credit_and_get_contact(uuid, text)` RPC | SECURITY DEFINER — クレジット消費・billing_event INSERT・連絡先返却を 1 トランザクション |
+| `get_my_free_credits(text)` RPC | SECURITY DEFINER STABLE — フロントの表示専用 |
+
+#### API（`api/check-billing.ts`）
+
+- `POST /api/check-billing` Body: `{ application_id: uuid, craftsman_id: text }`
+- RPC を呼び出し、結果を以下のいずれかで返す:
+  - `{ status: 'ok' \| 'already_unlocked', contact_method, contact_value, free_reason }`
+  - `{ status: 'payment_required' }` — 無料枠なし（Stripe 未実装のため現在はここで止まる）
+  - `{ status: 'not_contracted' }` / `{ status: 'error' }`
+- demo-* ID はモック応答で即時 200 返却
+
+#### フロントエンド変更
+
+**`CraftsmanApplicationsPage.tsx`**:
+- 成約済みカードに「連絡先を確認する」ボタン追加（`/api/check-billing` 呼び出し）
+- `ContactState` 型 (`Map<string, ContactState>`) で各 application の開示状態をトラッキング
+- 無料枠残数バナー（emerald 🎁 / slate 🔒）を page top に表示 — `get_my_free_credits` RPC から取得
+- `payment_required` 時: 「現在は無料枠がありません」「正式版では決済後に確認できます」「お急ぎの場合は管理者までお問い合わせください」
+- ボタン説明: 「確認時に無料枠を1件消費します · メールアドレスのみ開示」
+- 楽観的 UI update: `ok` レスポンス時に freeCredits state をデクリメント（DB は authoritative、reload で再取得）
+
+**`CraftsmanDashboardPage.tsx`**:
+- `get_my_free_credits` RPC で無料枠残数を取得
+- 手数料ルール上部に無料枠残数バナー（emerald 🎁 / slate 🔒）を追加
+
+**`notify-contracted.ts`**（UX 整合修正）:
+- HTML: 黄色ボックス（連絡先開示）→ 緑ボックス「連絡先確認の案内」に変更
+  - 案件管理画面の「連絡先を確認する」ボタンで確認、初回2件まで無料 を案内
+- Text 版: 「【連絡先の確認方法】」ブロック追加。メールアドレスを直接記載しない
+- 安心ポイント: 「案件管理画面から「連絡先を確認する」で連絡先を取得してください」
+
+#### E2E 実データ確認済み（2026-05-13 本番）
+
+| ケース | 結果 |
+|---|---|
+| 無料枠あり → 「連絡先を確認する」クリック | ✅ メールアドレス開示、残数バナー即時デクリメント |
+| DB 確認 (free_credits_remaining=1, total_contacts_used=1) | ✅ |
+| リロード後残数確認 (残り 1 件) | ✅ |
+| 2回目クリック (already_unlocked) | ✅ 再開示、残数変化なし |
+| 無料枠 0 → クリック | ✅ payment_required パネル表示 |
+| Dashboard 無料枠残数バナー | ✅ 「無料連絡先確認 残り 2 件」表示 |
+| notify-contracted 送信テスト | ✅ `{ok:true, contractedOk:true, adminOk:true}` |
+
+#### Stripe 未実装に関する現状
+
+- `payment_required` 時はユーザーに「正式版では決済後に確認できます」と表示
+- Stripe 決済フロー・`stripe_session_id` / `stripe_payment_intent_id` は `billing_events` に予約列として存在するが未使用
+- 今後は「連絡先確認ボタンの onClick → `payment_required` → Stripe Payment Link」を差し込む
+
+---
+
 ### 成約後ガイダンス UX・DEMO fallback 修正（fa42335 / 2026-05-13）
 
 | 変更 | 内容 |
@@ -409,8 +477,8 @@ GRANT EXECUTE ON FUNCTION report_work_complete(uuid) TO anon, authenticated;
 - 応募数バッジ（依頼者が確認前に応募数を把握できる通知）
 - DEMO fallback 残: `JobsSwipeView` 内 demo-id 応募（意図的設計のため変更不要）
 - 職人→お客様 / 職人→職人 レビュー
-- billing_events テーブル / 手数料回収 (Stripe)
-- 無料枠カウント / 紹介制度
+- 手数料回収 (Stripe) — billing 基盤 MVP は実装済み。Stripe 決済は未実装
+- 紹介制度 (+1 無料枠) — `referral_bonus_credits` カラムは追加済み、付与ロジックは未実装
 - メールテンプレートのさらなる細部改善
 
 ### 未認証 /craftsman/jobs の設計方針（b15fe31 確定）
@@ -625,6 +693,9 @@ E2E / 結合テストで Supabase Auth ユーザーが必要な場合は以下�
 
 | commit | 件名 | 何を直したか |
 |---|---|---|
+| `4205d91` | feat(billing-ux): 連絡先開示導線整合・無料枠残数UI追加 | CraftsmanApplicationsPage に無料枠残数バナー + payment_required UX改善。CraftsmanDashboardPage に残数バナー追加。notify-contracted から連絡先削除・UI誘導に変更 |
+| `743c0b7` | feat(billing): 課金基盤MVP — 連絡先開示UIと無料枠管理 | billing_events migration + api/check-billing.ts + CraftsmanApplicationsPage「連絡先を確認する」ボタン + ContactPanel |
+| `666d2c6` | docs: notify-application整合性・未認証jobs方針を CURRENT_STATE に記録 | CURRENT_STATE.md に notify-application 実装状態・未認証 jobs 方針を追記 |
 | `b15fe31` | feat(P1): notify-application wire-up + 未認証jobs UX改善 | CraftsmanApplyPage に notify-application fire-and-forget 追加。CraftsmanJobsPage に isLoggedIn 検出・未登録バナー追加。JobsListView 未ログイン時ボタン文言変更 + /login 誘導。JobsSwipeView applyJob に auth guard 追加 |
 | `7d251e9` | fix(ProJobs): id.slice crash — convert integer id to string | `estimate_requests.id` は integer なのに `.slice()` を直接呼び出して `/pro/jobs` が白画面クラッシュ。`String(job.id).slice(0,8)` に修正 |
 | `1174e58` | fix(CraftsmanApplyPage): P0 auth guard — redirect to /login if not logged in | 未ログインで応募フォームを送信すると `craftsman_id=null` で INSERT されていた。`localStorage.user` チェックを追加し、未認証は `/login` へリダイレクト |
