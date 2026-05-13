@@ -143,11 +143,14 @@ export default function App() {
         <Route path="/admin"           element={<AdminDashboard />} />
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
         <Route path="/admin/requests"  element={<AdminRequests />} />
-        <Route path="/demo"       element={<DemoLauncher />} />
+        {/* /demo: 本番では / へリダイレクト。開発環境のみ DemoLauncher を表示 */}
+        <Route path="/demo"       element={
+          import.meta.env.PROD ? <Navigate to="/" replace /> : <DemoLauncher />
+        } />
         <Route path="/corporate"  element={<CorporateRequest />} />
 
         {/* 職人向け案件ボード・プロフィール */}
-        <Route path="/pro/jobs"           element={<ProJobs />} />
+        <Route path="/pro/jobs"           element={<Navigate to="/craftsman/jobs" replace />} />
         <Route path="/craftsman/jobs"     element={<CraftsmanJobsPage />} />
         <Route path="/craftsman/dashboard"           element={<CraftsmanDashboardPage />} />
         <Route path="/request/:id/applications"    element={<RequestApplicationsPage />} />

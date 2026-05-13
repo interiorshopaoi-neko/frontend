@@ -123,6 +123,48 @@ console.log('\n🔍  PRO MATCH route regression check\n');
   check('AuthConfirmed does NOT redirect to bare /craftsman', !toBare, toBare ? 'found /craftsman bare string' : '');
 }
 
+// 8. /pro/jobs → /craftsman/jobs redirect
+{
+  const src = read('frontend/src/App.tsx');
+  const ok = /path="\/pro\/jobs"\s+element=\{<Navigate\s+to="\/craftsman\/jobs"/.test(src);
+  check('/pro/jobs redirects to /craftsman/jobs', ok);
+}
+
+// 9. /demo → production では / へ redirect（import.meta.env.PROD ガードあり）
+{
+  const src = read('frontend/src/App.tsx');
+  // path="/demo" の element に import.meta.env.PROD チェックが含まれていること
+  const demoBlock = src.match(/path="\/demo"[\s\S]*?element=\{([\s\S]*?)\}/)?.[1] ?? '';
+  const hasProdGuard = /import\.meta\.env\.PROD/.test(demoBlock);
+  const hasRootRedirect = /Navigate.*to="\/"\s*replace/.test(demoBlock);
+  check('/demo has production guard (import.meta.env.PROD)', hasProdGuard, !hasProdGuard ? 'no PROD check found' : '');
+  check('/demo redirects to "/" in production', hasRootRedirect, !hasRootRedirect ? 'no Navigate to="/" found' : '');
+}
+
+// 10. CraftsmanDashboardPage — 未認証時に navigate('/login') を呼ぶ（DEMO に落ちない）
+{
+  const src = read('frontend/src/pages/craftsman/CraftsmanDashboardPage.tsx');
+  // !userId ブランチに navigate('/login') があること
+  const hasLoginRedirect = /if\s*\(!userId\)[\s\S]{0,300}navigate\(['"`]\/login['"`]\)/.test(src);
+  // DEMO setIsDemo(true) は DEV ガード内のみ（本番でむき出しの setIsDemo(true) がない）
+  const bareSetIsDemo = src.match(/setIsDemo\(true\)/g) ?? [];
+  const devGuardedIsDemo = src.match(/import\.meta\.env\.DEV[\s\S]{0,300}setIsDemo\(true\)/g) ?? [];
+  const hasBareDemoFallback = bareSetIsDemo.length > devGuardedIsDemo.length;
+  check('CraftsmanDashboardPage: !userId → navigate("/login")', hasLoginRedirect);
+  check('CraftsmanDashboardPage: setIsDemo(true) は DEV guard 内のみ', !hasBareDemoFallback,
+    hasBareDemoFallback ? `setIsDemo(true) が DEV guard 外に ${bareSetIsDemo.length - devGuardedIsDemo.length} 件` : '');
+}
+
+// 11. CraftsmanApplicationsPage — 未認証時に navigate('/login') を呼ぶ（DEMO に落ちない）
+{
+  const src = read('frontend/src/pages/craftsman/CraftsmanApplicationsPage.tsx');
+  const hasLoginRedirect = /if\s*\(!uid\)[\s\S]{0,200}navigate\(['"`]\/login['"`]\)/.test(src);
+  const hasNoSetIsDemo = !/setIsDemo\(true\)/.test(src);
+  check('CraftsmanApplicationsPage: !uid → navigate("/login")', hasLoginRedirect);
+  check('CraftsmanApplicationsPage: setIsDemo(true) が存在しない（DEMO fallback 除去済み）', hasNoSetIsDemo,
+    !hasNoSetIsDemo ? 'setIsDemo(true) が残っています' : '');
+}
+
 // ─── summary ────────────────────────────────────────────────────────────────
 
 console.log('');

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import BottomNav from '../../components/BottomNav';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -239,8 +240,8 @@ export default function CraftsmanApplicationsPage() {
       setCraftsmanId(uid);
 
       if (!uid) {
-        if (import.meta.env.DEV) { setApps(DEMO); setIsDemo(true); }
-        setLoading(false);
+        // 未認証は /login へ。DEMO 表示しない
+        navigate('/login');
         return;
       }
 
@@ -266,7 +267,8 @@ export default function CraftsmanApplicationsPage() {
         .order('created_at', { ascending: false });
 
       if (appError || !appData || appData.length === 0) {
-        if (import.meta.env.DEV) { setApps(DEMO); setIsDemo(true); }
+        // 0件は空状態。エラーのみログ出力。DEMO に落ちない
+        if (appError) console.error('[CraftsmanApplicationsPage] fetch error:', appError);
         setLoading(false);
         return;
       }
@@ -368,7 +370,7 @@ export default function CraftsmanApplicationsPage() {
         </div>
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 py-5 pb-10 space-y-4">
+      <div className="max-w-2xl mx-auto px-4 py-5 pb-24 space-y-4">
 
         {isDemo && (
           <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 flex items-center gap-2">
@@ -515,6 +517,7 @@ export default function CraftsmanApplicationsPage() {
           成約報告・レビュー取得により案件に選ばれやすくなります
         </p>
       </div>
+      <BottomNav />
     </div>
   );
 }

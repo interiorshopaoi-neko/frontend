@@ -223,8 +223,12 @@ export default function CraftsmanDashboardPage() {
   useEffect(() => {
     (async () => {
       if (!userId) {
-        if (import.meta.env.DEV) { setApps(DEMO); setIsDemo(true); }
-        setLoading(false); return;
+        // DEV + ?demo=1 のみ DEMO 許可。本番は /login へ
+        if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('demo') === '1') {
+          setApps(DEMO); setIsDemo(true); setLoading(false); return;
+        }
+        navigate('/login');
+        return;
       }
 
       // Step 1: job_applications（FK制約なしのためJOIN不可 → 別クエリでマージ）
@@ -235,7 +239,8 @@ export default function CraftsmanDashboardPage() {
         .order('created_at', { ascending: false });
 
       if (appError || !appData || appData.length === 0) {
-        if (import.meta.env.DEV) { setApps(DEMO); setIsDemo(true); }
+        // 0件は空状態。DEMO に落ちない
+        if (appError) console.error('[CraftsmanDashboardPage] fetch error:', appError);
         setLoading(false);
         return;
       }
