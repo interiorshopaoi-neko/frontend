@@ -1,111 +1,489 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, ClipboardList, BadgeCheck, TrendingUp } from 'lucide-react';
+import { MapPin, Video, Camera, ArrowRight, Zap } from 'lucide-react';
 
-const BENEFITS = [
+// ─── モック案件データ（LP用 / DBアクセスなし）────────────────────────────────
+
+const STREAM_JOBS = [
   {
-    icon: Users,
-    title: '新規顧客を自動でご紹介',
-    desc: 'エリアと対応工事に合う案件が届きます。営業不要。',
+    id: 1,
+    type: 'クロス張り替え',
+    area: '神奈川県横浜市',
+    price: '¥2〜3万',
+    dist: '4.8km',
+    urgency: '⚡ 今日希望',
+    urgencyCls: 'bg-red-500',
+    hasVideo: true,
+    hasPhoto: true,
+    colorFrom: '#1e293b',
+    colorTo: '#0f172a',
   },
   {
-    icon: ClipboardList,
-    title: '動画・写真で状況確認',
-    desc: '現地訪問前に状況を確認できるので、効率よく対応できます。',
+    id: 2,
+    type: '床CF張り替え',
+    area: '東京都世田谷区',
+    price: '¥3〜5万',
+    dist: '8.2km',
+    urgency: '🔔 明日まで',
+    urgencyCls: 'bg-orange-500',
+    hasVideo: true,
+    hasPhoto: true,
+    colorFrom: '#1c1917',
+    colorTo: '#0c0a09',
   },
   {
-    icon: BadgeCheck,
-    title: '成約時のみサービス利用料',
-    desc: '成約しない案件への費用はゼロ。リスクなく始められます。',
+    id: 3,
+    type: 'クロス補修',
+    area: '神奈川県川崎市',
+    price: '¥1〜2万',
+    dist: '6.1km',
+    urgency: '📅 数日以内',
+    urgencyCls: 'bg-amber-500',
+    hasVideo: false,
+    hasPhoto: true,
+    colorFrom: '#1e1b4b',
+    colorTo: '#0f0a2a',
   },
   {
-    icon: TrendingUp,
-    title: '実績・評価が積み上がる',
-    desc: '施工実績と評価が積み上がるほど、優先的に案件が紹介されます。',
+    id: 4,
+    type: '床全面張り替え',
+    area: '東京都大田区',
+    price: '¥5〜8万',
+    dist: '11km',
+    urgency: '💭 急ぎなし',
+    urgencyCls: 'bg-slate-500',
+    hasVideo: true,
+    hasPhoto: true,
+    colorFrom: '#14532d',
+    colorTo: '#052e16',
   },
 ] as const;
 
-export default function ProSignupPage() {
-  const navigate = useNavigate();
+// ─── ライブカウンター（演出用 / 固定値） ─────────────────────────────────────
+
+const LIVE_COUNT = 17;
+
+// ─── フォンモック内のカード ───────────────────────────────────────────────────
+
+function PhoneMock() {
+  const [slide, setSlide] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setSlide((s) => (s + 1) % 2), 3500);
+    return () => clearInterval(id);
+  }, []);
+
+  const cards = [
+    { type: 'クロス張り替え', area: '神奈川県', dist: '4.8km', price: '¥2〜3万', urgency: '⚡ 今日希望', urgCls: 'bg-red-500', idx: '1 / 17' },
+    { type: '床CF張り替え',   area: '東京都世田谷区', dist: '8.2km', price: '¥3〜5万', urgency: '🔔 明日まで', urgCls: 'bg-orange-500', idx: '2 / 17' },
+  ];
+
+  const c = cards[slide];
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-md mx-auto px-5 pt-10 pb-24">
+    /* Phone frame */
+    <div
+      className="relative mx-auto flex-shrink-0"
+      style={{
+        width: 188,
+        height: 378,
+        borderRadius: 28,
+        background: '#1a1a2e',
+        boxShadow: '0 32px 80px rgba(0,0,0,0.7), 0 0 0 6px #2a2a3e, 0 0 0 7px #111',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Status bar */}
+      <div className="flex justify-between items-center px-4 pt-2 pb-1" style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)' }}>
+        <span>9:41</span>
+        <span>■■■ WiFi 100%</span>
+      </div>
 
-        {/* Logo */}
-        <div className="mb-10">
-          <img src="/logo-full.svg" alt="PRO MATCH" className="h-8 object-contain" />
+      {/* App header */}
+      <div className="flex items-center justify-between px-3 pb-1.5">
+        <div>
+          <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>職人向け案件</p>
+          <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)' }}>空き日に入れる近場の仕事</p>
+        </div>
+        <div className="flex gap-1" style={{ fontSize: 8 }}>
+          <span style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', padding: '2px 6px', borderRadius: 20 }}>一覧</span>
+          <span style={{ background: '#3b82f6', color: '#fff', padding: '2px 6px', borderRadius: 20, fontWeight: 700 }}>▶ 動画</span>
+        </div>
+      </div>
+
+      {/* Job card - animates between slides */}
+      <div
+        className="relative mx-2 overflow-hidden"
+        style={{
+          height: 264,
+          borderRadius: 16,
+          background: `linear-gradient(160deg, #1e3a5f 0%, #0f172a 100%)`,
+          transition: 'opacity 0.4s',
+        }}
+      >
+        {/* Subtle room texture */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `radial-gradient(ellipse at 25% 35%, rgba(255,255,255,0.07) 0%, transparent 55%),
+                          linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 30%, transparent 55%, rgba(0,0,0,0.9) 100%)`,
+          }}
+        />
+        {/* Big emoji room placeholder */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none" style={{ paddingBottom: 60 }}>
+          <span style={{ fontSize: 56, opacity: 0.08 }}>🎬</span>
         </div>
 
-        {/* Hero */}
-        <div className="mb-8">
-          <p className="text-[10px] font-semibold text-blue-500 uppercase tracking-widest mb-2">
-            For Professionals
-          </p>
-          <h1 className="text-2xl font-bold text-slate-900 leading-snug">
-            内装職人の方へ
-          </h1>
-          <p className="text-sm text-slate-500 mt-3 leading-relaxed">
-            壁紙・床材の張り替え案件を継続的にご紹介します。<br />
-            登録・案件閲覧・応募は無料です。
-          </p>
+        {/* Top bar */}
+        <div className="absolute top-2 left-2 right-2 flex justify-between items-center z-10">
+          <span className={`${c.urgCls} text-white rounded-full px-2 py-0.5`} style={{ fontSize: 8, fontWeight: 800 }}>
+            {c.urgency}
+          </span>
+          <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', background: 'rgba(0,0,0,0.35)', padding: '2px 6px', borderRadius: 20 }}>
+            {c.idx}
+          </span>
         </div>
 
-        {/* Benefits */}
-        <div className="space-y-3 mb-8">
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-1">
-            ご利用のメリット
-          </p>
-          {BENEFITS.map(({ icon: Icon, title, desc }, i) => (
-            <div key={i} className="flex gap-4 items-start bg-white border border-slate-100 rounded-2xl px-4 py-4 shadow-sm">
-              <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center">
-                <Icon size={17} className="text-blue-500" />
+        {/* Center: revenue */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none" style={{ paddingBottom: 68 }}>
+          <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: 600, letterSpacing: 1, marginBottom: 2 }}>想定売上目安</p>
+          <p style={{ fontSize: 26, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{c.price}</p>
+        </div>
+
+        {/* Bottom: job info + CTA */}
+        <div className="absolute bottom-0 left-0 right-0 z-10 px-2.5 pb-2.5">
+          <div className="flex items-end justify-between mb-1.5">
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>{c.type}</p>
+              <div className="flex items-center gap-0.5">
+                <MapPin size={8} color="rgba(255,255,255,0.5)" />
+                <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)' }}>{c.area} / {c.dist}</p>
+              </div>
+            </div>
+            <div className="flex gap-1">
+              <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Video size={9} color="#fff" />
+              </div>
+              <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Camera size={9} color="#fff" />
+              </div>
+            </div>
+          </div>
+          <button style={{ width: '100%', background: '#3b82f6', color: '#fff', fontSize: 10, fontWeight: 800, borderRadius: 10, padding: '7px 0', border: 'none' }}>
+            今すぐ行けます
+          </button>
+        </div>
+      </div>
+
+      {/* Bottom nav */}
+      <div className="flex justify-around items-center px-2 mt-1.5 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)', height: 36 }}>
+        {[
+          { label: '案件', emoji: '💼', active: true },
+          { label: '管理', emoji: '📋', active: false },
+          { label: '応援', emoji: '🤝', active: false },
+          { label: 'マイページ', emoji: '👤', active: false },
+        ].map(({ label, emoji, active }) => (
+          <div key={label} className="flex flex-col items-center gap-0.5">
+            <span style={{ fontSize: 12 }}>{emoji}</span>
+            <span style={{ fontSize: 7, color: active ? '#3b82f6' : 'rgba(255,255,255,0.3)', fontWeight: active ? 700 : 400 }}>{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Stream job card ─────────────────────────────────────────────────────────
+
+function StreamCard({ job }: { job: typeof STREAM_JOBS[number] }) {
+  return (
+    <div
+      className="flex-shrink-0 relative overflow-hidden rounded-2xl"
+      style={{
+        width: 160,
+        height: 220,
+        background: `linear-gradient(160deg, ${job.colorFrom} 0%, ${job.colorTo} 100%)`,
+      }}
+    >
+      {/* Texture */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `radial-gradient(ellipse at 30% 25%, rgba(255,255,255,0.06) 0%, transparent 60%),
+                        linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.85) 100%)`,
+        }}
+      />
+
+      {/* Top badges */}
+      <div className="absolute top-2.5 left-2.5 right-2.5 flex justify-between items-start z-10">
+        <span className={`${job.urgencyCls} text-white rounded-full px-2 py-0.5`} style={{ fontSize: 9, fontWeight: 800 }}>
+          {job.urgency}
+        </span>
+        <div className="flex gap-1">
+          {job.hasVideo && <Video size={11} color="rgba(255,255,255,0.7)" />}
+          {job.hasPhoto && <Camera size={11} color="rgba(255,255,255,0.7)" />}
+        </div>
+      </div>
+
+      {/* Center price */}
+      <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none" style={{ paddingBottom: 52 }}>
+        <p style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>{job.price}</p>
+      </div>
+
+      {/* Bottom info */}
+      <div className="absolute bottom-0 left-0 right-0 z-10 px-3 pb-3">
+        <p style={{ fontSize: 12, fontWeight: 800, color: '#fff', marginBottom: 2 }}>{job.type}</p>
+        <div className="flex items-center gap-1">
+          <MapPin size={9} color="rgba(255,255,255,0.55)" />
+          <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)' }}>{job.area}</p>
+        </div>
+        <div className="flex items-center gap-1 mt-0.5">
+          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>📍 {job.dist}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ──────────────────────────────────────────────────────────
+
+export default function ProSignupPage() {
+  const navigate = useNavigate();
+  const [count, setCount] = useState(LIVE_COUNT);
+
+  // ランダムに±1で揺れるライブカウンター演出
+  useEffect(() => {
+    const id = setInterval(() => {
+      setCount((c) => {
+        const delta = Math.random() < 0.3 ? (Math.random() < 0.5 ? 1 : -1) : 0;
+        return Math.max(10, Math.min(30, c + delta));
+      });
+    }, 4000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-black text-white overflow-x-hidden">
+
+      {/* ═══════════════════════════════════════
+          HERO
+      ═══════════════════════════════════════ */}
+      <div
+        className="relative pb-10 overflow-hidden"
+        style={{
+          background: 'linear-gradient(170deg, #0a0a1a 0%, #111827 60%, #0f172a 100%)',
+        }}
+      >
+        {/* Subtle grid overlay */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-20"
+          style={{
+            backgroundImage: 'linear-gradient(rgba(59,130,246,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.15) 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+          }}
+        />
+
+        {/* Nav */}
+        <div className="relative z-10 flex items-center justify-between px-5 pt-5 pb-2">
+          <img src="/logo-full.svg" alt="PRO MATCH" className="h-7 object-contain brightness-200" />
+          <button
+            onClick={() => navigate('/login')}
+            className="text-xs text-white/50 hover:text-white/80 transition font-medium"
+          >
+            ログイン
+          </button>
+        </div>
+
+        {/* Live indicator */}
+        <div className="relative z-10 flex justify-center mt-4 mb-5">
+          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
+            </span>
+            <span className="text-xs text-white/70 font-semibold">
+              現在 <span className="text-white font-black">{count}件</span> の案件が流れています
+            </span>
+          </div>
+        </div>
+
+        {/* Phone mock + headline layout */}
+        <div className="relative z-10 flex flex-col items-center gap-6 px-5">
+
+          {/* Headline above phone */}
+          <div className="text-center">
+            <h1 className="text-3xl font-black leading-tight tracking-tight">
+              今日も近くで<br />
+              <span className="text-blue-400">仕事が待っています</span>
+            </h1>
+            <p className="text-sm text-white/50 mt-2 font-medium">
+              動画で見て → 3秒で判断 → 即応募
+            </p>
+          </div>
+
+          {/* Phone mock */}
+          <PhoneMock />
+
+          {/* CTA */}
+          <div className="w-full max-w-xs">
+            <button
+              onClick={() => navigate('/register')}
+              className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-400 active:scale-95 text-white font-black text-base py-4 rounded-2xl transition-all shadow-lg shadow-blue-500/30"
+            >
+              今すぐ無料で始める
+              <ArrowRight size={18} />
+            </button>
+            <p className="text-center text-[11px] text-white/30 mt-2.5">
+              登録・案件閲覧・応募 すべて無料
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════
+          LIVE JOB STREAM
+      ═══════════════════════════════════════ */}
+      <div className="bg-slate-950 pt-8 pb-6">
+        <div className="flex items-center gap-2 px-5 mb-4">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-400" />
+          </span>
+          <p className="text-sm font-black text-white">今流れている案件</p>
+          <span className="text-xs text-white/30">リアルタイム更新</span>
+        </div>
+
+        {/* Horizontal scroll */}
+        <div
+          className="flex gap-3 overflow-x-auto px-5 pb-2"
+          style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+        >
+          {STREAM_JOBS.map((job) => (
+            <StreamCard key={job.id} job={job} />
+          ))}
+          {/* See more card */}
+          <div
+            className="flex-shrink-0 flex flex-col items-center justify-center gap-2 rounded-2xl border border-white/10 cursor-pointer"
+            style={{ width: 160, height: 220 }}
+            onClick={() => navigate('/register')}
+          >
+            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+              <ArrowRight size={18} className="text-blue-400" />
+            </div>
+            <p className="text-xs text-white/50 text-center px-4">登録して<br/>全件見る</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════
+          HOW IT WORKS（3ステップ）
+      ═══════════════════════════════════════ */}
+      <div className="bg-slate-900 px-5 py-8">
+        <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-4 text-center">
+          How it works
+        </p>
+        <div className="flex gap-4">
+          {[
+            { num: '01', icon: '🎬', title: '動画で現場確認', sub: '現地行く前に\n状況が分かる' },
+            { num: '02', icon: '⚡', title: '3秒で判断',     sub: '気に入ったら\n右スワイプだけ' },
+            { num: '03', icon: '✅', title: '即応募・即返答', sub: '成約したら\n工事日を決める' },
+          ].map(({ num, icon, title, sub }) => (
+            <div key={num} className="flex-1 flex flex-col items-center text-center">
+              <p className="text-[9px] font-black text-blue-500/60 mb-1.5">{num}</p>
+              <span className="text-2xl mb-1.5">{icon}</span>
+              <p className="text-xs font-black text-white leading-tight mb-1">{title}</p>
+              <p className="text-[10px] text-white/35 leading-relaxed whitespace-pre-line">{sub}</p>
+            </div>
+          ))}
+        </div>
+        {/* Connector line */}
+        <div className="flex items-center justify-center mt-4 gap-2">
+          {[0, 1].map((i) => (
+            <ArrowRight key={i} size={12} className="text-blue-500/30" />
+          ))}
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════
+          PROOF NUMBERS
+      ═══════════════════════════════════════ */}
+      <div
+        className="px-5 py-8"
+        style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #1e40af 100%)' }}
+      >
+        <div className="grid grid-cols-3 gap-4 text-center">
+          {[
+            { num: '初回2件', unit: '無料', sub: '登録後すぐ\n応募できる' },
+            { num: '¥0',     unit: '登録費',sub: '案件閲覧・\n応募も無料' },
+            { num: '¥500〜', unit: '成約時のみ', sub: '成約しなければ\nコストゼロ' },
+          ].map(({ num, unit, sub }) => (
+            <div key={unit} className="flex flex-col items-center">
+              <p className="text-xl font-black text-white leading-none">{num}</p>
+              <p className="text-[10px] font-bold text-blue-200 mt-0.5">{unit}</p>
+              <p className="text-[9px] text-blue-300/70 mt-1.5 leading-relaxed whitespace-pre-line">{sub}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════
+          VOICE (空気感テキスト)
+      ═══════════════════════════════════════ */}
+      <div className="bg-slate-950 px-6 py-8">
+        <div className="space-y-4">
+          {[
+            { text: '"空き日に近所でサクッと1件入った"', sub: '横浜市 / クロス職人' },
+            { text: '"動画で状況分かるから行くか判断できる"', sub: '世田谷区 / 床職人' },
+            { text: '"営業しなくていいのが一番助かる"', sub: '川崎市 / 内装職人' },
+          ].map(({ text, sub }) => (
+            <div key={sub} className="flex gap-3 items-start">
+              <div className="w-8 h-8 rounded-full bg-slate-800 flex-shrink-0 flex items-center justify-center text-sm">
+                👷
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-800">{title}</p>
-                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{desc}</p>
+                <p className="text-sm text-white/75 font-medium leading-snug">{text}</p>
+                <p className="text-[10px] text-white/30 mt-0.5">{sub}</p>
               </div>
             </div>
           ))}
         </div>
+      </div>
 
-        {/* 料金 */}
-        <div className="mb-8 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4">
-          <p className="text-xs font-semibold text-slate-500 mb-2">費用について（職人側）</p>
-          <div className="space-y-1.5">
-            {([
-              { label: '登録・掲載',   cost: '無料' },
-              { label: '案件閲覧・応募', cost: '無料' },
-              { label: 'サービス利用料', cost: '成約時のみ ¥500〜¥5,000' },
-            ] as const).map(({ label, cost }) => (
-              <div key={label} className="flex justify-between text-xs">
-                <span className="text-slate-500">{label}</span>
-                <span className="font-semibold text-slate-700">{cost}</span>
-              </div>
-            ))}
-          </div>
-          <p className="text-[10px] text-slate-400 mt-3 leading-relaxed">
-            ※ 工事代金は依頼者と直接やり取りします。PRO MATCHは工事代金をお預かりしません。
-          </p>
+      {/* ═══════════════════════════════════════
+          BOTTOM CTA (sticky feel)
+      ═══════════════════════════════════════ */}
+      <div
+        className="px-5 pt-8 pb-12"
+        style={{ background: 'linear-gradient(170deg, #0a0a1a 0%, #030712 100%)' }}
+      >
+        <div className="flex items-center justify-center gap-1.5 mb-5">
+          <Zap size={14} className="text-blue-400" />
+          <p className="text-sm font-black text-white">今から登録できます</p>
         </div>
 
-        {/* CTA */}
         <button
           onClick={() => navigate('/register')}
-          className="w-full py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-base transition-all shadow-sm"
+          className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-400 active:scale-95 text-white font-black text-base py-4 rounded-2xl transition-all shadow-xl shadow-blue-500/20 mb-3"
         >
-          職人として登録する
+          職人として無料登録する
+          <ArrowRight size={18} />
         </button>
 
-        <p className="text-center text-xs text-slate-400 mt-4">
+        <p className="text-center text-[11px] text-white/25 mb-6">
+          登録・案件閲覧・応募 すべて無料 / 成約時のみ ¥500〜¥5,000
+        </p>
+
+        <p className="text-center text-xs text-white/30">
           すでにアカウントをお持ちの方は{' '}
           <button
             onClick={() => navigate('/login')}
-            className="text-slate-700 font-semibold hover:underline"
+            className="text-white/60 font-bold hover:text-white transition underline underline-offset-2"
           >
             ログイン
           </button>
         </p>
       </div>
+
     </div>
   );
 }

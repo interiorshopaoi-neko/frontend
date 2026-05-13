@@ -2,11 +2,25 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "integration-recover",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["vite", "--port", "5174"],
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
       "cwd": "frontend",
-      "port": 5174
+      "port": 5173
+    },
+    {
+      "name": "frontend-main",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5175"],
+      "cwd": "frontend",
+      "port": 5175
+    },
+    {
+      "name": "prod-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "preview", "--port", "4173"],
+      "cwd": "frontend",
+      "port": 4173
     }
   ]
 }
