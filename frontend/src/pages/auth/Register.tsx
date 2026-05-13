@@ -37,7 +37,7 @@ export default function Register({ onLogin }: Props) {
       if (role === 'customer' && fromLanding) {
         navigate('/customer/estimate/flow');
       } else {
-        navigate(role === 'customer' ? '/customer' : '/craftsman');
+        navigate(role === 'customer' ? '/customer' : '/craftsman/dashboard');
       }
     } catch (err: any) {
       console.error('[mock] register error', err);

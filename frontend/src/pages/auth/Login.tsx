@@ -25,7 +25,7 @@ export default function Login({ onLogin }: Props) {
     try {
       const { data } = await api.post('/auth/login', { email, password });
       onLogin(data.token, data.user);
-      navigate(data.user.role === 'customer' ? '/customer' : '/craftsman');
+      navigate(data.user.role === 'customer' ? '/customer' : '/craftsman/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.error ?? t('login_error'));
     } finally {

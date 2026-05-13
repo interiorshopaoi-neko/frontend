@@ -6,7 +6,6 @@ import Register from './pages/auth/Register';
 import CustomerDashboard from './pages/customer/CustomerDashboard';
 import NewEstimate from './pages/customer/NewEstimate';
 import EstimateDetail from './pages/customer/EstimateDetail';
-import CraftsmanDashboard from './pages/craftsman/CraftsmanDashboard';
 import ReviewEstimate from './pages/craftsman/ReviewEstimate';
 import AdminDashboard from './pages/AdminDashboard';
 import DemoLauncher from './pages/DemoLauncher';
@@ -59,10 +58,10 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={
-          user ? <Navigate to={user.role === 'customer' ? '/customer' : '/craftsman'} /> : <Login onLogin={login} />
+          user ? <Navigate to={user.role === 'customer' ? '/customer' : '/craftsman/dashboard'} /> : <Login onLogin={login} />
         } />
         <Route path="/register" element={
-          user ? <Navigate to={user.role === 'customer' ? '/customer' : '/craftsman'} /> : <Register onLogin={login} />
+          user ? <Navigate to={user.role === 'customer' ? '/customer' : '/craftsman/dashboard'} /> : <Register onLogin={login} />
         } />
 
         {/* お客様ルート */}
@@ -83,12 +82,8 @@ export default function App() {
             : <Navigate to="/login" />
         } />
 
-        {/* 職人ルート */}
-        <Route path="/craftsman" element={
-          user?.role === 'craftsman'
-            ? <Layout user={user} onLogout={logout}><CraftsmanDashboard /></Layout>
-            : <Navigate to="/login" />
-        } />
+        {/* 職人ルート: 旧UI (CraftsmanDashboard) は廃止。全トラフィックを新UIへ転送 */}
+        <Route path="/craftsman" element={<Navigate to="/craftsman/dashboard" replace />} />
         <Route path="/craftsman/estimate/:id" element={
           <CraftsmanEstimateRoute user={user} logout={logout} />
         } />
@@ -118,6 +113,7 @@ export default function App() {
         {/* 公開ページ */}
         <Route path="/complete"   element={<CompletePage />} />
         <Route path="/pro-signup" element={<ProSignupPage />} />
+        <Route path="/for-pros"   element={<ProSignupPage />} />
         <Route path="/policy"     element={<PolicyPage />} />
         <Route path="/faq"        element={<FaqPage />} />
         <Route path="/support"    element={<SupportPage />} />
@@ -128,12 +124,12 @@ export default function App() {
         {/* ランディング：未ログインなら新トップページ、ログイン済みはダッシュボードへ */}
         <Route path="/" element={
           user
-            ? <Navigate to={user.role === 'customer' ? '/customer' : '/craftsman'} />
+            ? <Navigate to={user.role === 'customer' ? '/customer' : '/craftsman/dashboard'} />
             : <HomePage />
         } />
 
         <Route path="*" element={
-          <Navigate to={user ? (user.role === 'customer' ? '/customer' : '/craftsman') : '/'} />
+          <Navigate to={user ? (user.role === 'customer' ? '/customer' : '/craftsman/dashboard') : '/'} />
         } />
       </Routes>
     </BrowserRouter>

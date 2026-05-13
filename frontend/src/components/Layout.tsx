@@ -38,7 +38,7 @@ export default function Layout({ user, onLogout, children }: Props) {
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
           <button
-            onClick={() => navigate(user.role === 'customer' ? '/customer' : '/craftsman')}
+            onClick={() => navigate(user.role === 'customer' ? '/customer' : '/craftsman/dashboard')}
           >
             <img src="/logo-icon.svg" alt="PRO MATCH" className="h-7 w-7 object-contain" />
           </button>

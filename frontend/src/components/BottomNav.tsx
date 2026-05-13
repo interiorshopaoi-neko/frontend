@@ -77,7 +77,7 @@ const TABS = [
     href: '/craftsman/dashboard',
     label: '管理',
     Icon: IconClipboard,
-    match: (p: string) => p.startsWith('/craftsman/dashboard'),
+    match: (p: string) => p.startsWith('/craftsman/dashboard') || p.startsWith('/craftsman/applications'),
   },
   {
     href: '/craftsman/help-list',

@@ -60,7 +60,7 @@ export default function ReviewEstimate() {
     setSubmitting(true);
     try {
       await api.put(`/estimates/${id}/confirm`, { finalPrice: parseInt(finalPrice), craftsmanNote: note });
-      navigate('/craftsman');
+      navigate('/craftsman/dashboard');
     } catch {
       alert(t('error_occurred'));
     } finally {
@@ -73,7 +73,7 @@ export default function ReviewEstimate() {
     setSubmitting(true);
     try {
       await api.put(`/estimates/${id}/reject`, { craftsmanNote: note });
-      navigate('/craftsman');
+      navigate('/craftsman/dashboard');
     } catch {
       alert(t('error_occurred'));
     } finally {
@@ -91,7 +91,7 @@ export default function ReviewEstimate() {
 
   return (
     <div>
-      <button onClick={() => navigate('/craftsman')} className="flex items-center gap-1 text-gray-500 hover:text-gray-700 mb-4 text-sm">
+      <button onClick={() => navigate('/craftsman/dashboard')} className="flex items-center gap-1 text-gray-500 hover:text-gray-700 mb-4 text-sm">
         <ArrowLeft size={16} />
         {t('back_to_dashboard')}
       </button>
