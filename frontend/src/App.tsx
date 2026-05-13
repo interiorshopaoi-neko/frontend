@@ -121,16 +121,11 @@ export default function App() {
         <Route path="/privacy"    element={<PrivacyPage />} />
         <Route path="/legal"      element={<LegalPage />} />
 
-        {/* ランディング：未ログインなら新トップページ、ログイン済みはダッシュボードへ */}
-        <Route path="/" element={
-          user
-            ? <Navigate to={user.role === 'customer' ? '/customer' : '/craftsman/dashboard'} />
-            : <HomePage />
-        } />
+        {/* ランディング：ログイン状態に関わらず常にトップページを表示（職人を勝手に飛ばさない） */}
+        <Route path="/" element={<HomePage />} />
 
-        <Route path="*" element={
-          <Navigate to={user ? (user.role === 'customer' ? '/customer' : '/craftsman/dashboard') : '/'} />
-        } />
+        {/* 未定義ルート：安全にトップへ（role redirect は絶対かけない） */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

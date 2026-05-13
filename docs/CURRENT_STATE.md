@@ -1,7 +1,7 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-13 / HEAD: `fe2ae8c` (fix(routing): /craftsman旧UI廃止・全route一本化・BottomNav整合)
-> bundle: `index-dPJzhLEg.js` / Vercel: promatch-app.jp
+> 最終更新: 2026-05-13 / HEAD: (pending push) (fix(routing): 120点監査 — / は常にHomePage、catch-allを安全化、回帰テスト追加)
+> bundle: `index-CEPvrU13.js` / Vercel: promatch-app.jp
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -24,7 +24,7 @@ App.tsx の Route 定義が真実。**ロール別に何を見せるか**を以�
 ### 共通（誰でも）
 | path | 表示 |
 |---|---|
-| `/` | HomePage 固定。**ログイン状態によらず HomePage**（069b0b3） |
+| `/` | **常に HomePage** — ログイン・role を問わず redirect しない（120点監査で確定）。App.tsx: `<Route path="/" element={<HomePage />} />` |
 | `/for-pros` `/pro-signup` | 職人 LP (ProSignupPage) |
 | `/login` | Login.tsx **常時表示**（e8c2715 — ログイン済みでも redirect しない） |
 | `/register` | Register.tsx **常時表示**（72a8458 — ログイン済みでも redirect しない） |
@@ -42,17 +42,17 @@ App.tsx の Route 定義が真実。**ロール別に何を見せるか**を以�
 |---|---|
 | `/customer` | → `/corporate` redirect（e26216b） |
 | `/corporate` | 依頼フォーム |
-| その他 catch-all | role='customer' → `/corporate` |
+| その他 catch-all | `<Navigate to="/" replace />` — role redirect なし（120点監査で安全化） |
 
 ### craftsman ログイン済み
 | path | 結果 |
 |---|---|
-| `/craftsman` | → `/craftsman/dashboard` **無条件 redirect**（`fe2ae8c` — 旧 CraftsmanDashboard 廃止） |
+| `/craftsman` | → `/craftsman/dashboard` **無条件 redirect**（旧 CraftsmanDashboard 廃止） |
 | `/craftsman/dashboard` | CraftsmanDashboardPage（新 UI） |
 | `/craftsman/jobs` | CraftsmanJobsPage（フル UI） |
 | `/craftsman/applications` | CraftsmanApplicationsPage（連絡先確認・成約管理） |
 | `/craftsman/profile` `/craftsman/help` `/craftsman/help-list` `/craftsman/apply/:id` | 職人 UI |
-| その他 catch-all | role='craftsman' → `/craftsman/dashboard`（`fe2ae8c`） |
+| その他 catch-all | `<Navigate to="/" replace />` — craftsman を勝手に dashboard へ飛ばさない（120点監査で修正） |
 
 ### admin ログイン済み（運営）
 | path | 結果 |
@@ -522,7 +522,30 @@ GRANT EXECUTE ON FUNCTION report_work_complete(uuid) TO anon, authenticated;
 | 応援 | `/craftsman/help-list` | `/craftsman/help` で開始 |
 | マイページ | `/craftsman/profile` | `/craftsman/profile` で開始 |
 
-#### 実ブラウザ確認（2026-05-13 bundle: index-dPJzhLEg.js）
+#### 120点監査 追加修正（bundle: index-CEPvrU13.js）
+
+| 問題 | 影響 | 修正 |
+|---|---|---|
+| `/` route: ログイン済み職人を `/craftsman/dashboard` に redirect | 職人がトップページを見られなかった | `<Route path="/" element={<HomePage />} />` に変更（role redirect 完全排除） |
+| catch-all: 職人を `/craftsman/dashboard` に送っていた | 未定義 URL で職人 dashboard に強制遷移 | `<Navigate to="/" replace />` に変更 |
+
+#### 回帰テストスクリプト（scripts/check-routes.mjs）
+
+`npm run check:routes` で以下 9 項目を静的に確認:
+
+1. `/` route に role redirect がない
+2. `/craftsman` が `/craftsman/dashboard` へ Navigate
+3. catch-all が `/craftsman/dashboard` に送らない
+4. catch-all が `"/"` に Navigate
+5. `navigate('/craftsman')` 裸呼び出しが残っていない
+6. BottomNav に `href="/craftsman"` がない
+7. CraftsmanDashboard（旧UI）が App.tsx に import されていない
+8. AuthConfirmed が `/craftsman/jobs` へ遷移する
+9. AuthConfirmed に裸の `/craftsman` 文字列がない
+
+現在: **全9項目 PASS ✅**
+
+#### 実ブラウザ確認（2026-05-13 bundle: index-dPJzhLEg.js → index-CEPvrU13.js）
 
 | URL | 結果 |
 |---|---|
