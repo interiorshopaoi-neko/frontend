@@ -1,7 +1,7 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-13 / HEAD: `fa42335` (UX: DEMOガード追加・成約後ガイダンス・メール4項目化)
-> bundle: `index-CYOG6_fp.js` / Vercel: promatch-app.jp
+> 最終更新: 2026-05-13 / HEAD: `1314925` (fix: 工事完了報告を SECURITY DEFINER RPC 経由に変更)
+> bundle: `index-DVq9GAtt.js` / Vercel: promatch-app.jp
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -167,7 +167,7 @@ craftsman_welcomed              ← フォールバック（user.id 取得不可
 | 送信後に応募確認画面へ進む | 送信成功画面に「職人の応募を確認する」ボタン → `/request/:id/applications` | `07d715b` |
 | 応募確認・職人選定 | `RequestApplicationsPage.tsx`。`job_applications.is_contracted = true` で成約 | — |
 | 成約後の連絡先開示 | **メールアドレスのみ**開示。電話番号・LINE は表示しない | `d5dd890` |
-| 職人側の工事完了報告 | **未実装**。`review_requested_at` カラムは存在するが、現 `main` ブランチに書き込みボタンなし（過去 worktree `pensive-hermann` で実装されたが未マージ） | — |
+| 職人側の工事完了報告 | `CraftsmanDashboardPage` の成約済みカードに「✅ 工事完了を報告する」ボタン。`report_work_complete(uuid)` SECURITY DEFINER RPC で `review_requested_at = now()` を更新。fire-and-forget で `/api/notify-review-request` を呼び出し依頼者へレビュー依頼メール送信 | `1573a7d` / `1314925` |
 | お客様レビュー送信 | `ReviewPage.tsx` で送信 → `insert_customer_review()` RPC 経由で `reviews` INSERT + `reviewed_at` 更新。タグ選択 UI あり | `0da6a52` |
 | ステータス遷移 | `deriveStatus()` が `is_contracted` / `review_requested_at` / `reviewed_at` を参照して自動判定 | — |
 
@@ -346,6 +346,52 @@ build 成功 `index-BRWVBYPn.js`
 - status='done' 案件を職人一覧から除外（`63dce09`）
 - 顧客側レビュー画面への導線（成約後 → 工事完了報告後 → レビュー投稿）追加（`34802db`）
 
+### 工事完了報告 → レビュー依頼メール → レビュー投稿 導線（1573a7d / 1314925 / 2026-05-13）
+
+**E2E 実データ確認済み（2026-05-13 本番 request_id=70）**
+
+| ステップ | 実装 | DB 変化 |
+|---|---|---|
+| 職人が「✅ 工事完了を報告する」ボタンを押す | `handleCompleteReport()` → `supabase.rpc('report_work_complete', { p_application_id })` | `job_applications.review_requested_at = now()` |
+| 依頼者へレビュー依頼メールを送る | `fetch('/api/notify-review-request', ...)` fire-and-forget | — |
+| 依頼者の応募確認ページにレビューボタン表示 | `RequestApplicationsPage` の `app.review_requested_at` 非 null 時に「レビューを書く →」パネルを表示 | — |
+| レビュー投稿 | `ReviewPage` → `insert_customer_review()` RPC | `reviews` INSERT + `job_applications.reviewed_at = now()` |
+| 職人プロフィールに評価反映 | `get_craftsman_public_profile()` RPC が `reviews` から `AVG(rating)` / `COUNT` を集計 | — |
+
+**`report_work_complete(uuid)` RPC（Supabase DB 適用済み）**:
+```sql
+CREATE OR REPLACE FUNCTION report_work_complete(p_application_id uuid)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  UPDATE job_applications SET review_requested_at = now()
+  WHERE id = p_application_id AND is_contracted = true AND review_requested_at IS NULL;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION report_work_complete(uuid) TO anon, authenticated;
+```
+
+**`get_craftsman_public_profile()` JOIN 修正（2026-05-13）**:
+- 旧: `r.target_id = c.user_id`（`reviews.target_id` = `craftsmen.id` なのにミスマッチ）
+- 新: `(r.target_id = c.user_id OR r.target_id = c.id::text)` 両方対応 + GROUP BY に `c.id` 追加
+- 確認: `avg_rating: 5.0, review_count: 1` ✅
+
+**`api/notify-review-request.ts` (Vercel serverless)**:
+- Input: `{ request_id, application_id }`
+- `estimate_requests` から `contact_value` / `work_type` / `area` を取得
+- `contact_method === 'メール'` の場合のみ依頼者へ HTML レビュー依頼メール送信
+- CTA: 「レビューを書く →」→ `https://promatch-app.jp/request/:id/review`
+- 管理者へのプレーンテキスト通知も同時送信
+- demo-prefix(`demo-*`)は自動スキップ
+- 確認: `{"ok":true,"customerOk":true,"adminOk":true}` ✅
+
+**`sp_publishable_*` キーの制約（判明）**:
+- `supabase.from().update()` が hanging する（直接 REST PATCH が 401 を返す）
+- 回避策: SECURITY DEFINER RPC 経由（`.rpc()` は動作する）
+
+**Dashboard `deriveStatus()` の拡張**:
+- `review_requested_at` 非 null → `'依頼者確認中'`（工事完了報告済みの状態）
+- `is_contracted = true` のみ → `'成約済み'`
+
 ### 成約後ガイダンス UX・DEMO fallback 修正（fa42335 / 2026-05-13）
 
 | 変更 | 内容 |
@@ -362,10 +408,6 @@ build 成功 `index-BRWVBYPn.js`
 - 依頼一覧ページ（お客様が後から応募確認ページへ戻る手段）
 - 応募数バッジ（依頼者が確認前に応募数を把握できる通知）
 - DEMO fallback 残: `JobsSwipeView` 内 demo-id 応募（意図的設計のため変更不要）
-- **「工事完了を報告する」ボタン未実装** — `review_requested_at` 列は存在するが、現 `main` にフロントボタンなし。送信もない（過去 worktree `pensive-hermann` に実装あり、未マージ）
-- **工事完了 → お客様へのレビュー依頼メール未実装** — 職人が完了報告した際に依頼者へ「レビューをお願いします」メールを送る仕組みが存在しない
-- 工事完了報告 → レビュー送信 → profile 反映の実データ E2E
-- 職人プロフィールへのレビュー表示（avg_rating / review_count / top_tags）
 - 職人→お客様 / 職人→職人 レビュー
 - billing_events テーブル / 手数料回収 (Stripe)
 - 無料枠カウント / 紹介制度
@@ -504,6 +546,8 @@ E2E / 結合テストで Supabase Auth ユーザーが必要な場合は以下�
 
 | commit | 件名 | 何を直したか |
 |---|---|---|
+| `1314925` | fix: 工事完了報告を SECURITY DEFINER RPC 経由に変更 | `supabase.from().update()` が `sb_publishable_*` キーで hanging する問題を解決。`report_work_complete(uuid)` RPC 経由に変更。`get_craftsman_public_profile` JOIN 条件修正（target_id=craftsmen.id 対応） |
+| `1573a7d` | feat: 工事完了報告→レビュー依頼メール→レビュー投稿 導線を実装 | `CraftsmanDashboardPage` に「工事完了を報告する」ボタン追加。`api/notify-review-request.ts` 新設（Resend でレビュー依頼 HTML メール）。`RequestApplicationsPage` に review_requested_at / reviewed_at 対応の3段パネル追加 |
 | `fa42335` | UX: DEMOガード追加・成約後ガイダンス・メール4項目化 | Dashboard/Applications/HelpList DEMO を DEV 限定化。成約カードに日程調整・連絡先制限・レビュー案内追加。notify-contracted CTA 変更・安心ポイント 4 項目化 |
 | `ba59afe` | feat: 成約通知メール（職人へ）API 新設 + wire-up | `api/notify-contracted.ts` 新設。`get_craftsman_email_for_contracted` SECURITY DEFINER RPC。RequestApplicationsPage で fire-and-forget 呼び出し |
 | `6580a0d` | feat(email): 受付完了メールを応募通知メールと同トーンにリデザイン | `send-customer-email` を HTML カード型に。CTA ボタン2つ・安心ポイント Blue・text フォールバック追加。`esc()` XSS 対策。deploy + 実送信 OK |
