@@ -1,7 +1,7 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-13 / HEAD: `1314925` (fix: 工事完了報告を SECURITY DEFINER RPC 経由に変更)
-> bundle: `index-DVq9GAtt.js` / Vercel: promatch-app.jp
+> 最終更新: 2026-05-13 / HEAD: `7d251e9` (fix: ProJobs id.slice crash — convert integer id to string)
+> bundle: `index-BQsWhjx_.js` / Vercel: promatch-app.jp
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -415,6 +415,60 @@ GRANT EXECUTE ON FUNCTION report_work_complete(uuid) TO anon, authenticated;
 
 ---
 
+## 7. 本番想定フルE2E監査（2026-05-13）
+
+**実施コミット範囲**: `1314925` → `7d251e9`  
+**使用テストデータ**: estimate_request id=71（audit終了後削除済み）
+
+### 通ったフロー（全PHASE）
+
+| PHASE | ステップ | 結果 |
+|---|---|---|
+| PHASE 1 | `/corporate` 6STEP フォーム送信 | ✅ DB INSERT / 受付メール送信 |
+| PHASE 2 | `/craftsman/jobs` 一覧表示・動画タブ | ✅ DEMO なし・実案件表示 |
+| PHASE 2 | `/craftsman/apply/71` 応募送信 | ✅ job_applications INSERT (price=32000) |
+| PHASE 3 | `/request/71/applications` 応募確認 | ✅ 1件表示・概算¥32,000・最安値バッジ |
+| PHASE 3 | 「この職人に依頼する」成約 | ✅ is_contracted=true / contracted_at 設定 |
+| PHASE 3 | 職人 dashboard 成約カード | ✅ 「成約済み」→「工事完了を報告する」ボタン表示 |
+| PHASE 4 | 工事完了報告 | ✅ review_requested_at 設定 / 「依頼者確認中」ステータス遷移 |
+| PHASE 4 | `/request/71/review` レビュー投稿 | ✅ reviews INSERT / reviewed_at 設定 |
+| PHASE 4 | 職人プロフィール avg_rating 反映 | ✅ avg_rating=5.0 / review_count=2 |
+
+### 修正したバグ（このセッション）
+
+| severity | バグ | 修正 | commit |
+|---|---|---|---|
+| **P0** | `CraftsmanApplyPage`: 未ログインユーザーが `craftsman_id=null` で INSERT できる | 認証チェック追加 → `/login` リダイレクト | `1174e58` |
+| **P1** | `/pro/jobs` 白画面: `job.id.slice()` — `estimate_requests.id` は integer | `String(job.id).slice(0,8)` に修正 | `7d251e9` |
+| **P1** | `CorporateRequest`: localStorage setItem・前回依頼バナー・応募確認ボタンが欠落 | 3箇所を完全復元 | `b24a0cc` |
+
+### コンソールエラー巡回結果
+
+| ページ | エラー |
+|---|---|
+| `/corporate` | なし ✅ |
+| `/craftsman/jobs` | なし ✅ |
+| `/craftsman/dashboard` | なし ✅ |
+| `/request/:id/review` | なし ✅ |
+| `/pro/jobs` | ~~TypeError: e.id.slice is not a function~~ → `7d251e9` で修正済み |
+| 全ページ共通 | `⚠️ 未翻訳テキスト検出` (多言語 legacy warning — 無視可) |
+
+### DEMO 混入チェック
+
+| ページ | 状態 |
+|---|---|
+| `/craftsman/jobs` | ✅ 実案件表示（31件）DEMO なし |
+| `/craftsman/dashboard` | ✅ 実案件のみ（DEV 環境では DEMO フォールバックあり、PROD では非表示） |
+| `/craftsman` (corporate管理側) | ⚠️ 「デモ表示中」バナーあり — これは設計通り（案件0件時のUI確認用）|
+
+### テストデータクリーンアップ確認
+
+- estimate_request id=71 → 削除済み ✅
+- job_applications (estimate_request_id='71') → 削除済み ✅
+- reviews (本日作成分 target_id=caa5c822-...) → 削除済み ✅
+
+---
+
 ## 8. 事業・課金方針
 
 > 詳細な「なぜそうしたか」は `docs/DECISIONS.md` を参照。ここでは **現在の決定事項** のみ記載。
@@ -546,6 +600,9 @@ E2E / 結合テストで Supabase Auth ユーザーが必要な場合は以下�
 
 | commit | 件名 | 何を直したか |
 |---|---|---|
+| `7d251e9` | fix(ProJobs): id.slice crash — convert integer id to string | `estimate_requests.id` は integer なのに `.slice()` を直接呼び出して `/pro/jobs` が白画面クラッシュ。`String(job.id).slice(0,8)` に修正 |
+| `1174e58` | fix(CraftsmanApplyPage): P0 auth guard — redirect to /login if not logged in | 未ログインで応募フォームを送信すると `craftsman_id=null` で INSERT されていた。`localStorage.user` チェックを追加し、未認証は `/login` へリダイレクト |
+| `b24a0cc` | fix(CorporateRequest): restore localStorage setItem, prev-request banner, applications button | commit 5570c6c で3箇所が欠落。localStorage.setItem / 前回依頼バナー JSX / 「職人の応募を確認する」ボタンを復元 |
 | `1314925` | fix: 工事完了報告を SECURITY DEFINER RPC 経由に変更 | `supabase.from().update()` が `sb_publishable_*` キーで hanging する問題を解決。`report_work_complete(uuid)` RPC 経由に変更。`get_craftsman_public_profile` JOIN 条件修正（target_id=craftsmen.id 対応） |
 | `1573a7d` | feat: 工事完了報告→レビュー依頼メール→レビュー投稿 導線を実装 | `CraftsmanDashboardPage` に「工事完了を報告する」ボタン追加。`api/notify-review-request.ts` 新設（Resend でレビュー依頼 HTML メール）。`RequestApplicationsPage` に review_requested_at / reviewed_at 対応の3段パネル追加 |
 | `fa42335` | UX: DEMOガード追加・成約後ガイダンス・メール4項目化 | Dashboard/Applications/HelpList DEMO を DEV 限定化。成約カードに日程調整・連絡先制限・レビュー案内追加。notify-contracted CTA 変更・安心ポイント 4 項目化 |
