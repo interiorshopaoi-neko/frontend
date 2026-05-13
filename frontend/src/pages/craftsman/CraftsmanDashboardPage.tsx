@@ -169,21 +169,19 @@ export default function CraftsmanDashboardPage() {
   const [reporting, setReporting] = useState<string | null>(null); // appId
   const userId = getUserId();
 
-  // 工事完了報告: review_requested_at を設定して依頼者にレビュー依頼メールを送る
+  // 工事完了報告: SECURITY DEFINER RPC で review_requested_at を設定し、依頼者にレビュー依頼メールを送る
+  // 注意: sb_publishable キー環境では .from().update() が hanging するため RPC 経由を使用
   async function handleCompleteReport(appId: string, estimateRequestId: string) {
     if (reporting) return; // 二重送信防止
     setReporting(appId);
     const now = new Date().toISOString();
 
-    const { error } = await supabase
-      .from('job_applications')
-      .update({ review_requested_at: now })
-      .eq('id', appId);
+    const { error } = await supabase.rpc('report_work_complete', { p_application_id: appId });
 
     setReporting(null);
 
     if (error) {
-      console.error('[handleCompleteReport] DB error:', error);
+      console.error('[handleCompleteReport] RPC error:', error);
       alert('更新に失敗しました。もう一度お試しください。');
       return;
     }
