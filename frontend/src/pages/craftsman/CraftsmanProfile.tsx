@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import BottomNav from '../../components/BottomNav';
+import { useAuth } from '../../hooks/useAuth';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -109,6 +110,7 @@ function BoolToggle({
 
 export default function CraftsmanProfile() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [form,    setForm]    = useState<ProfileForm>(DEFAULT_FORM);
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
@@ -596,6 +598,20 @@ export default function CraftsmanProfile() {
               </a>
             ))}
           </div>
+        </div>
+
+        {/* ログアウト */}
+        <div className="mt-2 rounded-2xl bg-slate-50 ring-1 ring-slate-200 px-4 py-3.5 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold text-slate-600">ログアウト</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">このデバイスからアカウントを切り替えます</p>
+          </div>
+          <button
+            onClick={async () => { await logout(); navigate('/login'); }}
+            className="flex-shrink-0 bg-slate-200 hover:bg-red-100 text-slate-600 hover:text-red-600 text-xs font-bold px-3.5 py-2 rounded-xl transition active:scale-95"
+          >
+            ログアウト
+          </button>
         </div>
 
         {/* 職人ツールへの導線 */}

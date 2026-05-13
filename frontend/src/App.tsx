@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Layout from './components/Layout';
 import Login from './pages/auth/Login';
@@ -44,6 +44,53 @@ import RequestExtraInfoPage from './pages/corporate/RequestExtraInfoPage';
   }
 }
 
+// ─── ログイン済み案内カード ──────────────────────────────────────────────────
+// /login /register /for-pros にログイン済み職人が来たとき、勝手にダッシュボードへ
+// 飛ばす代わりにこのカードを表示する。
+
+function AlreadyLoggedIn({
+  user,
+  onLogout,
+}: {
+  user: ReturnType<typeof useAuth>['user'];
+  onLogout: () => void;
+}) {
+  const navigate = useNavigate();
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-6">
+          <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-3">
+            <span className="text-2xl">👷</span>
+          </div>
+          <p className="text-sm font-bold text-slate-700">{user?.name} さん</p>
+          <p className="text-xs text-slate-400 mt-0.5">すでに職人アカウントでログインしています</p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-3">
+          <button
+            onClick={() => navigate('/craftsman/dashboard')}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition active:scale-95"
+          >
+            案件管理を開く
+          </button>
+          <button
+            onClick={() => navigate('/craftsman/jobs')}
+            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition active:scale-95"
+          >
+            案件を探す
+          </button>
+          <button
+            onClick={async () => { await onLogout(); navigate('/login'); }}
+            className="w-full text-slate-400 hover:text-slate-600 font-medium py-2.5 text-sm transition"
+          >
+            ログアウトする
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CraftsmanEstimateRoute({ user, logout }: { user: ReturnType<typeof useAuth>['user']; logout: () => void }) {
   const { id } = useParams();
   if (user?.role === 'craftsman') return <Layout user={user} onLogout={logout}><ReviewEstimate /></Layout>;
@@ -58,10 +105,14 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={
-          user ? <Navigate to={user.role === 'customer' ? '/customer' : '/craftsman/dashboard'} /> : <Login onLogin={login} />
+          user?.role === 'craftsman' ? <AlreadyLoggedIn user={user} onLogout={logout} /> :
+          user?.role === 'customer'  ? <Navigate to="/customer" replace /> :
+          <Login onLogin={login} />
         } />
         <Route path="/register" element={
-          user ? <Navigate to={user.role === 'customer' ? '/customer' : '/craftsman/dashboard'} /> : <Register onLogin={login} />
+          user?.role === 'craftsman' ? <AlreadyLoggedIn user={user} onLogout={logout} /> :
+          user?.role === 'customer'  ? <Navigate to="/customer" replace /> :
+          <Register onLogin={login} />
         } />
 
         {/* お客様ルート */}
@@ -113,7 +164,10 @@ export default function App() {
         {/* 公開ページ */}
         <Route path="/complete"   element={<CompletePage />} />
         <Route path="/pro-signup" element={<ProSignupPage />} />
-        <Route path="/for-pros"   element={<ProSignupPage />} />
+        <Route path="/for-pros"   element={
+          user?.role === 'craftsman' ? <AlreadyLoggedIn user={user} onLogout={logout} /> :
+          <ProSignupPage />
+        } />
         <Route path="/policy"     element={<PolicyPage />} />
         <Route path="/faq"        element={<FaqPage />} />
         <Route path="/support"    element={<SupportPage />} />

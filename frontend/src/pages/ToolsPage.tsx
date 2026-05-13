@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import BottomNav from '../components/BottomNav';
 
 // ─── 型定義 ───────────────────────────────────────────────────────────────────
 
@@ -322,6 +324,7 @@ function QuoteCalculator() {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function ToolsPage() {
+  const navigate = useNavigate();
   const [records,   setRecords]   = useState<ProfitRecord[]>([
     { id: 1, siteName: '田中様邸', revenue: 52000, materialCost: 8000, profit: 44000, note: 'クロス張替え', date: '今日' },
     { id: 2, siteName: '佐藤様邸', revenue: 35000, materialCost: 6000, profit: 29000, note: '床CF', date: '今日' },
@@ -340,7 +343,16 @@ export default function ToolsPage() {
     <div className="min-h-screen bg-slate-50 pb-24">
 
       {/* ヘッダー */}
-      <header className="bg-white border-b border-slate-200 px-4 py-4 sticky top-0 z-10">
+      <header className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-10">
+        <button
+          onClick={() => navigate('/craftsman/dashboard')}
+          className="flex items-center gap-1 text-slate-400 hover:text-slate-700 text-sm mb-2 transition"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 5l-7 7 7 7" />
+          </svg>
+          案件管理へ戻る
+        </button>
         <h1 className="text-lg font-extrabold text-slate-900">ツール</h1>
         <p className="text-xs text-slate-500 mt-0.5">現場で使える職人ツール</p>
       </header>
@@ -452,6 +464,8 @@ export default function ToolsPage() {
       {showModal && (
         <RecordModal onClose={() => setShowModal(false)} onSave={handleSave} />
       )}
+
+      <BottomNav />
     </div>
   );
 }
