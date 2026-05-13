@@ -1,7 +1,7 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-13 / HEAD: `7d251e9` (fix: ProJobs id.slice crash — convert integer id to string)
-> bundle: `index-BQsWhjx_.js` / Vercel: promatch-app.jp
+> 最終更新: 2026-05-13 / HEAD: `b15fe31` (feat(P1): notify-application wire-up + 未認証jobs UX改善)
+> bundle: `index-CJevILsF.js` / Vercel: promatch-app.jp
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -413,6 +413,31 @@ GRANT EXECUTE ON FUNCTION report_work_complete(uuid) TO anon, authenticated;
 - 無料枠カウント / 紹介制度
 - メールテンプレートのさらなる細部改善
 
+### 未認証 /craftsman/jobs の設計方針（b15fe31 確定）
+
+| 項目 | 方針 |
+|---|---|
+| 案件一覧の閲覧 | **未認証でも可**（PRO MATCH の魅力を伝える） |
+| 応募ボタン（ListView） | 未ログイン時 → 「ログインして応募する →」に変更、クリックで /login |
+| 応募ボタン（SwipeView） | 未ログイン時 → /login へリダイレクト（DB NULL INSERT 防止） |
+| ヘッダーバナー | 未ログイン時のみ「🔒 応募するには職人登録が必要です」+ 「無料登録」ボタン表示 |
+| /craftsman/apply/:id | 未ログイン時 → handleSubmit 内で /login へリダイレクト（P0 修正済み 1174e58） |
+| JobsLockedPreview 全面化 | 今フェーズは見送り（案件の雰囲気を見せることで登録 CV 向上を優先） |
+
+### notify-application 実装状態（b15fe31 確定）
+
+| 項目 | 状態 |
+|---|---|
+| `api/notify-application.ts` | main に存在 ✅ |
+| 依頼者通知 customerOk | Supabase REST → estimate_requests.contact_value 取得 → HTML メール ✅ |
+| 管理者通知 adminOk | プレーンテキスト → ADMIN_TO ✅ |
+| 環境変数参照 | SUPABASE_URL / SUPABASE_ANON_KEY 3段フォールバック ✅ |
+| ハードコードなし | sb_publishable_* 使用なし ✅ |
+| 送信元 | `noreply@promatch-app.jp` ✅ |
+| HTML デザイン | カード型・CTA ボタン・安心ポイント ✅ |
+| CraftsmanApplyPage 呼び出し | INSERT 成功後 fire-and-forget ✅（b15fe31） |
+| 実送信テスト | `{"ok":true,"adminOk":true,"customerOk":true}` ✅ |
+
 ---
 
 ## 7. 本番想定フルE2E監査（2026-05-13）
@@ -600,6 +625,7 @@ E2E / 結合テストで Supabase Auth ユーザーが必要な場合は以下�
 
 | commit | 件名 | 何を直したか |
 |---|---|---|
+| `b15fe31` | feat(P1): notify-application wire-up + 未認証jobs UX改善 | CraftsmanApplyPage に notify-application fire-and-forget 追加。CraftsmanJobsPage に isLoggedIn 検出・未登録バナー追加。JobsListView 未ログイン時ボタン文言変更 + /login 誘導。JobsSwipeView applyJob に auth guard 追加 |
 | `7d251e9` | fix(ProJobs): id.slice crash — convert integer id to string | `estimate_requests.id` は integer なのに `.slice()` を直接呼び出して `/pro/jobs` が白画面クラッシュ。`String(job.id).slice(0,8)` に修正 |
 | `1174e58` | fix(CraftsmanApplyPage): P0 auth guard — redirect to /login if not logged in | 未ログインで応募フォームを送信すると `craftsman_id=null` で INSERT されていた。`localStorage.user` チェックを追加し、未認証は `/login` へリダイレクト |
 | `b24a0cc` | fix(CorporateRequest): restore localStorage setItem, prev-request banner, applications button | commit 5570c6c で3箇所が欠落。localStorage.setItem / 前回依頼バナー JSX / 「職人の応募を確認する」ボタンを復元 |
