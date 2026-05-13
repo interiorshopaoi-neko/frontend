@@ -108,6 +108,13 @@ export default function CraftsmanApplyPage() {
     const storedUser = localStorage.getItem('user');
     const craftsmanId = storedUser ? JSON.parse(storedUser).id : null;
 
+    // 未ログインの場合はログインページへ誘導
+    if (!craftsmanId) {
+      setSubmitting(false);
+      navigate('/login', { state: { defaultRole: 'craftsman', from: location.pathname } });
+      return;
+    }
+
     const { error: dbError } = await supabase.from('job_applications').insert({
       estimate_request_id: id,
       craftsman_id: craftsmanId,
