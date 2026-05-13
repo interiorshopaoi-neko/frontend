@@ -167,7 +167,8 @@ export default function CraftsmanDashboardPage() {
   const [isDemo,      setIsDemo]      = useState(false);
   const [filter,      setFilter]      = useState<StatusLabel>('全て');
   const [reporting,   setReporting]   = useState<string | null>(null); // appId
-  const [freeCredits, setFreeCredits] = useState<{ remaining: number; bonus: number } | null>(null);
+  const [freeCredits,  setFreeCredits]  = useState<{ remaining: number; bonus: number } | null>(null);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const userId = getUserId();
 
   // 工事完了報告: SECURITY DEFINER RPC で review_requested_at を設定し、依頼者にレビュー依頼メールを送る
@@ -200,7 +201,7 @@ export default function CraftsmanDashboardPage() {
     }).catch(err => console.warn('[notify-review-request] fire-and-forget error:', err));
   }
 
-  // 無料枠残数取得
+  // 無料枠残数 + 紹介コード取得
   useEffect(() => {
     if (!userId) return;
     supabase
@@ -210,6 +211,13 @@ export default function CraftsmanDashboardPage() {
         if (row) setFreeCredits({ remaining: row.free_credits_remaining ?? 0, bonus: row.referral_bonus_credits ?? 0 });
       })
       .catch(() => { /* 表示しない */ });
+    void (async () => {
+      try {
+        const { data } = await supabase.rpc('get_my_referral_code', { p_user_id: userId });
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row?.referral_code) setReferralCode(row.referral_code);
+      } catch { /* 表示しない */ }
+    })();
   }, [userId]);
 
   useEffect(() => {
@@ -305,23 +313,59 @@ export default function CraftsmanDashboardPage() {
         {freeCredits !== null && (() => {
           const total = freeCredits.remaining + freeCredits.bonus;
           return (
-            <div className={`mx-4 mt-4 rounded-xl px-3 py-2.5 flex items-center justify-between ${
-              total > 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-100 border border-slate-200'
-            }`}>
-              <div className="flex items-center gap-2">
-                <span className="text-sm">{total > 0 ? '🎁' : '🔒'}</span>
-                <div>
-                  <p className={`text-xs font-bold ${total > 0 ? 'text-emerald-800' : 'text-slate-600'}`}>
-                    {total > 0 ? `無料連絡先確認 残り ${total} 件` : '無料枠を使い切りました'}
-                  </p>
-                  <p className={`text-[10px] mt-0.5 ${total > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
-                    {total > 0 ? '成約案件の応募状況ページから確認できます' : '正式版では決済後に連絡先を確認できます'}
-                  </p>
+            <>
+              <div className={`mx-4 mt-4 rounded-xl px-3 py-2.5 flex items-center justify-between ${
+                total > 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-100 border border-slate-200'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">{total > 0 ? '🎁' : '🔒'}</span>
+                  <div>
+                    <p className={`text-xs font-bold ${total > 0 ? 'text-emerald-800' : 'text-slate-600'}`}>
+                      {total > 0 ? `無料連絡先確認 残り ${total} 件` : '無料枠を使い切りました'}
+                    </p>
+                    <p className={`text-[10px] mt-0.5 ${total > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      {total > 0 ? '成約案件の応募状況ページから確認できます' : '正式版では決済後に連絡先を確認できます'}
+                    </p>
+                  </div>
                 </div>
+                {total > 0 && (
+                  <span className="text-xl font-extrabold text-emerald-600">{total}</span>
+                )}
               </div>
-              {total > 0 && (
-                <span className="text-xl font-extrabold text-emerald-600">{total}</span>
+
+              {/* 残数警告: あと1件以下 */}
+              {total === 1 && (
+                <div className="mx-4 mt-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 flex items-center gap-2">
+                  <span className="text-amber-500 text-xs">⚠</span>
+                  <p className="text-xs text-amber-700 font-semibold">あと1件で無料枠が終了します</p>
+                </div>
               )}
+            </>
+          );
+        })()}
+
+        {/* 紹介で無料枠を増やす */}
+        {referralCode && (() => {
+          const shareUrl = `https://promatch-app.jp/craftsman?ref=${referralCode}`;
+          const shareText = `動画で案件を見れる内装マッチング。\n\n無料で2件まで\n連絡先確認できます。\n\n紹介で無料枠も増やせます。\n\n${shareUrl}`;
+          const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`;
+          return (
+            <div className="mx-4 mt-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
+              <p className="text-xs font-extrabold text-blue-800 mb-1">🎁 紹介で無料枠を増やせます</p>
+              <p className="text-[11px] text-blue-600 leading-relaxed mb-3">
+                友達が登録して案件応募すると<br />無料連絡先確認が <strong>+1件</strong>
+              </p>
+              <a
+                href={lineUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full rounded-xl bg-[#06C755] text-white text-sm font-bold py-2.5 hover:opacity-90 transition-opacity"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.281.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314" />
+                </svg>
+                LINEで紹介する
+              </a>
             </div>
           );
         })()}

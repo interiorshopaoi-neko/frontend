@@ -180,6 +180,20 @@ export default function CraftsmanProfile() {
       return;
     }
 
+    // referred_by 保存（初回のみ・自己紹介防止はRPC側で実施）— fire-and-forget
+    const storedRef = localStorage.getItem('promatch_referral_code');
+    if (storedRef && /^PROM-[A-Z0-9]{4}$/i.test(storedRef)) {
+      void (async () => {
+        try {
+          await supabase.rpc('save_referred_by', {
+            p_user_id:    userId,
+            p_referred_by: storedRef.toUpperCase(),
+          });
+          localStorage.removeItem('promatch_referral_code');
+        } catch { /* fire-and-forget */ }
+      })();
+    }
+
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   }

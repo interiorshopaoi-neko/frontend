@@ -37,6 +37,14 @@ import PrivacyPage from './pages/PrivacyPage';
 import LegalPage   from './pages/LegalPage';
 import RequestExtraInfoPage from './pages/corporate/RequestExtraInfoPage';
 
+// ─── 紹介コード捕捉（モジュール起動時 — React Router リダイレクト前に実行）────
+{
+  const _ref = new URLSearchParams(window.location.search).get('ref');
+  if (_ref && /^PROM-[A-Z0-9]{4}$/i.test(_ref)) {
+    try { localStorage.setItem('promatch_referral_code', _ref.toUpperCase()); } catch {}
+  }
+}
+
 function CraftsmanEstimateRoute({ user, logout }: { user: ReturnType<typeof useAuth>['user']; logout: () => void }) {
   const { id } = useParams();
   if (user?.role === 'craftsman') return <Layout user={user} onLogout={logout}><ReviewEstimate /></Layout>;
