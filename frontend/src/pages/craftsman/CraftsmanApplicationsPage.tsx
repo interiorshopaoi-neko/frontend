@@ -27,6 +27,8 @@ type ContactState =
   | { kind: 'not_contracted' }
   | { kind: 'error'; message: string };
 
+type FreeCredits = { remaining: number; bonus: number } | null;
+
 // ─── Demo data ────────────────────────────────────────────────────────────────
 
 const DEMO: ApplicationRow[] = [
@@ -152,11 +154,11 @@ function ContactPanel({
           <span className="text-base leading-none mt-0.5">🔒</span>
           <div>
             <p className="text-xs font-extrabold text-rose-700 mb-0.5">
-              無料枠を使い切りました
+              現在は無料枠がありません
             </p>
             <p className="text-[11px] text-rose-600 leading-relaxed">
-              連絡先の確認には決済が必要です。<br />
-              Stripe決済は近日対応予定です。
+              正式版では決済後に連絡先を確認できます。<br />
+              お急ぎの場合は管理者までお問い合わせください。
             </p>
           </div>
         </div>
@@ -200,7 +202,10 @@ function ContactPanel({
         連絡先を確認する
       </button>
       <p className="text-[10px] text-slate-400 text-center mt-1.5 leading-relaxed">
-        初回2件まで無料 · メールアドレスのみ開示
+        確認時に無料枠を1件消費します · メールアドレスのみ開示
+      </p>
+      <p className="text-[10px] text-slate-300 text-center mt-0.5 leading-relaxed">
+        無料枠がない場合、今後は決済が必要になります（現在準備中）
       </p>
     </div>
   );
@@ -214,6 +219,9 @@ export default function CraftsmanApplicationsPage() {
   const [loading,    setLoading]    = useState(true);
   const [isDemo,     setIsDemo]     = useState(false);
   const [craftsmanId, setCraftsmanId] = useState<string | null>(null);
+
+  // 無料枠残数
+  const [freeCredits, setFreeCredits] = useState<FreeCredits>(null);
 
   // 連絡先開示の状態管理（application_id → ContactState）
   const [contactStates, setContactStates] =
@@ -235,6 +243,20 @@ export default function CraftsmanApplicationsPage() {
         setLoading(false);
         return;
       }
+
+      // 無料枠残数を取得（失敗しても表示しないだけ）
+      supabase
+        .rpc('get_my_free_credits', { p_user_id: uid })
+        .then(({ data }) => {
+          const row = Array.isArray(data) ? data[0] : data;
+          if (row) {
+            setFreeCredits({
+              remaining: row.free_credits_remaining ?? 0,
+              bonus:     row.referral_bonus_credits  ?? 0,
+            });
+          }
+        })
+        .catch(() => { /* 表示しない */ });
 
       // FK制約なしのためJOIN不可 → 別クエリでマージ
       const { data: appData, error: appError } = await supabase
@@ -284,7 +306,15 @@ export default function CraftsmanApplicationsPage() {
 
       switch (data.status) {
         case 'ok':
-        case 'already_unlocked':
+          // 新規開示 → 残数を楽観的更新（正は DB）
+          setFreeCredits(prev => {
+            if (!prev) return prev;
+            if (prev.remaining > 0) return { ...prev, remaining: prev.remaining - 1 };
+            if (prev.bonus > 0)     return { ...prev, bonus: prev.bonus - 1 };
+            return prev;
+          });
+          // fallthrough
+        case 'already_unlocked': // eslint-disable-line no-fallthrough
           if (data.non_email) {
             setContact(appId, { kind: 'non_email', method: data.contact_method });
           } else {
@@ -363,6 +393,34 @@ export default function CraftsmanApplicationsPage() {
             </div>
           ))}
         </div>
+
+        {/* 無料枠残数バナー */}
+        {freeCredits !== null && (() => {
+          const total = freeCredits.remaining + freeCredits.bonus;
+          if (total > 0) {
+            return (
+              <div className="rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🎁</span>
+                  <div>
+                    <p className="text-xs font-extrabold text-emerald-800">無料連絡先確認 残り {total} 件</p>
+                    <p className="text-[10px] text-emerald-600 mt-0.5">成約案件の「連絡先を確認する」で使えます</p>
+                  </div>
+                </div>
+                <span className="text-2xl font-extrabold text-emerald-600">{total}</span>
+              </div>
+            );
+          }
+          return (
+            <div className="rounded-2xl bg-slate-100 border border-slate-200 px-4 py-3 flex items-center gap-2">
+              <span className="text-base">🔒</span>
+              <div>
+                <p className="text-xs font-bold text-slate-600">無料枠を使い切りました</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">正式版では決済後に連絡先を確認できます</p>
+              </div>
+            </div>
+          );
+        })()}
 
         {loading ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500 text-sm">

@@ -61,20 +61,20 @@ function buildCraftsmanHtml(params: {
         <p style="margin:0 0 20px;font-size:15px;color:#1e293b;line-height:1.7;">
           ${escHtml(craftsmanName)} さん、おめでとうございます！<br>
           <strong style="color:#1e40af;">${escHtml(workType)}</strong>（${escHtml(area)}）の<br>
-          依頼者があなたを選択しました。<br>
-          まずはメールで日程を調整してください。
+          依頼者があなたを選択しました。
         </p>
       </td></tr>
 
-      <!-- 連絡先について -->
+      <!-- 連絡先確認の案内 -->
       <tr><td style="background:#ffffff;padding:0 32px 20px;">
         <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
-               style="background:#fefce8;border-radius:12px;padding:14px 18px;border:1px solid #fde68a;">
+               style="background:#f0fdf4;border-radius:12px;padding:14px 18px;border:1px solid #bbf7d0;">
           <tr><td>
-            <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#92400e;">連絡先について</p>
-            <p style="margin:0;font-size:13px;color:#78350f;line-height:1.7;">
-              依頼者のメールアドレスは応募確認ページで確認できます。<br>
-              開示されるのはメールアドレスのみです。
+            <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#166534;">連絡先の確認方法</p>
+            <p style="margin:0;font-size:13px;color:#15803d;line-height:1.8;">
+              案件管理画面を開き、成約済み案件の<br>
+              「連絡先を確認する」ボタンから依頼者の連絡先をご確認ください。<br>
+              <strong>初回2件まで無料</strong>でご確認いただけます。
             </p>
           </td></tr>
         </table>
@@ -99,8 +99,8 @@ function buildCraftsmanHtml(params: {
           <tr><td>
             <p style="margin:0 0 10px;font-size:11px;font-weight:700;color:#3b82f6;letter-spacing:0.08em;text-transform:uppercase;">PRO MATCH からのお願い</p>
             <table cellpadding="0" cellspacing="0" role="presentation">
-              ${['✅ 依頼者へは必ずメールで最初のご連絡をしてください',
-                 '✅ 連絡先は成約した依頼にのみ開示されます',
+              ${['✅ 案件管理画面から「連絡先を確認する」で連絡先を取得してください',
+                 '✅ 連絡先は成約済みの案件のみ開示されます',
                  '✅ 工事完了後は「工事完了を報告する」をお忘れなく',
                  '✅ 不明点はダッシュボードのお問い合わせよりご連絡ください',
                 ].map(t => `<tr><td style="font-size:13px;color:#1e40af;padding:3px 0;line-height:1.5;">${t}</td></tr>`).join('')}
@@ -137,14 +137,18 @@ function buildCraftsmanText(params: {
     '',
     `${craftsmanName} さん、おめでとうございます！`,
     `${workType}（${area}）の依頼者があなたを選択しました。`,
-    'まずはメールで日程を調整してください。',
+    '',
+    '【連絡先の確認方法】',
+    '案件管理画面を開き、成約済み案件の',
+    '「連絡先を確認する」ボタンから依頼者の連絡先をご確認ください。',
+    '初回2件まで無料でご確認いただけます。',
     '',
     '▼ 案件管理を開く',
     dashboardUrl,
     '',
     '── PRO MATCH からのお願い ──',
-    '・依頼者へは必ずメールで最初のご連絡をしてください',
-    '・連絡先は成約した依頼にのみ開示されます',
+    '・「連絡先を確認する」ボタンから連絡先を取得してください',
+    '・連絡先は成約済みの案件のみ開示されます',
     '・工事完了後は「工事完了を報告する」をお忘れなく',
     '・不明点はダッシュボードのお問い合わせよりご連絡ください',
     '',

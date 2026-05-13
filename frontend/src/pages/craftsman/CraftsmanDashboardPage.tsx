@@ -162,11 +162,12 @@ function SummaryCard({ icon, value, label, accent }: {
 
 export default function CraftsmanDashboardPage() {
   const navigate = useNavigate();
-  const [apps,      setApps]      = useState<DashboardRow[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [isDemo,    setIsDemo]    = useState(false);
-  const [filter,    setFilter]    = useState<StatusLabel>('全て');
-  const [reporting, setReporting] = useState<string | null>(null); // appId
+  const [apps,        setApps]        = useState<DashboardRow[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [isDemo,      setIsDemo]      = useState(false);
+  const [filter,      setFilter]      = useState<StatusLabel>('全て');
+  const [reporting,   setReporting]   = useState<string | null>(null); // appId
+  const [freeCredits, setFreeCredits] = useState<{ remaining: number; bonus: number } | null>(null);
   const userId = getUserId();
 
   // 工事完了報告: SECURITY DEFINER RPC で review_requested_at を設定し、依頼者にレビュー依頼メールを送る
@@ -198,6 +199,18 @@ export default function CraftsmanDashboardPage() {
       body:    JSON.stringify({ request_id: estimateRequestId, application_id: appId }),
     }).catch(err => console.warn('[notify-review-request] fire-and-forget error:', err));
   }
+
+  // 無料枠残数取得
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .rpc('get_my_free_credits', { p_user_id: userId })
+      .then(({ data }) => {
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row) setFreeCredits({ remaining: row.free_credits_remaining ?? 0, bonus: row.referral_bonus_credits ?? 0 });
+      })
+      .catch(() => { /* 表示しない */ });
+  }, [userId]);
 
   useEffect(() => {
     (async () => {
@@ -287,6 +300,31 @@ export default function CraftsmanDashboardPage() {
             </p>
           </div>
         )}
+
+        {/* 無料枠残数バナー */}
+        {freeCredits !== null && (() => {
+          const total = freeCredits.remaining + freeCredits.bonus;
+          return (
+            <div className={`mx-4 mt-4 rounded-xl px-3 py-2.5 flex items-center justify-between ${
+              total > 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-100 border border-slate-200'
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="text-sm">{total > 0 ? '🎁' : '🔒'}</span>
+                <div>
+                  <p className={`text-xs font-bold ${total > 0 ? 'text-emerald-800' : 'text-slate-600'}`}>
+                    {total > 0 ? `無料連絡先確認 残り ${total} 件` : '無料枠を使い切りました'}
+                  </p>
+                  <p className={`text-[10px] mt-0.5 ${total > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                    {total > 0 ? '成約案件の応募状況ページから確認できます' : '正式版では決済後に連絡先を確認できます'}
+                  </p>
+                </div>
+              </div>
+              {total > 0 && (
+                <span className="text-xl font-extrabold text-emerald-600">{total}</span>
+              )}
+            </div>
+          );
+        })()}
 
         {/* 手数料ルールnotice */}
         <div className="mx-4 mt-4 rounded-xl bg-slate-100 px-3 py-2.5 space-y-0.5">

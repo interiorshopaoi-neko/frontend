@@ -196,3 +196,24 @@ $$;
 GRANT EXECUTE
   ON FUNCTION public.claim_free_credit_and_get_contact(uuid, text)
   TO anon, authenticated;
+
+-- ─── 追記: get_my_free_credits() ─────────────────────────────────────────────
+-- 無料クレジット残数を SECURITY DEFINER で返す（RLS バイパス）
+-- フロントエンドの表示専用。課金判定の正は claim_free_credit_and_get_contact。
+
+CREATE OR REPLACE FUNCTION public.get_my_free_credits(p_user_id text)
+RETURNS TABLE (
+  free_credits_remaining  int,
+  referral_bonus_credits  int,
+  total_contacts_used     int
+)
+LANGUAGE sql SECURITY DEFINER STABLE
+SET search_path = public
+AS $$
+  SELECT free_credits_remaining, referral_bonus_credits, total_contacts_used
+  FROM   public.craftsmen
+  WHERE  user_id = p_user_id
+  LIMIT 1;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_my_free_credits(text) TO anon, authenticated;
