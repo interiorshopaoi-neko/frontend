@@ -1,7 +1,7 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-13 / HEAD: `4205d91` (feat(billing-ux): 連絡先開示導線整合・無料枠残数UI追加)
-> bundle: `index-Qk7G5tit.js` / Vercel: promatch-app.jp
+> 最終更新: 2026-05-13 / HEAD: `fe2ae8c` (fix(routing): /craftsman旧UI廃止・全route一本化・BottomNav整合)
+> bundle: `index-dPJzhLEg.js` / Vercel: promatch-app.jp
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -47,10 +47,12 @@ App.tsx の Route 定義が真実。**ロール別に何を見せるか**を以�
 ### craftsman ログイン済み
 | path | 結果 |
 |---|---|
-| `/craftsman` | → `/craftsman/jobs` redirect（266125a） |
+| `/craftsman` | → `/craftsman/dashboard` **無条件 redirect**（`fe2ae8c` — 旧 CraftsmanDashboard 廃止） |
+| `/craftsman/dashboard` | CraftsmanDashboardPage（新 UI） |
 | `/craftsman/jobs` | CraftsmanJobsPage（フル UI） |
-| `/craftsman/dashboard` `/craftsman/profile` `/craftsman/help` `/craftsman/help-list` `/craftsman/apply/:id` `/craftsman/applications` | 職人 UI |
-| その他 catch-all | role='craftsman' → `/craftsman` |
+| `/craftsman/applications` | CraftsmanApplicationsPage（連絡先確認・成約管理） |
+| `/craftsman/profile` `/craftsman/help` `/craftsman/help-list` `/craftsman/apply/:id` | 職人 UI |
+| その他 catch-all | role='craftsman' → `/craftsman/dashboard`（`fe2ae8c`） |
 
 ### admin ログイン済み（運営）
 | path | 結果 |
@@ -481,6 +483,57 @@ GRANT EXECUTE ON FUNCTION report_work_complete(uuid) TO anon, authenticated;
 - 紹介制度 (+1 無料枠) — `referral_bonus_credits` カラムは追加済み、付与ロジックは未実装
 - メールテンプレートのさらなる細部改善
 
+### Route 一本化・旧UI廃止監査（fe2ae8c / 2026-05-13）
+
+#### 発見した問題と修正
+
+| 問題 | 影響 | 修正 |
+|---|---|---|
+| `/craftsman` が旧 `CraftsmanDashboard`（legacy API 依存）を返していた | 旧UIが本番に出現、DEMO混入 | `<Navigate to="/craftsman/dashboard" replace />` に変更 |
+| Login / Register / Layout / catch-all が `/craftsman` にリダイレクト | 上記と連鎖して旧UI表示 | 全て `/craftsman/dashboard` に変更 |
+| `ReviewEstimate.tsx` の戻るボタンが `/craftsman` に遷移 | 旧UIに戻されていた | `/craftsman/dashboard` に修正（3箇所） |
+| `/for-pros` route が App.tsx に存在しなかった | `JobsLockedPreview` の「無料登録」ボタンが catch-all に落ちていた | `<Route path="/for-pros" element={<ProSignupPage />} />` 追加 |
+| BottomNav「管理」tab が `/craftsman/applications` でハイライトされなかった | アクティブ状態が外れる | match 条件に `p.startsWith('/craftsman/applications')` 追加 |
+
+#### 旧 UI component の状態
+
+| component | ファイル | 状態 |
+|---|---|---|
+| `CraftsmanDashboard` | `pages/craftsman/CraftsmanDashboard.tsx` | **dead code** — App.tsx から import 削除済み。legacy REST API (`/estimates/craftsman`) 依存のため本番では動作しない。ファイル自体は残置のみ（削除対象） |
+| `ReviewEstimate` | `pages/craftsman/ReviewEstimate.tsx` | `/craftsman/estimate/:id` route 経由で生存。戻り先を `/craftsman/dashboard` に修正済み |
+
+#### デモUI表示の現状（デモ文字列 grep 結果）
+
+| コンポーネント | 状態 |
+|---|---|
+| `CraftsmanDashboard.tsx` | dead code（route 接続なし）|
+| `CraftsmanDashboardPage.tsx` | `import.meta.env.DEV` 限定 ✅ |
+| `CraftsmanJobsPage.tsx` | `import.meta.env.DEV` 限定 ✅ |
+| `CraftsmanApplicationsPage.tsx` | `import.meta.env.DEV` 限定 ✅ |
+| `ProJobs.tsx` / `ReviewEstimate.tsx` | demo-id 判定で出現（意図的設計） |
+| `data/i18n.ts` の `'要確認・写真待ち'` | i18n 定義データ、route には非接続 |
+
+#### BottomNav 最終リンク（確認済み）
+
+| タブ | href | match 条件 |
+|---|---|---|
+| 案件 | `/craftsman/jobs` | `/craftsman/jobs` または `/craftsman/apply` で開始 |
+| 管理 | `/craftsman/dashboard` | `/craftsman/dashboard` または `/craftsman/applications` で開始 |
+| 応援 | `/craftsman/help-list` | `/craftsman/help` で開始 |
+| マイページ | `/craftsman/profile` | `/craftsman/profile` で開始 |
+
+#### 実ブラウザ確認（2026-05-13 bundle: index-dPJzhLEg.js）
+
+| URL | 結果 |
+|---|---|
+| `/craftsman` | ✅ `/craftsman/dashboard` に redirect（旧UI非表示） |
+| `/craftsman/dashboard` | ✅ 新UI表示・BottomNav 管理タブ active |
+| `/craftsman/jobs` | ✅ 実案件表示・console error なし |
+| `/craftsman/applications` | ✅ 応募状況ページ・BottomNav 管理タブ active |
+| `/craftsman/profile` | ✅ プロフィール編集画面・BottomNav マイページ active |
+
+---
+
 ### 未認証 /craftsman/jobs の設計方針（b15fe31 確定）
 
 | 項目 | 方針 |
@@ -693,6 +746,8 @@ E2E / 結合テストで Supabase Auth ユーザーが必要な場合は以下�
 
 | commit | 件名 | 何を直したか |
 |---|---|---|
+| `fe2ae8c` | fix(routing): /craftsman旧UI廃止・全route一本化・BottomNav整合 | /craftsman → Navigate to /craftsman/dashboard。Login/Register/Layout/ReviewEstimate の navigate('/craftsman') を全修正。/for-pros route 追加。BottomNav 管理タブに /craftsman/applications 追加 |
+| `54aea00` | feat(referral): 紹介制度MVP — referral_code生成・LINE共有・referred_by保存 | migration + App.tsx ref捕捉 + CraftsmanProfile referred_by保存 + Dashboard 紹介UIカード + 残数1件警告 |
 | `4205d91` | feat(billing-ux): 連絡先開示導線整合・無料枠残数UI追加 | CraftsmanApplicationsPage に無料枠残数バナー + payment_required UX改善。CraftsmanDashboardPage に残数バナー追加。notify-contracted から連絡先削除・UI誘導に変更 |
 | `743c0b7` | feat(billing): 課金基盤MVP — 連絡先開示UIと無料枠管理 | billing_events migration + api/check-billing.ts + CraftsmanApplicationsPage「連絡先を確認する」ボタン + ContactPanel |
 | `666d2c6` | docs: notify-application整合性・未認証jobs方針を CURRENT_STATE に記録 | CURRENT_STATE.md に notify-application 実装状態・未認証 jobs 方針を追記 |
