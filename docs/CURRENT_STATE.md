@@ -1,7 +1,7 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-13 / HEAD: `26053f8` (fix(routing): 120点監査 — / は常にHomePage・catch-all安全化・回帰テスト追加)
-> bundle: `index-CEPvrU13.js` / Vercel: promatch-app.jp
+> 最終更新: 2026-05-13 / HEAD: `a305ce6` (fix(ux): ログイン済みredirect廃止・ログアウト導線・ツールページ戻る導線追加)
+> bundle: `index-Dl1hd61-.js` / Vercel: promatch-app.jp
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
 > ここに書かれている挙動は **本番に live** している。実装と乖離したら本ファイルを更新する。
@@ -554,6 +554,65 @@ GRANT EXECUTE ON FUNCTION report_work_complete(uuid) TO anon, authenticated;
 | `/craftsman/jobs` | ✅ 実案件表示・console error なし |
 | `/craftsman/applications` | ✅ 応募状況ページ・BottomNav 管理タブ active |
 | `/craftsman/profile` | ✅ プロフィール編集画面・BottomNav マイページ active |
+
+---
+
+### 職人 UX 監査・導線改善（a305ce6 / 2026-05-13）
+
+#### A. 発見した導線不備と修正内容
+
+| 問題 | 対象ページ | 修正 |
+|---|---|---|
+| ログイン済み職人が /login /register /for-pros に来ると dashboard へ強制redirect | App.tsx | `AlreadyLoggedIn` 案内カードを表示（名前・3ボタン: 案件管理・案件探す・ログアウト） |
+| ログアウト手段が職人画面に存在しなかった | - | `CraftsmanProfile.tsx` にログアウトボタン追加（サポートセクション直下） |
+| `/tools` に戻るボタンがなく迷子になる | ToolsPage.tsx | ヘッダーに「← 案件管理へ戻る」追加（`navigate('/craftsman/dashboard')`） |
+| `/tools` に BottomNav がなく現在地不明 | ToolsPage.tsx | BottomNav を追加 |
+| `useAuth.logout()` が Supabase session を破棄しない | useAuth.ts | `supabase.auth.signOut()` + `craftsman_user_id` localStorage 削除を追加 |
+
+#### B. `AlreadyLoggedIn` コンポーネント仕様（App.tsx）
+
+```tsx
+// 職人ログイン済みで /login /register /for-pros に来た場合に表示
+<AlreadyLoggedIn user={user} onLogout={logout} />
+```
+
+- 👷 アイコン + ユーザー名 + 「すでに職人アカウントでログインしています」
+- **案件管理を開く** → `/craftsman/dashboard`（青ボタン）
+- **案件を探す** → `/craftsman/jobs`（グレーボタン）
+- **ログアウトする** → `logout()` → `/login`（テキストボタン）
+- customer は従来通り → `/customer` redirect
+
+#### C. ログアウト仕様（useAuth.ts）
+
+```ts
+const logout = async () => {
+  try { await supabase.auth.signOut(); } catch {}
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('craftsman_user_id');
+  // promatch_referral_code は紹介流入用のため残す
+  // promatch_last_request_id は顧客側なので残す
+  setUser(null);
+};
+```
+
+#### D. ToolsPage 戻る導線
+
+- ヘッダー最上部に `← 案件管理へ戻る` ボタン（`navigate('/craftsman/dashboard')`）
+- BottomNav を追加（「案件」「管理」「応援」「マイページ」タブ表示）
+- `/tools` では BottomNav の「管理」タブがアクティブになる（`/craftsman/dashboard` から遷移するため history が正常）
+
+#### E. 検証結果（bundle: index-Dl1hd61-.js）
+
+| URL / 操作 | 結果 |
+|---|---|
+| `/login` 職人ログイン済み | ✅ AlreadyLoggedIn カード（勝手に dashboard へ飛ばない） |
+| `/register` 職人ログイン済み | ✅ 同上 |
+| `/for-pros` 職人ログイン済み | ✅ 同上 |
+| `/tools` | ✅ 「← 案件管理へ戻る」ボタン表示 |
+| `/tools` BottomNav | ✅ 4タブ表示 |
+| `npm run check:routes` | ✅ 全9項目 PASS |
+| console error | ✅ 0件（i18n warn のみ） |
 
 ---
 
