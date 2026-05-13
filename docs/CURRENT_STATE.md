@@ -1,6 +1,6 @@
 # PRO MATCH — 現在の正解（CURRENT STATE）
 
-> 最終更新: 2026-05-13 / HEAD: (pending push) (fix(routing): 120点監査 — / は常にHomePage、catch-allを安全化、回帰テスト追加)
+> 最終更新: 2026-05-13 / HEAD: `26053f8` (fix(routing): 120点監査 — / は常にHomePage・catch-all安全化・回帰テスト追加)
 > bundle: `index-CEPvrU13.js` / Vercel: promatch-app.jp
 >
 > このドキュメントは ChatGPT / Claude Code が古い前提で作業しないための「現時点の唯一の正解」。
