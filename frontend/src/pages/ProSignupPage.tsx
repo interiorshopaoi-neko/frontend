@@ -55,9 +55,7 @@ const STREAM_JOBS = [
   },
 ];
 
-// ─── ライブカウンター（演出用 / 固定値） ─────────────────────────────────────
-
-const LIVE_COUNT = 17;
+// ─── （ライブカウンター廃止 / 数字フェイク感を除去）─────────────────────────
 
 // ─── フォンモック内のカード ───────────────────────────────────────────────────
 
@@ -164,7 +162,7 @@ function PhoneMock() {
             </div>
           </div>
           <button style={{ width: '100%', background: '#3b82f6', color: '#fff', fontSize: 10, fontWeight: 800, borderRadius: 10, padding: '7px 0', border: 'none' }}>
-            今すぐ行けます
+            対応できます
           </button>
         </div>
       </div>
@@ -245,18 +243,6 @@ function StreamCard({ job }: { job: (typeof STREAM_JOBS)[number] }) {
 
 export default function ProSignupPage() {
   const navigate = useNavigate();
-  const [count, setCount] = useState(LIVE_COUNT);
-
-  // ランダムに±1で揺れるライブカウンター演出
-  useEffect(() => {
-    const id = setInterval(() => {
-      setCount((c) => {
-        const delta = Math.random() < 0.3 ? (Math.random() < 0.5 ? 1 : -1) : 0;
-        return Math.max(10, Math.min(30, c + delta));
-      });
-    }, 4000);
-    return () => clearInterval(id);
-  }, []);
 
   return (
     <div className="min-h-screen bg-black text-white overflow-x-hidden">
@@ -298,7 +284,7 @@ export default function ProSignupPage() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
             </span>
             <span className="text-xs text-white/70 font-semibold">
-              現在 <span className="text-white font-black">{count}件</span> の案件が流れています
+              近くの案件を確認できます
             </span>
           </div>
         </div>
