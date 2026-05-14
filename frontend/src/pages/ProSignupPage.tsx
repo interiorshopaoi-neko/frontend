@@ -15,8 +15,7 @@ const STREAM_JOBS = [
     urgencyCls: 'bg-red-500',
     hasVideo: true,
     hasPhoto: true,
-    colorFrom: '#1e293b',
-    colorTo: '#0f172a',
+    img: '/homepage/wall-damage.jpg',
   },
   {
     id: 2,
@@ -28,8 +27,7 @@ const STREAM_JOBS = [
     urgencyCls: 'bg-orange-500',
     hasVideo: true,
     hasPhoto: true,
-    colorFrom: '#1c1917',
-    colorTo: '#0c0a09',
+    img: '/homepage/floor.jpg',
   },
   {
     id: 3,
@@ -41,8 +39,7 @@ const STREAM_JOBS = [
     urgencyCls: 'bg-amber-500',
     hasVideo: false,
     hasPhoto: true,
-    colorFrom: '#1e1b4b',
-    colorTo: '#0f0a2a',
+    img: '/homepage/room-wide.jpg',
   },
   {
     id: 4,
@@ -54,10 +51,9 @@ const STREAM_JOBS = [
     urgencyCls: 'bg-slate-500',
     hasVideo: true,
     hasPhoto: true,
-    colorFrom: '#14532d',
-    colorTo: '#052e16',
+    img: '/homepage/floor.jpg',
   },
-] as const;
+];
 
 // ─── ライブカウンター（演出用 / 固定値） ─────────────────────────────────────
 
@@ -74,8 +70,8 @@ function PhoneMock() {
   }, []);
 
   const cards = [
-    { type: 'クロス張り替え', area: '神奈川県', dist: '4.8km', price: '¥2〜3万', urgency: '⚡ 今日希望', urgCls: 'bg-red-500', idx: '1 / 17' },
-    { type: '床CF張り替え',   area: '東京都世田谷区', dist: '8.2km', price: '¥3〜5万', urgency: '🔔 明日まで', urgCls: 'bg-orange-500', idx: '2 / 17' },
+    { type: 'クロス張り替え', area: '神奈川県', dist: '4.8km', price: '¥2〜3万', urgency: '⚡ 今日希望', urgCls: 'bg-red-500', idx: '1 / 17', img: '/homepage/wall-damage.jpg' },
+    { type: '床CF張り替え',   area: '東京都世田谷区', dist: '8.2km', price: '¥3〜5万', urgency: '🔔 明日まで', urgCls: 'bg-orange-500', idx: '2 / 17', img: '/homepage/floor.jpg' },
   ];
 
   const c = cards[slide];
@@ -114,25 +110,23 @@ function PhoneMock() {
       {/* Job card - animates between slides */}
       <div
         className="relative mx-2 overflow-hidden"
-        style={{
-          height: 264,
-          borderRadius: 16,
-          background: `linear-gradient(160deg, #1e3a5f 0%, #0f172a 100%)`,
-          transition: 'opacity 0.4s',
-        }}
+        style={{ height: 264, borderRadius: 16, background: '#0f172a' }}
       >
-        {/* Subtle room texture */}
+        {/* Real room photo */}
+        <img
+          key={c.img}
+          src={c.img}
+          alt={c.type}
+          className="absolute inset-0 w-full h-full"
+          style={{ objectFit: 'cover', objectPosition: 'center' }}
+        />
+        {/* Gradient overlay — top dark for badges, bottom dark for text */}
         <div
           className="absolute inset-0"
           style={{
-            background: `radial-gradient(ellipse at 25% 35%, rgba(255,255,255,0.07) 0%, transparent 55%),
-                          linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 30%, transparent 55%, rgba(0,0,0,0.9) 100%)`,
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.05) 30%, rgba(0,0,0,0.15) 55%, rgba(0,0,0,0.88) 100%)',
           }}
         />
-        {/* Big emoji room placeholder */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none" style={{ paddingBottom: 60 }}>
-          <span style={{ fontSize: 56, opacity: 0.08 }}>🎬</span>
-        </div>
 
         {/* Top bar */}
         <div className="absolute top-2 left-2 right-2 flex justify-between items-center z-10">
@@ -195,22 +189,24 @@ function PhoneMock() {
 
 // ─── Stream job card ─────────────────────────────────────────────────────────
 
-function StreamCard({ job }: { job: typeof STREAM_JOBS[number] }) {
+function StreamCard({ job }: { job: (typeof STREAM_JOBS)[number] }) {
   return (
     <div
       className="flex-shrink-0 relative overflow-hidden rounded-2xl"
-      style={{
-        width: 160,
-        height: 220,
-        background: `linear-gradient(160deg, ${job.colorFrom} 0%, ${job.colorTo} 100%)`,
-      }}
+      style={{ width: 160, height: 220, background: '#0f172a' }}
     >
-      {/* Texture */}
+      {/* Real room photo */}
+      <img
+        src={job.img}
+        alt={job.type}
+        className="absolute inset-0 w-full h-full"
+        style={{ objectFit: 'cover', objectPosition: 'center' }}
+      />
+      {/* Overlay */}
       <div
         className="absolute inset-0"
         style={{
-          background: `radial-gradient(ellipse at 30% 25%, rgba(255,255,255,0.06) 0%, transparent 60%),
-                        linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.85) 100%)`,
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.05) 35%, rgba(0,0,0,0.75) 100%)',
         }}
       />
 
