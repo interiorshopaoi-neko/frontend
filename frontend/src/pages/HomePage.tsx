@@ -412,7 +412,7 @@ export default function HomePage() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <img src="/logo-full.png" alt="PRO MATCH" style={{ height: 30, width: 'auto', objectFit: 'contain', display: 'block' }} />
+            <img src="/logo-full.svg" alt="PRO MATCH" style={{ height: 30, width: 'auto', display: 'block' }} />
           </div>
           <div style={{
             background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 20,
@@ -439,14 +439,15 @@ export default function HomePage() {
                 borderRadius: 20, padding: '4px 12px', fontSize: 11, fontWeight: 700, marginBottom: 16,
               }}>30秒で完了・完全無料</span>
 
-              <h1 style={{ fontSize: 32, fontWeight: 900, lineHeight: 1.25, color: '#0f172a', margin: '0 0 10px' }}>
+              <h1 style={{ fontSize: 30, fontWeight: 900, lineHeight: 1.25, color: '#0f172a', margin: '0 0 10px' }}>
                 ショート動画で、<br />
-                職人から<span style={{ color: '#3b82f6' }}>直接</span><br />
-                見積もりが届く。
+                内装見積もりを<br />
+                <span style={{ color: '#3b82f6' }}>もっとスムーズに。</span>
               </h1>
 
               <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 20px', lineHeight: 1.65 }}>
-                部屋を撮るだけで、壁紙・床の見積もりが届きます。
+                壁紙・床CFの現場動画を送るだけ。<br />
+                職人が動画で確認し、スムーズに見積もりをお届けします。
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px', marginBottom: 24 }}>
@@ -471,21 +472,60 @@ export default function HomePage() {
                 ))}
               </div>
 
-              <button
-                onClick={() => navigate('/corporate')}
-                style={{
-                  width: '100%', padding: '14px 24px', borderRadius: 50,
-                  background: 'linear-gradient(135deg,#2563eb,#4f46e5)',
-                  color: 'white', fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer',
-                  boxShadow: '0 6px 24px rgba(37,99,235,.45)',
-                  marginBottom: 8,
-                }}
-              >
-                30秒で見積もりする →
-              </button>
-              <p style={{ textAlign: 'center', fontSize: 11, color: '#94a3b8', margin: 0 }}>
-                お客様は完全無料・ログイン不要
-              </p>
+              {/* ── 2 導線カード ─────────────────────────── */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+                {/* お客様向け */}
+                <button
+                  onClick={() => navigate('/corporate')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    padding: '14px 18px', borderRadius: 16, width: '100%',
+                    background: 'linear-gradient(135deg,#2563eb,#4f46e5)',
+                    color: 'white', border: 'none', cursor: 'pointer', textAlign: 'left',
+                    boxShadow: '0 4px 20px rgba(37,99,235,.35)',
+                  }}
+                >
+                  <div style={{
+                    width: 38, height: 38, borderRadius: 10, background: 'rgba(255,255,255,.2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0, fontSize: 18,
+                  }}>🎬</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 13, fontWeight: 800, margin: 0, lineHeight: 1.35 }}>動画で見積もり依頼する</p>
+                    <p style={{ fontSize: 10, opacity: .75, margin: '2px 0 0' }}>完全無料・ログイン不要</p>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
+                </button>
+
+                {/* 職人向け */}
+                <button
+                  onClick={() => navigate('/craftsman/jobs')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    padding: '13px 18px', borderRadius: 16, width: '100%',
+                    background: '#0f172a', color: 'white',
+                    border: '1px solid rgba(255,255,255,.08)', cursor: 'pointer', textAlign: 'left',
+                  }}
+                >
+                  <div style={{
+                    width: 38, height: 38, borderRadius: 10, background: 'rgba(59,130,246,.2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0, fontSize: 18,
+                  }}>👷</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 13, fontWeight: 800, margin: 0, lineHeight: 1.35 }}>案件を探す・応援する</p>
+                    <p style={{ fontSize: 10, color: 'rgba(255,255,255,.55)', margin: '2px 0 0' }}>職人登録無料・応援マッチングあり</p>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="rgba(255,255,255,.6)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {/* Right: phones */}

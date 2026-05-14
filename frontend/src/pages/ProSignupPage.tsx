@@ -94,14 +94,14 @@ function PhoneMock() {
       </div>
 
       {/* App header */}
-      <div className="flex items-center justify-between px-3 pb-1.5">
-        <div>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>職人向け案件</p>
-          <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)' }}>空き日に入れる近場の仕事</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px 6px' }}>
+        <div style={{ minWidth: 0, flex: 1, marginRight: 6 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.9)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>職人向け案件</p>
+          <p style={{ fontSize: 7.5, color: 'rgba(255,255,255,0.4)', margin: 0 }}>空き日に入れる近場の仕事</p>
         </div>
-        <div className="flex gap-1" style={{ fontSize: 8 }}>
-          <span style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', padding: '2px 6px', borderRadius: 20 }}>一覧</span>
-          <span style={{ background: '#3b82f6', color: '#fff', padding: '2px 6px', borderRadius: 20, fontWeight: 700 }}>▶ 動画</span>
+        <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
+          <span style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', padding: '2px 5px', borderRadius: 20, fontSize: 7, whiteSpace: 'nowrap' }}>一覧</span>
+          <span style={{ background: '#3b82f6', color: '#fff', padding: '2px 5px', borderRadius: 20, fontWeight: 700, fontSize: 7, whiteSpace: 'nowrap' }}>▶動画</span>
         </div>
       </div>
 
