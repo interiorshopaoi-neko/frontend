@@ -70,7 +70,7 @@ function PhoneMock() {
   }, []);
 
   const cards = [
-    { type: 'クロス張り替え', area: '神奈川県', dist: '4.8km', price: '¥2〜3万', urgency: '⚡ 今日希望', urgCls: 'bg-red-500', idx: '1 / 17', img: '/homepage/wall-damage.jpg' },
+    { type: 'クロス張り替え', area: '神奈川県', dist: '4.8km', price: '¥2〜3万', urgency: '⚡ 今日希望', urgCls: 'bg-red-500', idx: '1 / 17', img: '/homepage/room-wide.jpg' },
     { type: '床CF張り替え',   area: '東京都世田谷区', dist: '8.2km', price: '¥3〜5万', urgency: '🔔 明日まで', urgCls: 'bg-orange-500', idx: '2 / 17', img: '/homepage/floor.jpg' },
   ];
 
