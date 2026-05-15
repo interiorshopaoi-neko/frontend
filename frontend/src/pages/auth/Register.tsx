@@ -125,9 +125,27 @@ export default function Register({ onLogin }: Props) {
 
       {/* ─── Bottom: フォームカード ─── */}
       <div className="flex-1 bg-white rounded-t-[2rem] shadow-[0_-8px_40px_rgba(0,0,0,0.25)] px-6 pt-8 pb-10">
-        <h2 className="text-xl font-extrabold text-slate-900 mb-6">
+        <h2 className="text-xl font-extrabold text-slate-900 mb-3">
           {role === 'customer' ? '無料で見積もり依頼' : '職人登録（無料）'}
         </h2>
+
+        {/* お客様: 登録不要の案内 */}
+        {role === 'customer' ? (
+          <div className="mb-5 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3">
+            <p className="text-xs text-slate-500 leading-relaxed mb-1.5">
+              見積もり依頼だけなら登録不要です。<br />
+              登録すると依頼履歴の確認・再依頼ができます。
+            </p>
+            <Link to="/corporate" className="text-xs font-bold text-blue-600 hover:underline">
+              登録せずに依頼する →
+            </Link>
+          </div>
+        ) : (
+          /* 職人: 登録が必要な理由 */
+          <p className="text-xs text-slate-400 bg-slate-50 rounded-xl px-3 py-2 mb-5">
+            案件確認・応募・連絡先確認にはログインが必要です。
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

@@ -108,9 +108,20 @@ export default function Login({ onLogin }: Props) {
         </div>
 
         {/* タグライン */}
-        <p className="text-white/75 text-sm leading-relaxed mb-6 whitespace-pre-line">
+        <p className="text-white/75 text-sm leading-relaxed mb-2 whitespace-pre-line">
           {cfg.tagline}
         </p>
+
+        {/* ロール別補足ヒント */}
+        {role === 'customer' ? (
+          <p className="text-blue-300/80 text-xs leading-relaxed mb-5">
+            ※ はじめての見積もり依頼はログイン不要です
+          </p>
+        ) : (
+          <p className="text-amber-300/70 text-xs leading-relaxed mb-5">
+            ※ 案件確認・応募・連絡先確認にはログインが必要です
+          </p>
+        )}
 
         {/* ── 疑似フォンモック ── */}
         <div className="mx-auto w-52 rounded-[1.75rem] border-2 border-white/10 bg-slate-800/70 backdrop-blur-sm shadow-2xl overflow-hidden">
@@ -194,6 +205,23 @@ export default function Login({ onLogin }: Props) {
         </form>
 
         <div className="mt-6 text-center space-y-2">
+          {/* お客様: ログイン不要の直接依頼導線 */}
+          {role === 'customer' && (
+            <div className="mb-3 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3">
+              <p className="text-xs text-slate-500 mb-1.5">
+                ログインすると依頼履歴の確認・再依頼ができます。
+              </p>
+              <Link to="/corporate" className="text-sm font-bold text-blue-600 hover:underline">
+                ログインせずに見積もり依頼する →
+              </Link>
+            </div>
+          )}
+          {/* 職人: 登録が必要な理由を明示 */}
+          {role === 'craftsman' && (
+            <p className="text-xs text-slate-400 bg-slate-50 rounded-xl px-3 py-2 mb-1">
+              登録無料・応募無料。成約時のみ手数料がかかります。
+            </p>
+          )}
           <p className="text-sm text-slate-400">
             アカウントをお持ちでない方は{' '}
             <Link
