@@ -205,8 +205,8 @@ export default function CraftsmanPublicProfile() {
         )}
 
         {/* ── 施工事例 ── */}
-        {works.length > 0 && (
-          <Section title="施工事例">
+        <Section title={`施工事例 ${works.length > 0 ? `(${works.length}/4枚)` : ''}`}>
+          {works.length > 0 ? (
             <div className="grid grid-cols-2 gap-2">
               {works.map(w => (
                 <div
@@ -227,8 +227,10 @@ export default function CraftsmanPublicProfile() {
                 </div>
               ))}
             </div>
-          </Section>
-        )}
+          ) : (
+            <p className="text-sm text-slate-400 text-center py-4">まだ施工事例がありません</p>
+          )}
+        </Section>
 
         {/* ── 対応エリア ── */}
         {(c.service_area || c.radius_km != null) && (

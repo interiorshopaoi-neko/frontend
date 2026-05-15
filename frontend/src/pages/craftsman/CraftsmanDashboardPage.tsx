@@ -336,7 +336,11 @@ export default function CraftsmanDashboardPage() {
                       {total > 0 ? `無料連絡先確認 残り ${total} 件` : '無料枠を使い切りました'}
                     </p>
                     <p className={`text-[10px] mt-0.5 ${total > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
-                      {total > 0 ? '成約案件の応募状況ページから確認できます' : '正式版では決済後に連絡先を確認できます'}
+                      {total > 0
+                        ? freeCredits.bonus > 0
+                          ? `初回${freeCredits.remaining}件 + 紹介ボーナス${freeCredits.bonus}件`
+                          : '成約案件の応募状況ページから確認できます'
+                        : '正式版では決済後に連絡先を確認できます'}
                     </p>
                   </div>
                 </div>
