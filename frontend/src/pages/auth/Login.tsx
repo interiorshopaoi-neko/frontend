@@ -1,22 +1,60 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import type { User } from '../../types';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import type { User, Role } from '../../types';
 import api from '../../utils/api';
-import { useLangContext } from '../../context/LangContext';
-import LangSwitcher from '../../components/LangSwitcher';
-import Logo from '../../components/Logo';
 
 interface Props {
   onLogin: (token: string, user: User) => void;
 }
 
+// ── ロール別設定 ──────────────────────────────────────────────────────────────
+
+const ROLE_CFG = {
+  customer: {
+    label: 'お客様',
+    tagline: '動画を送るだけ。職人が即確認。\n30秒で見積もり依頼が完了。',
+    btnCls: 'bg-blue-600 hover:bg-blue-700 shadow-blue-200',
+    toggleActiveCls: 'bg-blue-600 text-white',
+    mockGrad: 'from-blue-600 to-blue-800',
+    mockHighBg: 'bg-blue-600',
+    mockItems: [
+      { text: '📹 動画で見積もり依頼', sub: '完全無料 · 30秒で完了', hi: true },
+      { text: '職人から見積もりが届く', sub: '¥32,000〜', hi: false },
+      { text: '日程調整 → 工事完了', sub: '連絡先は成約後に開示', hi: false },
+    ],
+  },
+  craftsman: {
+    label: '職人さん',
+    tagline: '近場の案件を動画で確認。\nスキマ時間にガッツリ稼ごう。',
+    btnCls: 'bg-amber-500 hover:bg-amber-600 shadow-amber-200',
+    toggleActiveCls: 'bg-amber-500 text-white',
+    mockGrad: 'from-amber-500 to-orange-600',
+    mockHighBg: 'bg-amber-500',
+    mockItems: [
+      { text: '▶ 動画あり · 太田市 4.8km', sub: '想定手取り ¥30,000', hi: true },
+      { text: 'クロス張替え · 伊勢崎市', sub: '¥28,000 · 12km', hi: false },
+      { text: '床CF · 前橋市 7km', sub: '¥22,000', hi: false },
+    ],
+  },
+} as const;
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export default function Login({ onLogin }: Props) {
-  const [email, setEmail] = useState('');
+  const location    = useLocation();
+  const defaultRole = (location.state as any)?.defaultRole as Role | undefined;
+  const from        = (location.state as any)?.from as string | undefined;
+
+  const [role,     setRole]     = useState<'customer' | 'craftsman'>(
+    defaultRole === 'craftsman' ? 'craftsman' : 'customer',
+  );
+  const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [error,    setError]    = useState('');
+  const [loading,  setLoading]  = useState(false);
   const navigate = useNavigate();
-  const { t } = useLangContext();
+
+  const cfg = ROLE_CFG[role];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,68 +63,149 @@ export default function Login({ onLogin }: Props) {
     try {
       const { data } = await api.post('/auth/login', { email, password });
       onLogin(data.token, data.user);
-      navigate(data.user.role === 'customer' ? '/customer' : '/craftsman/dashboard');
+      navigate(from ?? (data.user.role === 'customer' ? '/customer' : '/craftsman/dashboard'));
     } catch (err: any) {
-      setError(err.response?.data?.error ?? t('login_error'));
+      setError(err.response?.data?.error ?? 'ログインに失敗しました。メール・パスワードを確認してください。');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-      <div className="fixed top-3 right-3 z-50">
-        <LangSwitcher />
-      </div>
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-3">
-            <Logo size={36} />
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-900 via-blue-950 to-slate-900">
+
+      {/* ─── Top: ブランディング + ロール切替 + 疑似フォンモック ─── */}
+      <div className="flex-shrink-0 px-6 pt-10 pb-8 text-center">
+
+        {/* ロゴ */}
+        <div className="flex items-center justify-center gap-2.5 mb-7">
+          <div className="w-9 h-9 rounded-2xl bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-900/60">
+            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
           </div>
-          <p className="text-slate-500 text-sm">{t('tagline')}</p>
+          <span className="text-2xl font-extrabold text-white tracking-tight">PRO MATCH</span>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-5">{t('login')}</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('email')}</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
-                placeholder="example@email.com"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('password')}</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
-                placeholder="••••••••"
-              />
-            </div>
-            {error && (
-              <p className="text-red-500 text-sm bg-red-50 rounded-lg px-3 py-2">{error}</p>
-            )}
+        {/* ロール切替 */}
+        <div className="inline-flex bg-white/10 backdrop-blur-sm rounded-2xl p-1 mb-5 shadow-inner">
+          {(['customer', 'craftsman'] as const).map(r => (
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-semibold py-3 rounded-xl transition-colors"
+              key={r}
+              type="button"
+              onClick={() => { setRole(r); setError(''); }}
+              className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${
+                role === r
+                  ? ROLE_CFG[r].toggleActiveCls + ' shadow-md'
+                  : 'text-white/50 hover:text-white/80'
+              }`}
             >
-              {loading ? '...' : t('login_button')}
+              {ROLE_CFG[r].label}
             </button>
-          </form>
-          <p className="text-center text-sm text-gray-500 mt-4">
-            {t('no_account')}{' '}
-            <Link to="/register" className="text-indigo-600 font-medium hover:underline">
-              {t('register')}
+          ))}
+        </div>
+
+        {/* タグライン */}
+        <p className="text-white/75 text-sm leading-relaxed mb-6 whitespace-pre-line">
+          {cfg.tagline}
+        </p>
+
+        {/* ── 疑似フォンモック ── */}
+        <div className="mx-auto w-52 rounded-[1.75rem] border-2 border-white/10 bg-slate-800/70 backdrop-blur-sm shadow-2xl overflow-hidden">
+          {/* ノッチ */}
+          <div className="flex justify-center pt-2.5 pb-2">
+            <div className="w-14 h-1.5 bg-slate-700/80 rounded-full" />
+          </div>
+          {/* コンテンツ */}
+          <div className="px-3 pb-4 space-y-2">
+            {cfg.mockItems.map((item, i) => (
+              <div
+                key={i}
+                className={`rounded-xl px-3 py-2.5 ${
+                  item.hi
+                    ? `bg-gradient-to-r ${cfg.mockGrad}`
+                    : 'bg-slate-700/50'
+                }`}
+              >
+                <p className={`text-[11px] font-bold leading-snug ${item.hi ? 'text-white' : 'text-slate-200'}`}>
+                  {item.text}
+                </p>
+                <p className={`text-[9px] mt-0.5 ${item.hi ? 'text-white/65' : 'text-slate-400'}`}>
+                  {item.sub}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Bottom: フォームカード ─── */}
+      <div className="flex-1 bg-white rounded-t-[2rem] shadow-[0_-8px_40px_rgba(0,0,0,0.25)] px-6 pt-8 pb-10">
+        <h2 className="text-xl font-extrabold text-slate-900 mb-6">ログイン</h2>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-400 mb-1.5 tracking-wide uppercase">
+              メールアドレス
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-slate-50 placeholder:text-slate-300"
+              placeholder="example@email.com"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-400 mb-1.5 tracking-wide uppercase">
+              パスワード
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-slate-50 placeholder:text-slate-300"
+              placeholder="••••••••"
+            />
+          </div>
+
+          {error && (
+            <p className="text-red-600 text-sm bg-red-50 border border-red-100 rounded-xl px-4 py-2.5 font-medium">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className={`w-full ${cfg.btnCls} disabled:opacity-50 text-white font-extrabold py-4 rounded-2xl shadow-sm transition-all active:scale-[0.98]`}
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                ログイン中...
+              </span>
+            ) : 'ログイン →'}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center space-y-2">
+          <p className="text-sm text-slate-400">
+            アカウントをお持ちでない方は{' '}
+            <Link
+              to="/register"
+              state={{ defaultRole: role }}
+              className="text-blue-600 font-bold hover:underline"
+            >
+              新規登録
             </Link>
+          </p>
+          <p className="text-xs text-slate-300">
+            登録無料 · 成約時のみ手数料
           </p>
         </div>
       </div>

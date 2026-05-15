@@ -47,9 +47,17 @@ function timeAgo(createdAt?: string): string {
   return `${Math.floor(hours / 24)}日前`;
 }
 
+function freshnessLevel(createdAt?: string): 'superNew' | 'new' | 'today' | 'normal' {
+  if (!createdAt) return 'normal';
+  const hours = (Date.now() - parseUtc(createdAt)) / 3600000;
+  if (hours <= 0.5)  return 'superNew';
+  if (hours <= 2)    return 'new';
+  if (hours <= 24)   return 'today';
+  return 'normal';
+}
+
 function isNewPost(createdAt?: string): boolean {
-  if (!createdAt) return false;
-  return (Date.now() - parseUtc(createdAt)) / 3600000 <= 2;
+  return freshnessLevel(createdAt) !== 'normal';
 }
 
 // ─── SwipeSlide ───────────────────────────────────────────────────────────────
@@ -76,8 +84,10 @@ function SwipeSlide({ job, idx, total, applied, submitting, onApply }: SlideProp
   const revenue         = estimateRevenue(job);
   const swipeProgress   = Math.min(1, Math.max(0, dragX / 130));
   const showSlotWarning = job.urgency === 'today' || job.urgency === 'tomorrow';
-  const showFirstCome   = job.has_video || job.has_photos;
-  const isNew           = isNewPost(job.created_at);
+  const hasVideo        = job.has_video || !!job.video_url;
+  const showFirstCome   = hasVideo || job.has_photos;
+  const freshLevel      = freshnessLevel(job.created_at);
+  const isNew           = freshLevel !== 'normal';
   const postedAt        = timeAgo(job.created_at);
 
   // 非passive touchリスナーで水平ドラッグを確実に検知
@@ -203,11 +213,23 @@ function SwipeSlide({ job, idx, total, applied, submitting, onApply }: SlideProp
       {/* トップバー：鮮度バッジ + 緊急度 + カウンター */}
       <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10 gap-2">
         <div className="flex items-center gap-1.5 flex-1 min-w-0">
-          {isNew && (
-            <span className="px-2.5 py-1 rounded-full text-xs font-extrabold shadow-lg backdrop-blur-sm bg-amber-400 text-white flex-shrink-0">
-              🔥 新着
-            </span>
-          )}
+          {isNew && (() => {
+            if (freshLevel === 'superNew') return (
+              <span className="px-2.5 py-1 rounded-full text-xs font-extrabold shadow-lg backdrop-blur-sm bg-rose-600 text-white flex-shrink-0 animate-pulse">
+                🆕 NEW
+              </span>
+            );
+            if (freshLevel === 'new') return (
+              <span className="px-2.5 py-1 rounded-full text-xs font-extrabold shadow-lg backdrop-blur-sm bg-red-500 text-white flex-shrink-0">
+                {hasVideo ? '🎬🔥 動画NEW' : '🔥 新着'}
+              </span>
+            );
+            return (
+              <span className="px-2.5 py-1 rounded-full text-xs font-extrabold shadow-lg backdrop-blur-sm bg-blue-500 text-white flex-shrink-0">
+                ✨ 本日
+              </span>
+            );
+          })()}
           <span className={`px-3 py-1.5 rounded-full text-xs font-extrabold shadow-lg backdrop-blur-sm ${urgency.cls}`}>
             {urgency.text}
           </span>

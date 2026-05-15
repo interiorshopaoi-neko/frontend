@@ -32,11 +32,17 @@ type FreshnessBadge = { text: string; cls: string };
 function getFreshnessBadge(job: Job): FreshnessBadge | null {
   const timingText = `${job.preferred_date ?? ''} ${job.meta?.extra_info?.timing ?? ''}`;
   const wantsToday = /今日|至急|早め|当日/.test(timingText);
+  const hasVid     = job.has_video || !!job.video_url;
 
   if (job.created_at) {
     const hours = (Date.now() - parseUtc(job.created_at)) / 3600000;
     const days  = hours / 24;
-    if (hours <= 2)  return { text: '🔥 新着', cls: 'bg-red-500 text-white' };
+    if (hours <= 0.5)  return { text: '🆕 NEW', cls: 'bg-rose-600 text-white animate-pulse' };
+    if (hours <= 2) {
+      if (hasVid) return { text: '🎬🔥 動画NEW', cls: 'bg-gradient-to-r from-rose-600 to-pink-500 text-white' };
+      return { text: '🔥 新着', cls: 'bg-red-500 text-white' };
+    }
+    if (hours <= 24) return { text: '✨ 本日投稿', cls: 'bg-blue-500 text-white' };
     if (days  >= 4)  return { text: '⏳ まもなく終了', cls: 'bg-slate-500 text-white' };
   }
   if (wantsToday && job.urgency !== 'today' && job.urgency !== 'tomorrow') {
@@ -85,11 +91,11 @@ function estimateRevenue(job: Job): number {
 
 function getPriority(job: Job) {
   let score = 0;
-  if (job.urgency === 'today')               score += 3;
-  if (job.urgency === 'tomorrow')            score += 2;
-  if (job.has_video)                         score += 2;
-  if ((job.distance_km ?? 999) <= 10)        score += 2;
-  if (job.has_photos)                        score += 1;
+  if (job.urgency === 'today')                     score += 3;
+  if (job.urgency === 'tomorrow')                  score += 2;
+  if (job.has_video || !!job.video_url)            score += 2; // video_url も考慮
+  if ((job.distance_km ?? 999) <= 10)              score += 2;
+  if (job.has_photos)                              score += 1;
   return Math.min(5, score);
 }
 
@@ -111,11 +117,12 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
     return jobs
       .filter(job => {
         if (filter === 'today') return job.urgency === 'today' || job.urgency === 'tomorrow';
-        if (filter === 'video') return job.has_video;
+        if (filter === 'video') return job.has_video || !!job.video_url; // video_url も考慮
         return true;
       })
       .sort((a, b) => {
-        const vp = Number(b.has_video) - Number(a.has_video);
+        // 動画あり（has_video OR video_url）を最優先
+        const vp = Number(b.has_video || !!b.video_url) - Number(a.has_video || !!a.video_url);
         if (vp !== 0) return vp;
         return getPriority(b) - getPriority(a);
       });
@@ -167,12 +174,52 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
               const isToday    = job.urgency === 'today';
               const isTomorrow = job.urgency === 'tomorrow';
               const isSoon     = job.urgency === 'soon';
-              const hasMedia   = job.has_video || job.has_photos || job.has_floor_plan;
+              const hasVideo   = job.has_video || !!job.video_url; // DB video_url も考慮
+              const hasMedia   = hasVideo || job.has_photos || job.has_floor_plan;
               const freshness  = getFreshnessBadge(job);
               const postedAt   = timeAgo(job.created_at);
+              // 新着かどうか（24時間以内）
+              const isNew24h   = job.created_at
+                ? (Date.now() - parseUtc(job.created_at)) < 86400000 : false;
 
               return (
-                <article key={job.id} className="bg-white rounded-3xl ring-1 ring-slate-200 shadow-sm overflow-hidden">
+                <article
+                  key={job.id}
+                  className={`bg-white rounded-3xl shadow-sm overflow-hidden ${
+                    hasVideo && isNew24h
+                      ? 'ring-2 ring-blue-400 shadow-blue-100'
+                      : 'ring-1 ring-slate-200'
+                  }`}
+                >
+
+                  {/* ── 動画サムネイル（video_url がある案件のみ） ── */}
+                  {job.video_url && (
+                    <div
+                      className="relative bg-slate-900 cursor-pointer"
+                      onClick={() => navigate(`/craftsman/apply/${job.id}`, { state: { job } })}
+                    >
+                      <video
+                        src={job.video_url}
+                        preload="metadata"
+                        className="w-full h-36 object-cover opacity-70"
+                        muted
+                        playsInline
+                      />
+                      {/* 再生ボタンオーバーレイ */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg backdrop-blur-sm">
+                          <svg className="w-6 h-6 text-blue-600 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="absolute top-2 left-2">
+                        <span className="bg-blue-600 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full shadow">
+                          ▶ 現場動画あり
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* ── バッジ行 ── */}
                   <div className="px-4 pt-4 pb-0 flex flex-wrap gap-1.5">
@@ -196,9 +243,10 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                         数日以内
                       </span>
                     )}
-                    {job.has_video && (
-                      <span className="bg-blue-50 text-blue-700 text-xs font-bold px-2.5 py-1 rounded-full">
-                        ▶ 動画あり
+                    {/* 動画バッジ（video_url OR has_video） */}
+                    {hasVideo && !job.video_url && (
+                      <span className="bg-blue-600 text-white text-xs font-extrabold px-2.5 py-1 rounded-full">
+                        🎬 動画あり
                       </span>
                     )}
                     {(job.meta?.rooms?.length ?? 0) > 1 && (
@@ -266,7 +314,7 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                     )}
                     {hasMedia && (
                       <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">
-                        {[job.has_video && '動画', job.has_photos && '写真', job.has_floor_plan && '図面'].filter(Boolean).join(' · ')}
+                        {[hasVideo && '動画', job.has_photos && '写真', job.has_floor_plan && '図面'].filter(Boolean).join(' · ')}
                       </span>
                     )}
                     {job.damage_level && (
