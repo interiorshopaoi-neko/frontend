@@ -267,7 +267,9 @@ export default function ProSignupPage() {
 
         {/* Nav */}
         <div className="relative z-10 flex items-center justify-between px-5 pt-5 pb-2">
-          <img src="/logo-full.svg" alt="PRO MATCH" className="h-7 object-contain brightness-200" />
+          <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(4px)', borderRadius: 8, padding: '4px 10px', border: '1px solid rgba(255,255,255,0.08)', display: 'inline-flex' }}>
+            <img src="/logo-full.png" alt="PRO MATCH" style={{ height: 22, width: 'auto' }} />
+          </div>
           <button
             onClick={() => navigate('/login')}
             className="text-xs text-white/50 hover:text-white/80 transition font-medium"
@@ -326,16 +328,11 @@ export default function ProSignupPage() {
           LIVE JOB STREAM
       ═══════════════════════════════════════ */}
       <div className="bg-slate-950 pt-8 pb-6">
-        <div className="flex items-center gap-2 px-5 mb-4">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-400" />
-          </span>
-          <p className="text-sm font-black text-white">今流れている案件</p>
-          <span className="text-xs text-white/30">リアルタイム更新</span>
+        {/* 一般依頼 */}
+        <div className="flex items-center gap-2 px-5 mb-3">
+          <span className="text-[10px] font-black text-blue-400 bg-blue-500/15 rounded-full px-2.5 py-0.5">一般依頼</span>
+          <p className="text-sm font-black text-white">お客様からの案件</p>
         </div>
-
-        {/* Horizontal scroll */}
         <div
           className="flex gap-3 overflow-x-auto px-5 pb-2"
           style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
@@ -343,7 +340,6 @@ export default function ProSignupPage() {
           {STREAM_JOBS.map((job) => (
             <StreamCard key={job.id} job={job} />
           ))}
-          {/* See more card */}
           <div
             className="flex-shrink-0 flex flex-col items-center justify-center gap-2 rounded-2xl border border-white/10 cursor-pointer"
             style={{ width: 160, height: 220 }}
@@ -354,6 +350,35 @@ export default function ProSignupPage() {
             </div>
             <p className="text-xs text-white/50 text-center px-4">登録して<br/>全件見る</p>
           </div>
+        </div>
+
+        {/* 応援募集 */}
+        <div className="flex items-center gap-2 px-5 mt-6 mb-3">
+          <span className="text-[10px] font-black text-yellow-300 bg-yellow-400/15 rounded-full px-2.5 py-0.5">応援募集</span>
+          <p className="text-sm font-black text-white">職人同士の助け合い</p>
+        </div>
+        <div className="px-5 flex flex-col gap-2">
+          {[
+            { area: '横浜市鶴見区', type: 'クロス3部屋 急ぎ', date: '明日・明後日', pay: '応相談', note: '2名希望' },
+            { area: '川崎市中原区', type: '床CF 1部屋 応援', date: '今週中', pay: '¥15,000〜', note: '材料持込' },
+          ].map((h, i) => (
+            <div key={i} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-4 py-3">
+              <div>
+                <p className="text-xs font-bold text-white/80 mb-0.5">{h.type}</p>
+                <p className="text-[10px] text-white/40">{h.area} / {h.date}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-bold text-yellow-300">{h.pay}</p>
+                <p className="text-[10px] text-white/35">{h.note}</p>
+              </div>
+            </div>
+          ))}
+          <button
+            onClick={() => navigate('/register')}
+            className="text-center text-[11px] text-white/40 hover:text-white/60 transition mt-1"
+          >
+            応援募集を見る →
+          </button>
         </div>
       </div>
 
@@ -387,36 +412,85 @@ export default function ProSignupPage() {
       </div>
 
       {/* ═══════════════════════════════════════
-          PROOF NUMBERS
+          PRICING CARDS
       ═══════════════════════════════════════ */}
-      <div
-        className="px-5 py-8"
-        style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #1e40af 100%)' }}
-      >
-        <div className="grid grid-cols-3 gap-4 text-center">
-          {[
-            { num: '初回2件', unit: '無料', sub: '登録後すぐ\n応募できる' },
-            { num: '¥0',     unit: '登録費',sub: '案件閲覧・\n応募も無料' },
-            { num: '¥500〜', unit: '成約時のみ', sub: '成約しなければ\nコストゼロ' },
-          ].map(({ num, unit, sub }) => (
-            <div key={unit} className="flex flex-col items-center">
-              <p className="text-xl font-black text-white leading-none">{num}</p>
-              <p className="text-[10px] font-bold text-blue-200 mt-0.5">{unit}</p>
-              <p className="text-[9px] text-blue-300/70 mt-1.5 leading-relaxed whitespace-pre-line">{sub}</p>
+      <div className="bg-slate-950 px-5 pt-8 pb-6">
+        <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-5 text-center">料金・機能</p>
+
+        {/* 一般依頼カード */}
+        <div className="rounded-2xl border border-blue-500/30 bg-blue-950/40 overflow-hidden mb-4">
+          <div className="px-4 pt-4 pb-3 border-b border-blue-500/20">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] font-black text-blue-400 bg-blue-500/20 rounded-full px-2.5 py-0.5">一般依頼</span>
+              <p className="text-sm font-black text-white">お客様からの案件</p>
             </div>
-          ))}
+            <p className="text-[11px] text-white/40">壁紙・床CFなど内装工事の依頼案件を受けられます</p>
+          </div>
+          <div className="px-4 py-3 space-y-1.5 border-b border-blue-500/20">
+            {[
+              { label: '登録・案件閲覧・応募', value: '¥0（すべて無料）', em: true },
+              { label: '初回2件', value: '手数料無料で応募可', em: false },
+              { label: '工事代金の授受', value: 'お客様と直接やり取り', em: false },
+              { label: 'PRO MATCH', value: '工事代金は預かりません', em: false },
+            ].map(({ label, value, em }) => (
+              <div key={label} className="flex items-center justify-between py-0.5">
+                <span className="text-[11px] text-white/45">{label}</span>
+                <span className={`text-[11px] font-bold ${em ? 'text-emerald-400' : 'text-white/75'}`}>{value}</span>
+              </div>
+            ))}
+          </div>
+          {/* 手数料表 */}
+          <div className="px-4 py-3">
+            <p className="text-[10px] font-bold text-blue-300 mb-2">
+              成約時の手数料 — 概算金額で確定・以後再計算なし
+            </p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                { range: '〜¥30,000', fee: '¥500' },
+                { range: '〜¥80,000', fee: '¥1,500' },
+                { range: '〜¥150,000', fee: '¥3,000' },
+                { range: '¥150,001〜', fee: '¥5,000' },
+              ].map(({ range, fee }) => (
+                <div key={range} className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-1.5">
+                  <span className="text-[10px] text-white/45">{range}</span>
+                  <span className="text-[10px] font-black text-blue-300">{fee}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 応援募集カード */}
+        <div className="rounded-2xl border border-yellow-500/30 bg-yellow-950/20 overflow-hidden">
+          <div className="px-4 pt-4 pb-3 border-b border-yellow-500/20">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] font-black text-yellow-300 bg-yellow-400/20 rounded-full px-2.5 py-0.5">応援募集</span>
+              <p className="text-sm font-black text-white">職人同士の助け合い</p>
+            </div>
+            <p className="text-[11px] text-white/40">急ぎ現場・人手不足のときに職人同士でマッチング。一般案件とは別機能です。</p>
+          </div>
+          <div className="px-4 py-3 space-y-1.5">
+            {[
+              { label: '現在の利用料', value: '¥0（無料）', em: true },
+              { label: '正式版（予定）', value: '募集側・参加側 各¥300', em: false },
+            ].map(({ label, value, em }) => (
+              <div key={label} className="flex items-center justify-between py-0.5">
+                <span className="text-[11px] text-white/45">{label}</span>
+                <span className={`text-[11px] font-bold ${em ? 'text-yellow-400' : 'text-white/75'}`}>{value}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* ═══════════════════════════════════════
           VOICE (空気感テキスト)
       ═══════════════════════════════════════ */}
-      <div className="bg-slate-950 px-6 py-8">
-        <div className="space-y-4">
+      <div className="bg-slate-950 px-6 py-6">
+        <div className="space-y-3">
           {[
             { text: '"空き日に近所でサクッと1件入った"', sub: '横浜市 / クロス職人' },
-            { text: '"動画で状況分かるから行くか判断できる"', sub: '世田谷区 / 床職人' },
-            { text: '"営業しなくていいのが一番助かる"', sub: '川崎市 / 内装職人' },
+            { text: '"動画で状況分かるから行くか判断できる"', sub: '川崎市 / 内装職人' },
           ].map(({ text, sub }) => (
             <div key={sub} className="flex gap-3 items-start">
               <div className="w-8 h-8 rounded-full bg-slate-800 flex-shrink-0 flex items-center justify-center text-sm">

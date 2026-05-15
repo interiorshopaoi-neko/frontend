@@ -214,7 +214,7 @@ function AdminDashboardPageContent({ session }: { session: Session }) {
       {/* Header */}
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <img src="/logo-full.svg" alt="PRO MATCH" className="h-7 object-contain" />
+          <img src="/logo-full.png" alt="PRO MATCH" style={{ height: 28, width: 'auto' }} className="object-contain" />
           <span className="text-xs font-bold text-slate-400 border border-slate-200 rounded-full px-2.5 py-0.5">管理画面</span>
         </div>
         <div className="flex items-center gap-3">

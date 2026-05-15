@@ -40,7 +40,7 @@ export default function Layout({ user, onLogout, children }: Props) {
           <button
             onClick={() => navigate(user.role === 'customer' ? '/customer' : '/craftsman/dashboard')}
           >
-            <img src="/logo-icon.svg" alt="PRO MATCH" className="h-7 w-7 object-contain" />
+            <img src="/logo-icon.png" alt="PRO MATCH" className="h-7 w-7 object-contain" />
           </button>
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500">

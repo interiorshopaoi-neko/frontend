@@ -1,33 +1,38 @@
 interface Props {
   size?: number;
-  /** true（デフォルト）のとき logo-full.svg、false のとき logo-icon.svg を表示 */
+  /** true（デフォルト）のとき logo-full.png、false のとき logo-icon.png を表示 */
   showText?: boolean;
-  /** 後方互換のため残す（SVGファイル側で色を持つため効果なし） */
+  /**
+   * true のとき白抜き表示（暗い背景用）。
+   * CSS filter: brightness(0) invert(1) で実現。
+   */
   dark?: boolean;
   className?: string;
 }
 
 /**
  * PRO MATCH ロゴ
- * - showText=true  → /logo-full.svg  （横長・テキスト付き）
- * - showText=false → /logo-icon.svg  （アイコンのみ）
+ * ※ ロゴは logo-full.png を唯一の正式ファイルとして使用。SVG は使用禁止。
+ * - showText=true  → /logo-full.png  （横長・テキスト付き）
+ * - showText=false → /logo-icon.png  （アイコンのみ）
  */
-export default function Logo({ size = 32, showText = true, className = '' }: Props) {
+export default function Logo({ size = 32, showText = true, dark = false, className = '' }: Props) {
+  const filter = dark ? 'brightness(0) invert(1)' : undefined;
   if (showText) {
     return (
       <img
-        src="/logo-full.svg"
+        src="/logo-full.png"
         alt="PRO MATCH"
-        style={{ height: size, width: 'auto' }}
+        style={{ height: size, width: 'auto', filter }}
         className={`object-contain ${className}`}
       />
     );
   }
   return (
     <img
-      src="/logo-icon.svg"
+      src="/logo-icon.png"
       alt="PRO MATCH"
-      style={{ height: size, width: size }}
+      style={{ height: size, width: size, filter }}
       className={`object-contain ${className}`}
     />
   );
