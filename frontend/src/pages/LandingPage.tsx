@@ -158,11 +158,14 @@ export default function LandingPage() {
 
       {/* ── Footer links ─────────────────────────────────────────────── */}
       <footer className="bg-gray-900 text-gray-400 text-xs text-center py-6 px-4">
-        <div className="flex justify-center gap-6 mb-3">
-          <a href="/policy" className="hover:text-white transition-colors">プライバシーポリシー</a>
+        <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 mb-3">
+          <a href="/privacy" className="hover:text-white transition-colors">プライバシーポリシー</a>
+          <a href="/terms"   className="hover:text-white transition-colors">利用規約</a>
+          <a href="/policy"  className="hover:text-white transition-colors">料金ポリシー</a>
+          <a href="/support" className="hover:text-white transition-colors">お問い合わせ</a>
           <a href="/craftsman/jobs" className="hover:text-white transition-colors">職人の方はこちら</a>
         </div>
-        <p className="text-gray-600 text-xs">© 2025 ショート動画見積もり</p>
+        <p className="text-gray-600 text-xs">© 2025 PRO MATCH</p>
       </footer>
     </div>
   );

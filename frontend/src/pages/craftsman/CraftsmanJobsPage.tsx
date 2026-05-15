@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import JobsListView from './JobsListView';
 import JobsSwipeView from './JobsSwipeView';
 import BottomNav from '../../components/BottomNav';
+import JobsLockedPreview from '../../components/JobsLockedPreview';
 
 // ─── Job type（子コンポーネントで import して使う）────────────────────────────
 
@@ -109,7 +110,13 @@ export default function CraftsmanJobsPage() {
   const [loading,    setLoading]    = useState(true);
   const [tab,        setTab]        = useState<Tab>('video');
   const [isDemo,     setIsDemo]     = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // 同期的に初期化してフラッシュなしに未認証を検出
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      return !!stored && !!JSON.parse(stored).id;
+    } catch { return false; }
+  });
 
   useEffect(() => {
     try {
@@ -119,6 +126,8 @@ export default function CraftsmanJobsPage() {
   }, []);
 
   useEffect(() => {
+    // 未認証ならSupabaseアクセス不要
+    if (!isLoggedIn) { setLoading(false); return; }
     (async () => {
       setLoading(true);
       const { data, error } = await supabase
@@ -134,7 +143,10 @@ export default function CraftsmanJobsPage() {
       }
       setLoading(false);
     })();
-  }, []);
+  }, [isLoggedIn]);
+
+  // 未認証 → ロックプレビューのみ（全案件フックは宣言済み）
+  if (!isLoggedIn) return <JobsLockedPreview />;
 
   const videoCount = jobs.filter((j) => j.has_video || j.video_url).length;
 

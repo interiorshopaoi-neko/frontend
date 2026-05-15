@@ -94,6 +94,11 @@ export default function CompletePage() {
           </a>
           ください
         </p>
+        <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1">
+          <a href="/privacy" className="text-[11px] text-slate-300 hover:text-slate-500 transition-colors">プライバシーポリシー</a>
+          <a href="/terms"   className="text-[11px] text-slate-300 hover:text-slate-500 transition-colors">利用規約</a>
+          <a href="/policy"  className="text-[11px] text-slate-300 hover:text-slate-500 transition-colors">料金ポリシー</a>
+        </div>
       </div>
     </div>
   );

@@ -235,6 +235,10 @@ export default function Login({ onLogin }: Props) {
           <p className="text-xs text-slate-300">
             登録無料 · 成約時のみ手数料
           </p>
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2">
+            <a href="/privacy" className="text-[11px] text-slate-300 hover:text-slate-500 transition-colors">プライバシーポリシー</a>
+            <a href="/terms"   className="text-[11px] text-slate-300 hover:text-slate-500 transition-colors">利用規約</a>
+          </div>
         </div>
       </div>
     </div>

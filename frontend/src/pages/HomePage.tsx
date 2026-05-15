@@ -699,6 +699,26 @@ export default function HomePage() {
 
       </div>
 
+      {/* ── Footer links ── */}
+      <footer style={{ background: '#0f172a', color: '#64748b', textAlign: 'center', padding: '20px 16px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '4px 20px', marginBottom: 8 }}>
+          {[
+            { href: '/privacy', label: 'プライバシーポリシー' },
+            { href: '/terms',   label: '利用規約' },
+            { href: '/policy',  label: '料金ポリシー' },
+            { href: '/support', label: 'お問い合わせ' },
+            { href: '/craftsman/jobs', label: '職人の方はこちら' },
+          ].map(({ href, label }) => (
+            <a key={href} href={href}
+              style={{ color: '#64748b', textDecoration: 'none', fontSize: 11 }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#cbd5e1')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#64748b')}
+            >{label}</a>
+          ))}
+        </div>
+        <p style={{ fontSize: 10, color: '#334155', margin: 0 }}>© 2025 PRO MATCH</p>
+      </footer>
+
     </>
   );
 }
