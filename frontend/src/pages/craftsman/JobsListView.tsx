@@ -6,9 +6,17 @@ import type { Job } from './CraftsmanJobsPage';
 
 // ─── Freshness helpers ───────────────────────────────────────────────────────
 
+// estimate_requests.created_at は timestamp WITHOUT timezone (UTC) で保存される。
+// JS の new Date() はタイムゾーン無し文字列をローカル時刻として解釈するため
+// JST 環境では 9 時間ズレる。末尾に 'Z' を付与して UTC として強制解釈する。
+function parseUtc(s: string): number {
+  if (s.endsWith('Z') || s.includes('+')) return new Date(s).getTime();
+  return new Date(s + 'Z').getTime();
+}
+
 function timeAgo(createdAt?: string): string {
   if (!createdAt) return '';
-  const diff = Date.now() - new Date(createdAt).getTime();
+  const diff = Date.now() - parseUtc(createdAt);
   const mins  = Math.floor(diff / 60000);
   if (mins <  1)  return 'たった今';
   if (mins < 60)  return `${mins}分前`;
@@ -26,7 +34,7 @@ function getFreshnessBadge(job: Job): FreshnessBadge | null {
   const wantsToday = /今日|至急|早め|当日/.test(timingText);
 
   if (job.created_at) {
-    const hours = (Date.now() - new Date(job.created_at).getTime()) / 3600000;
+    const hours = (Date.now() - parseUtc(job.created_at)) / 3600000;
     const days  = hours / 24;
     if (hours <= 2)  return { text: '🔥 新着', cls: 'bg-red-500 text-white' };
     if (days  >= 4)  return { text: '⏳ まもなく終了', cls: 'bg-slate-500 text-white' };
@@ -39,24 +47,38 @@ function getFreshnessBadge(job: Job): FreshnessBadge | null {
 
 // ─── Revenue estimator ────────────────────────────────────────────────────────
 
+function roomBase(workType: string): number {
+  const wt = workType.toLowerCase();
+  if (wt.includes('cf') || wt.includes('クッションフロア')) return 24000;
+  if (wt.includes('補修'))                                 return 16000;
+  if (wt.includes('床'))                                   return 34000;
+  return 32000; // クロス・壁紙デフォルト
+}
+
+function sizeMul(sizeStr: string): number {
+  const m = sizeStr.match(/(\d+)/);
+  const t = m ? parseInt(m[1]) : 6;
+  return t >= 10 ? 1.5 : t >= 8 ? 1.25 : t >= 6 ? 1.0 : 0.8;
+}
+
 function estimateRevenue(job: Job): number {
-  const type   = (job.work_type ?? '').toLowerCase();
-  const damage = job.damage_level;
-  const size   = job.room_size ?? '';
+  // meta.rooms がある場合は部屋ごとに加算（複数部屋対応）
+  const rooms = job.meta?.rooms;
+  if (rooms && rooms.length > 0) {
+    const total = rooms.reduce((sum, r) => {
+      const base = roomBase(r.workType ?? job.work_type ?? 'クロス');
+      const mul  = sizeMul(r.size ?? '');
+      return sum + Math.round((base * mul) / 1000) * 1000;
+    }, 0);
+    return total;
+  }
 
-  let base = 32000;
-  if (type.includes('cf') || type.includes('クッションフロア')) base = 24000;
-  else if (type.includes('補修'))                              base = 16000;
-  else if (type.includes('床'))                               base = 34000;
-  else if (type.includes('クロス'))                           base = 32000;
-
-  const m = size.match(/(\d+)/);
-  const tatami = m ? parseInt(m[1]) : 6;
-  const sizeMul = tatami >= 10 ? 1.5 : tatami >= 8 ? 1.25 : tatami >= 6 ? 1.0 : 0.8;
-
-  const damageMul = damage === 'high' ? 1.3 : damage === 'middle' ? 1.1 : 1.0;
-
-  return Math.round((base * sizeMul * damageMul) / 1000) * 1000;
+  // meta.rooms なし → 従来ロジック（単一部屋）
+  const damage   = job.damage_level;
+  const base     = roomBase(job.work_type ?? '');
+  const mul      = sizeMul(job.room_size ?? '');
+  const dmgMul   = damage === 'high' ? 1.3 : damage === 'middle' ? 1.1 : 1.0;
+  return Math.round((base * mul * dmgMul) / 1000) * 1000;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

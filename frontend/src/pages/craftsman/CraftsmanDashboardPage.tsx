@@ -266,9 +266,16 @@ export default function CraftsmanDashboardPage() {
 
   const withStatus = apps.map(a => ({ ...a, _status: deriveStatus(a) }));
 
+  // 成約済みを最上部に優先表示（職人が選ばれたことをすぐ分かるように）
+  const sortedWithStatus = [...withStatus].sort((a, b) => {
+    const priority = (s: StatusLabel) =>
+      s === '成約済み' ? 0 : s === '依頼者確認中' ? 1 : s === '金額入力済み' ? 2 : s === '応募中' ? 3 : 4;
+    return priority(a._status) - priority(b._status);
+  });
+
   const filtered = filter === '全て'
-    ? withStatus
-    : withStatus.filter(a => a._status === filter);
+    ? sortedWithStatus
+    : sortedWithStatus.filter(a => a._status === filter);
 
   const counts = {
     active:    withStatus.filter(a => a._status === '応募中' || a._status === '金額入力済み' || a._status === '依頼者確認中').length,
@@ -448,7 +455,26 @@ export default function CraftsmanDashboardPage() {
               const isSensitive = app._status === '成約済み' || app._status === '工事完了';
 
               return (
-                <article key={app.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                <article key={app.id} className={`bg-white rounded-3xl shadow-sm overflow-hidden ${
+                  app._status === '成約済み'
+                    ? 'border-2 border-green-400 ring-2 ring-green-100'
+                    : 'border border-slate-200'
+                }`}>
+
+                  {/* ★ 成約トップバナー — 職人向けに「選ばれた」を最大強調 */}
+                  {app._status === '成約済み' && (
+                    <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-4 py-3.5">
+                      <p className="text-white font-extrabold text-sm leading-snug">
+                        🎉 依頼者があなたを選びました！
+                      </p>
+                      <p className="text-green-100 text-[11px] mt-1 leading-relaxed">
+                        「詳細を見る」から依頼者のメールアドレスを確認し、連絡してください。
+                      </p>
+                      <p className="text-green-200 text-[10px] mt-0.5">
+                        ※ 無料枠を1件使用して連絡先を開示します
+                      </p>
+                    </div>
+                  )}
 
                   {/* カードヘッダー */}
                   <div className="px-4 pt-4 pb-3">

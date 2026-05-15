@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
-import ApplySuccessModal from '../../components/ApplySuccessModal';
 import ApplyConfirmModal from '../../components/ApplyConfirmModal';
 import type { Job } from './CraftsmanJobsPage';
 
@@ -29,9 +27,17 @@ function urgencyConfig(job: Job): { text: string; cls: string } {
   return                                  { text: '💭 急ぎなし',  cls: 'bg-slate-600/80 text-white' };
 }
 
+// estimate_requests.created_at は timestamp WITHOUT timezone (UTC) で保存。
+// JS は TZ なし文字列をローカル時刻として解釈するため JST 環境で 9h ズレる。
+// 末尾に 'Z' を付与して UTC として強制解釈する。
+function parseUtc(s: string): number {
+  if (s.endsWith('Z') || s.includes('+')) return new Date(s).getTime();
+  return new Date(s + 'Z').getTime();
+}
+
 function timeAgo(createdAt?: string): string {
   if (!createdAt) return '';
-  const diff = Date.now() - new Date(createdAt).getTime();
+  const diff = Date.now() - parseUtc(createdAt);
   const mins  = Math.floor(diff / 60000);
   if (mins <  1)  return 'たった今';
   if (mins < 60)  return `${mins}分前`;
@@ -43,7 +49,7 @@ function timeAgo(createdAt?: string): string {
 
 function isNewPost(createdAt?: string): boolean {
   if (!createdAt) return false;
-  return (Date.now() - new Date(createdAt).getTime()) / 3600000 <= 2;
+  return (Date.now() - parseUtc(createdAt)) / 3600000 <= 2;
 }
 
 // ─── SwipeSlide ───────────────────────────────────────────────────────────────
@@ -320,12 +326,9 @@ export default function JobsSwipeView({ jobs, isLoggedIn = false }: Props) {
   const navigate = useNavigate();
   const videoJobs = jobs.filter(j => j.has_video || j.video_url);
 
-  const [appliedIds,      setAppliedIds]      = useState<Set<string>>(new Set());
-  const [submittingId,    setSubmittingId]    = useState<string | null>(null);
-  const [currentIdx,      setCurrentIdx]      = useState(0);
-  const [modalOpen,       setModalOpen]       = useState(false);
-  const [lastAppliedJob,  setLastAppliedJob]  = useState<Job | null>(null);
-  const [confirmJob,      setConfirmJob]      = useState<Job | null>(null);
+  const [appliedIds,   setAppliedIds]   = useState<Set<string>>(new Set());
+  const [currentIdx,   setCurrentIdx]   = useState(0);
+  const [confirmJob,   setConfirmJob]   = useState<Job | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // スクロール位置を追跡
@@ -340,38 +343,22 @@ export default function JobsSwipeView({ jobs, isLoggedIn = false }: Props) {
     return () => container.removeEventListener('scroll', onScroll);
   }, []);
 
-  const applyJob = useCallback(async (job: Job) => {
-    if (appliedIds.has(job.id) || submittingId) return;
+  // 「今すぐ行けます」→ 直接 insert しない。金額入力画面へ誘導し
+  // CraftsmanApplyPage で 1 件だけ insert する（二重応募防止）。
+  const applyJob = useCallback((job: Job) => {
+    if (appliedIds.has(job.id)) return;
 
     const storedUser = localStorage.getItem('user');
     const craftsmanId = storedUser ? JSON.parse(storedUser).id : null;
 
-    // 未ログインはログインページへ誘導
     if (!craftsmanId) {
       navigate('/login', { state: { defaultRole: 'craftsman', from: `/craftsman/apply/${job.id}` } });
       return;
     }
 
-    setSubmittingId(job.id);
-
-    const { error } = await supabase.from('job_applications').insert({
-      estimate_request_id: job.id,
-      craftsman_id: craftsmanId,
-      status: 'available',
-      message: '今すぐ行けます',
-    });
-
-    setSubmittingId(null);
-
-    if (error) {
-      alert('送信に失敗しました。もう一度お試しください。');
-      return;
-    }
-
-    setAppliedIds(prev => new Set([...prev, job.id]));
-    setLastAppliedJob(job);
-    setModalOpen(true);
-  }, [appliedIds, submittingId]);
+    // 金額入力画面へ遷移（そこで重複チェック → insert）
+    navigate(`/craftsman/apply/${job.id}`, { state: { job } });
+  }, [appliedIds, navigate]);
 
   if (videoJobs.length === 0) {
     return (
@@ -398,19 +385,6 @@ export default function JobsSwipeView({ jobs, isLoggedIn = false }: Props) {
         />
       )}
 
-      {/* 応募完了モーダル */}
-      {modalOpen && (
-        <ApplySuccessModal
-          onClose={() => setModalOpen(false)}
-          onInputAmount={() => {
-            setModalOpen(false);
-            if (lastAppliedJob) {
-              navigate(`/craftsman/apply/${lastAppliedJob.id}`, { state: { job: lastAppliedJob } });
-            }
-          }}
-        />
-      )}
-
       {/* スワイプコンテナ */}
       <div
         ref={containerRef}
@@ -425,7 +399,7 @@ export default function JobsSwipeView({ jobs, isLoggedIn = false }: Props) {
             idx={idx}
             total={videoJobs.length}
             applied={appliedIds.has(job.id)}
-            submitting={submittingId === job.id}
+            submitting={false}
             onApply={() => setConfirmJob(job)}
           />
         ))}

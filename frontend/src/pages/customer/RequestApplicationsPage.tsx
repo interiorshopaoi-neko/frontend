@@ -280,8 +280,20 @@ export default function RequestApplicationsPage() {
         (craftsmenData ?? []).map(c => [c.user_id, c as CraftsmanInfo])
       );
 
+      // 同一職人の重複応募は最新1件のみ表示（二重応募防止の UI 側対処）
+      // job_applications は created_at ascending で取得済み → 後ろが最新
+      const dedupedMap = new Map<string, typeof appData[number]>();
+      for (const a of appData) {
+        // price ありの応募を優先、なければ最新で上書き
+        const existing = dedupedMap.get(a.craftsman_id);
+        if (!existing || a.price != null || a.is_contracted) {
+          dedupedMap.set(a.craftsman_id, a);
+        }
+      }
+      const deduped = [...dedupedMap.values()];
+
       setApps(
-        appData.map(a => ({
+        deduped.map(a => ({
           ...a,
           craftsman: craftsmenMap[a.craftsman_id] ?? null,
         })) as Application[]

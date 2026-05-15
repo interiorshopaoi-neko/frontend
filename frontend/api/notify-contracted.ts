@@ -247,7 +247,7 @@ export default async function handler(req: any, res: any) {
 
     const craftsmanEmail = craftsmanRow.craftsman_email.replace(/^mailto:/i, '').trim();
     const craftsmanName  = craftsmanRow.shop_name || craftsmanRow.full_name || '職人さん';
-    const dashboardUrl   = `${SITE_URL}/craftsman/dashboard`;
+    const dashboardUrl   = `${SITE_URL}/craftsman/applications`;
 
     const emailParams = { craftsmanName, workType, area, dashboardUrl };
 

@@ -115,6 +115,21 @@ export default function CraftsmanApplyPage() {
       return;
     }
 
+    // ── 二重応募チェック ─────────────────────────────────────────────────────
+    const { data: existing } = await supabase
+      .from('job_applications')
+      .select('id')
+      .eq('estimate_request_id', String(id))
+      .eq('craftsman_id', craftsmanId)
+      .maybeSingle();
+
+    if (existing) {
+      setSubmitting(false);
+      setError('この案件にはすでに応募済みです。応募一覧から確認してください。');
+      return;
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     const { error: dbError } = await supabase.from('job_applications').insert({
       estimate_request_id: id,
       craftsman_id: craftsmanId,
