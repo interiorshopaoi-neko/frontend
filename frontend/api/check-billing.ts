@@ -70,6 +70,55 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
+  // ── メール以外の連絡先はクレジット消費前にブロック ──────────────────────────────
+  // application → estimate_request の contact_method を確認してからRPCを呼ぶ
+  try {
+    const preCheckRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/job_applications?select=estimate_request_id&id=eq.${application_id}&limit=1`,
+      {
+        headers: {
+          'apikey':        SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Accept':        'application/json',
+        },
+      },
+    );
+    if (preCheckRes.ok) {
+      const appRows = await preCheckRes.json() as Array<{ estimate_request_id: string | null }>;
+      const estimateRequestId = appRows?.[0]?.estimate_request_id;
+      if (estimateRequestId) {
+        const erRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/estimate_requests?select=contact_method&id=eq.${estimateRequestId}&limit=1`,
+          {
+            headers: {
+              'apikey':        SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Accept':        'application/json',
+            },
+          },
+        );
+        if (erRes.ok) {
+          const erRows = await erRes.json() as Array<{ contact_method: string | null }>;
+          const contactMethod = erRows?.[0]?.contact_method;
+          if (contactMethod && contactMethod !== 'メール') {
+            // メール以外はクレジットを消費せずに non_email を返す
+            console.log('[check-billing] non-email contact_method detected before RPC:', contactMethod);
+            res.status(200).json({
+              status:         'already_unlocked',
+              contact_method: contactMethod,
+              contact_value:  null,
+              non_email:      true,
+            });
+            return;
+          }
+        }
+      }
+    }
+  } catch (preCheckErr) {
+    // pre-check 失敗時はRPCに委ねる（保守的フォールスルー）
+    console.warn('[check-billing] pre-check failed, proceeding to RPC:', preCheckErr);
+  }
+
   // ── SECURITY DEFINER RPC 呼び出し ────────────────────────────────────────────
   try {
     const rpcRes = await fetch(

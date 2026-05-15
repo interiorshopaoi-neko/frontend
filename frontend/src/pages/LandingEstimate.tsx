@@ -61,7 +61,7 @@ export default function LandingEstimate() {
   const [workTypeForm, setWorkTypeForm] = useState('');
   const [sizeNote, setSizeNote]         = useState('');
   const [timing, setTiming]             = useState('');
-  const [contactMethod, setContactMethod] = useState('');
+  const contactMethod = 'メール'; // メールアドレスに固定
   const [contactValue, setContactValue] = useState('');
 
   // ── 送信状態 ────────────────────────────────────────
@@ -138,8 +138,8 @@ export default function LandingEstimate() {
     area.trim() !== '' &&
     workTypeForm !== '' &&
     timing !== '' &&
-    contactMethod !== '' &&
-    contactValue.trim() !== '';
+    contactValue.trim() !== '' &&
+    contactValue.includes('@');
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -497,44 +497,21 @@ export default function LandingEstimate() {
                 </div>
               </div>
 
-              {/* 連絡方法（必須） */}
-              <div className="p-5">
-                <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3">
-                  連絡方法 <span className="text-red-400 normal-case font-bold">必須</span>
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { value: 'メール', icon: '📧' },
-                    { value: '電話',   icon: '📞' },
-                  ].map(({ value, icon }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setContactMethod(value)}
-                      className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 text-sm font-semibold transition-all active:scale-95 ${
-                        contactMethod === value
-                          ? 'border-indigo-500 bg-indigo-50 text-indigo-800 shadow-sm'
-                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300'
-                      }`}
-                    >
-                      <span className="text-xl">{icon}</span>
-                      <span>{value}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 連絡先（必須） */}
+              {/* メールアドレス（必須） */}
               <div className="p-5">
                 <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
-                  連絡先 <span className="text-red-400 normal-case font-bold">必須</span>
+                  メールアドレス <span className="text-red-400 normal-case font-bold">必須</span>
                 </label>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-base">📧</span>
+                  <p className="text-[11px] text-slate-500">職人からのご連絡はメールでお届けします。電話・LINEの開示はありません。</p>
+                </div>
                 <input
-                  type="text"
+                  type="email"
                   required
                   value={contactValue}
                   onChange={e => setContactValue(e.target.value)}
-                  placeholder="メール / 電話番号"
+                  placeholder="example@mail.com"
                   className="w-full border border-slate-200 bg-slate-50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all"
                 />
               </div>
