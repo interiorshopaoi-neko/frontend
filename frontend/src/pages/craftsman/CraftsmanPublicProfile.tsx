@@ -5,6 +5,12 @@ import BottomNav from '../../components/BottomNav';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type WorkItem = {
+  id: string;
+  image_url: string;
+  caption: string | null;
+};
+
 type Craftsman = {
   user_id: string;
   shop_name: string | null;
@@ -77,6 +83,7 @@ export default function CraftsmanPublicProfile() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const [craftsman, setCraftsman] = useState<Craftsman | null>(null);
+  const [works,     setWorks]     = useState<WorkItem[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [notFound,  setNotFound]  = useState(false);
 
@@ -84,8 +91,15 @@ export default function CraftsmanPublicProfile() {
     if (!userId) { setNotFound(true); setLoading(false); return; }
 
     (async () => {
-      const { data: rows } = await supabase
-        .rpc('get_craftsman_public_profile', { p_user_id: userId });
+      const [{ data: rows }, { data: worksData }] = await Promise.all([
+        supabase.rpc('get_craftsman_public_profile', { p_user_id: userId }),
+        supabase
+          .from('craftsman_works')
+          .select('id, image_url, caption, sort_order')
+          .eq('craftsman_id', userId)
+          .order('sort_order', { ascending: true })
+          .limit(4),
+      ]);
       const data = rows?.[0] ?? null;
 
       if (!data || data.public_profile_enabled === false) {
@@ -93,6 +107,7 @@ export default function CraftsmanPublicProfile() {
       } else {
         setCraftsman(data as Craftsman);
       }
+      if (worksData) setWorks(worksData as WorkItem[]);
       setLoading(false);
     })();
   }, [userId]);
@@ -186,6 +201,32 @@ export default function CraftsmanPublicProfile() {
         {c.bio && (
           <Section title="一言プロフィール">
             <p className="text-sm text-slate-700 leading-relaxed">{c.bio}</p>
+          </Section>
+        )}
+
+        {/* ── 施工事例 ── */}
+        {works.length > 0 && (
+          <Section title="施工事例">
+            <div className="grid grid-cols-2 gap-2">
+              {works.map(w => (
+                <div
+                  key={w.id}
+                  className="relative aspect-square rounded-xl overflow-hidden bg-slate-100"
+                >
+                  <img
+                    src={w.image_url}
+                    alt={w.caption ?? '施工事例'}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                  {w.caption && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-2 py-1">
+                      <p className="text-[10px] text-white truncate">{w.caption}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </Section>
         )}
 

@@ -1,10 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import BottomNav from '../../components/BottomNav';
 import { useAuth } from '../../hooks/useAuth';
+import { compressImage } from '../../utils/imageUtils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+type WorkItem = {
+  id: string;
+  image_url: string;
+  caption: string | null;
+  sort_order: number;
+};
 
 type ProfileForm = {
   shop_name: string;
@@ -118,6 +126,13 @@ export default function CraftsmanProfile() {
   const [error,              setError]              = useState<string | null>(null);
   const [contractedCount,    setContractedCount]    = useState(0);
   const [reviewPendingCount, setReviewPendingCount] = useState(0);
+  const [works,             setWorks]             = useState<WorkItem[]>([]);
+  const [avatarUploading,   setAvatarUploading]   = useState(false);
+  const [avatarError,       setAvatarError]       = useState<string | null>(null);
+  const [worksUploading,    setWorksUploading]    = useState(false);
+  const [worksError,        setWorksError]        = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const worksInputRef  = useRef<HTMLInputElement>(null);
   const userId = getUserId();
 
   useEffect(() => {
@@ -161,6 +176,19 @@ export default function CraftsmanProfile() {
         });
       }
       setLoading(false);
+    })();
+  }, [userId]);
+
+  // ── 施工事例ロード ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('craftsman_works')
+        .select('id, image_url, caption, sort_order')
+        .eq('craftsman_id', userId)
+        .order('sort_order', { ascending: true })
+        .limit(4);
+      if (data) setWorks(data as WorkItem[]);
     })();
   }, [userId]);
 
@@ -217,6 +245,105 @@ export default function CraftsmanProfile() {
 
   const set = <K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) =>
     setForm(prev => ({ ...prev, [key]: value }));
+
+  // ── アバターアップロード ──────────────────────────────────────────────────────
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setAvatarUploading(true);
+    setAvatarError(null);
+    try {
+      const compressed = await compressImage(file, 800, 0.85);
+      const ext  = compressed.type.includes('webp') ? 'webp' : 'jpg';
+      const path = `${userId}/avatar.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('craftsman-avatars')
+        .upload(path, compressed, { upsert: true, contentType: compressed.type });
+      if (upErr) throw upErr;
+      const { data: { publicUrl } } = supabase.storage
+        .from('craftsman-avatars')
+        .getPublicUrl(path);
+      const newUrl = `${publicUrl}?v=${Date.now()}`;
+      set('profile_image_url', newUrl);
+      // DB に即時反映（fire-and-forget）
+      void supabase.rpc('upsert_craftsman_profile', {
+        p_user_id:                userId,
+        p_email:                  form.email || null,
+        p_shop_name:              form.shop_name,
+        p_full_name:              form.full_name,
+        p_service_area:           form.service_area,
+        p_radius_km:              form.radius_km,
+        p_work_types:             form.work_types,
+        p_specialty:              form.specialty,
+        p_available_weekdays:     form.available_weekdays,
+        p_notification_enabled:   form.notification_enabled,
+        p_profile_image_url:      newUrl,
+        p_age:                    form.age !== '' ? Number(form.age) : null,
+        p_experience_years:       form.experience_years !== '' ? Number(form.experience_years) : null,
+        p_bio:                    form.bio || null,
+        p_available_time:         form.available_time || null,
+        p_has_car:                form.has_car,
+        p_has_tools:              form.has_tools,
+        p_public_profile_enabled: form.public_profile_enabled,
+      });
+    } catch (err: unknown) {
+      console.error(err);
+      setAvatarError('アップロードに失敗しました。もう一度お試しください。');
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
+  // ── 施工事例アップロード ──────────────────────────────────────────────────────
+  async function handleWorksChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || works.length >= 4) return;
+    e.target.value = '';
+    setWorksUploading(true);
+    setWorksError(null);
+    try {
+      const compressed = await compressImage(file, 1600, 0.82);
+      const ext  = compressed.type.includes('webp') ? 'webp' : 'jpg';
+      const path = `${userId}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('craftsman-works')
+        .upload(path, compressed, { contentType: compressed.type });
+      if (upErr) throw upErr;
+      const { data: { publicUrl } } = supabase.storage
+        .from('craftsman-works')
+        .getPublicUrl(path);
+      const { data: row, error: dbErr } = await supabase
+        .from('craftsman_works')
+        .insert({ craftsman_id: userId, image_url: publicUrl, sort_order: works.length })
+        .select('id, image_url, caption, sort_order')
+        .single();
+      if (dbErr) throw dbErr;
+      setWorks(prev => [...prev, row as WorkItem]);
+    } catch (err: unknown) {
+      console.error(err);
+      setWorksError('アップロードに失敗しました。もう一度お試しください。');
+    } finally {
+      setWorksUploading(false);
+    }
+  }
+
+  // ── 施工事例削除 ──────────────────────────────────────────────────────────────
+  async function handleWorkDelete(workId: string) {
+    const work = works.find(w => w.id === workId);
+    if (!work) return;
+    // Optimistic update
+    setWorks(prev => prev.filter(w => w.id !== workId));
+    // DB delete
+    await supabase.from('craftsman_works').delete().eq('id', workId);
+    // Storage delete (best-effort)
+    const marker = '/object/public/craftsman-works/';
+    const idx = work.image_url.indexOf(marker);
+    if (idx >= 0) {
+      const storagePath = work.image_url.slice(idx + marker.length).split('?')[0];
+      void supabase.storage.from('craftsman-works').remove([storagePath]);
+    }
+  }
 
   if (loading) {
     return (
@@ -479,10 +606,16 @@ export default function CraftsmanProfile() {
             自己紹介・公開プロフィール
           </p>
 
-          {/* プロフィール写真プレビュー */}
-          <Field label="プロフィール写真（準備中）">
+          {/* プロフィール写真 */}
+          <Field label="プロフィール写真">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+              {/* タップで画像選択 */}
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={avatarUploading}
+                className="relative w-20 h-20 rounded-full bg-slate-100 border-2 border-slate-200 overflow-hidden flex items-center justify-center flex-shrink-0 active:opacity-75 disabled:opacity-60 transition"
+              >
                 {form.profile_image_url ? (
                   <img
                     src={form.profile_image_url}
@@ -491,14 +624,37 @@ export default function CraftsmanProfile() {
                     onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
                 ) : (
-                  <span className="text-2xl font-extrabold text-slate-400">{avatarLetter}</span>
+                  <span className="text-3xl font-extrabold text-slate-400">{avatarLetter}</span>
                 )}
-              </div>
-              <div className="flex-1 rounded-xl bg-slate-50 border border-slate-200 px-3 py-3">
-                <p className="text-xs font-bold text-slate-500">📷 画像アップロードは近日対応予定です</p>
-                <p className="mt-0.5 text-[11px] text-slate-400">現在は画像アップロード未対応です</p>
+                <div className="absolute bottom-0 left-0 right-0 bg-black/50 flex items-center justify-center py-1">
+                  {avatarUploading ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <span className="text-[9px] font-bold text-white">変更</span>
+                  )}
+                </div>
+              </button>
+              <div className="flex-1">
+                <p className="text-xs font-bold text-slate-700 mb-1.5">📷 顔写真があると安心感UP ⬆️</p>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  ✅ スマホで撮影OK<br />
+                  ✅ 写真は自動で軽量化されます<br />
+                  ✅ そのままスマホ写真を選んでOK
+                </p>
               </div>
             </div>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
+            {avatarError && (
+              <p className="mt-2 text-xs text-red-600 font-semibold bg-red-50 rounded-xl px-3 py-2">
+                {avatarError}
+              </p>
+            )}
           </Field>
 
           <div className="border-t border-slate-100 my-4" />
@@ -608,6 +764,89 @@ export default function CraftsmanProfile() {
               </p>
             )}
           </Field>
+        </div>
+
+        {/* ── 施工事例 ─────────────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-4">
+          <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-1">
+            施工事例
+          </p>
+          <p className="text-[11px] text-slate-400 mb-3">最大4枚 · 依頼者の参考になります</p>
+
+          {/* ヒントバナー */}
+          <div className="mb-3 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
+            <p className="text-xs font-bold text-amber-700">
+              💡 施工前後・得意な工事を載せると依頼が増えやすくなります
+            </p>
+            <p className="text-[11px] text-amber-600 mt-1">
+              ✅ そのままスマホ写真を選んでOK　·　写真は自動で軽量化されます
+            </p>
+          </div>
+
+          {/* グリッド */}
+          <div className="grid grid-cols-2 gap-2">
+            {works.map(work => (
+              <div
+                key={work.id}
+                className="relative aspect-square rounded-xl overflow-hidden bg-slate-100 border border-slate-200"
+              >
+                <img
+                  src={work.image_url}
+                  alt="施工事例"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleWorkDelete(work.id)}
+                  className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center active:opacity-70 transition"
+                  aria-label="削除"
+                >
+                  <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+            ))}
+
+            {works.length < 4 && (
+              <button
+                type="button"
+                onClick={() => worksInputRef.current?.click()}
+                disabled={worksUploading}
+                className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center gap-1.5 bg-slate-50 hover:bg-slate-100 transition active:opacity-70 disabled:opacity-50"
+              >
+                {worksUploading ? (
+                  <>
+                    <div className="w-6 h-6 border-2 border-slate-300 border-t-blue-600 rounded-full animate-spin" />
+                    <span className="text-[11px] text-slate-400">処理中...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-7 h-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    <span className="text-[11px] text-slate-400 font-semibold">写真を追加</span>
+                    <span className="text-[10px] text-slate-300">{works.length}/4</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+
+          <input
+            ref={worksInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleWorksChange}
+          />
+
+          {worksError && (
+            <p className="mt-2 text-xs text-red-600 font-semibold bg-red-50 rounded-xl px-3 py-2">
+              {worksError}
+            </p>
+          )}
         </div>
 
         {/* サポート */}
