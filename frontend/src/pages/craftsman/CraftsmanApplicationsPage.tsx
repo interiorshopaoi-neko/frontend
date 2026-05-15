@@ -150,19 +150,33 @@ function ContactPanel({
 
   if (state.kind === 'payment_required') {
     return (
-      <div className="border-t border-rose-100 bg-rose-50 px-4 py-3">
+      <div className="border-t border-rose-100 bg-rose-50 px-4 py-4 space-y-3">
         <div className="flex items-start gap-2">
           <span className="text-base leading-none mt-0.5">🔒</span>
           <div>
             <p className="text-xs font-extrabold text-rose-700 mb-0.5">
-              現在は無料枠がありません
+              無料枠がありません
             </p>
             <p className="text-[11px] text-rose-600 leading-relaxed">
-              正式版では決済後に連絡先を確認できます。<br />
-              お急ぎの場合は管理者までお問い合わせください。
+              決済機能は準備中です。<br />
+              お急ぎの場合は
+              <a href="/support" className="underline font-bold ml-0.5">お問い合わせ</a>
+              ください。
             </p>
           </div>
         </div>
+        {/* 紹介コード誘導 */}
+        <a
+          href="/craftsman/dashboard"
+          className="flex items-center gap-2 w-full rounded-xl bg-blue-50 border border-blue-200 px-3 py-2 hover:bg-blue-100 transition-colors"
+        >
+          <span className="text-sm">🎁</span>
+          <div>
+            <p className="text-[11px] font-extrabold text-blue-700">紹介コードで無料枠を増やせます</p>
+            <p className="text-[10px] text-blue-500">友人職人が登録すると +1件 → 管理画面へ</p>
+          </div>
+          <span className="text-blue-400 ml-auto text-xs">→</span>
+        </a>
       </div>
     );
   }
@@ -414,12 +428,21 @@ export default function CraftsmanApplicationsPage() {
             );
           }
           return (
-            <div className="rounded-2xl bg-slate-100 border border-slate-200 px-4 py-3 flex items-center gap-2">
-              <span className="text-base">🔒</span>
-              <div>
-                <p className="text-xs font-bold text-slate-600">無料枠を使い切りました</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">正式版では決済後に連絡先を確認できます</p>
+            <div className="rounded-2xl bg-slate-100 border border-slate-200 px-4 py-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-base">🔒</span>
+                <div>
+                  <p className="text-xs font-bold text-slate-600">無料枠を使い切りました</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">決済機能は準備中です</p>
+                </div>
               </div>
+              <a
+                href="/craftsman/dashboard"
+                className="flex items-center gap-1.5 text-[11px] font-bold text-blue-600 hover:text-blue-700"
+              >
+                <span>🎁</span>
+                <span>紹介コードで無料枠+1件 → 管理画面へ</span>
+              </a>
             </div>
           );
         })()}

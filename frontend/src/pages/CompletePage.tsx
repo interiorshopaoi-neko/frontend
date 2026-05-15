@@ -1,21 +1,21 @@
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Clock, MessageSquare, PhoneCall, Hammer } from 'lucide-react';
+import { CheckCircle, Clock, Mail, BadgeCheck, Hammer } from 'lucide-react';
 
 const NEXT_STEPS = [
   {
     icon: Clock,
-    title: '職人が内容を確認',
-    desc: '動画・写真を確認した職人が概算金額を提示します（通常1〜2営業日）',
+    title: '職人が動画・内容を確認',
+    desc: '対応可能な職人が内容を確認し、概算金額を提示します（早ければ当日中）',
   },
   {
-    icon: MessageSquare,
-    title: '職人から連絡',
-    desc: '条件が合えば、職人から直接ご連絡があります',
+    icon: Mail,
+    title: 'メールにてご連絡',
+    desc: '条件が合えば、職人からメールにてご連絡があります。電話・LINEの開示はありません',
   },
   {
-    icon: PhoneCall,
-    title: '成約・連絡先の開示',
-    desc: '成約後に職人の詳細な連絡先をご確認いただけます',
+    icon: BadgeCheck,
+    title: '成約・メールアドレスの開示',
+    desc: '気に入った職人を選んで成約。成約後に職人のメールアドレスをご確認いただけます',
   },
   {
     icon: Hammer,

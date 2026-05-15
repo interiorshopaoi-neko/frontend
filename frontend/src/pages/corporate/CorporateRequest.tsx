@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layers, Scissors, LayoutGrid, MessageSquare, Mail } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -43,11 +43,18 @@ const ROOM_CONDS = ['汚れ', 'めくれ', '傷', 'カビ', 'ペット臭', '不
 
 const TOTAL_STEPS = 6; // 動画/部屋/施工/エリア/詳細/メール
 
+// ── CSS Keyframes ──────────────────────────────────────────────────────────────
+
+const globalStyles = `
+@keyframes recBlink{0%,100%{opacity:1}50%{opacity:.2}}
+`;
+
 // ── PageShell ─────────────────────────────────────────────────────────────────
 
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center sm:justify-center sm:py-10 sm:px-4">
+      <style>{globalStyles}</style>
       <div className="w-full max-w-lg bg-white sm:rounded-3xl sm:shadow-2xl sm:shadow-slate-200/60 flex flex-col min-h-screen sm:min-h-0 overflow-hidden">
         {children}
       </div>
@@ -592,7 +599,7 @@ export default function CorporateRequest() {
       <PageShell>
         <PageHeader />
         <StepProgress step={1} />
-        <StepContent title="お部屋の動画を撮影してください" sub="10〜30秒でOK。壁・床・気になる箇所をゆっくり撮るだけ">
+        <StepContent title="こう撮るだけ" sub="動画で送ると、職人に伝わりやすい。">
 
           {/* ── 前回の依頼バナー ── */}
           {lastRequestId && (
@@ -617,32 +624,137 @@ export default function CorporateRequest() {
             </div>
           )}
 
-          {/* ── 撮影前チェックリスト ── */}
-          <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
-            <p className="text-xs font-bold text-amber-800 mb-1">撮影前に軽くご確認ください</p>
-            <p className="text-[11px] text-amber-700 mb-3 leading-relaxed">
-              動画は職人が内容確認に使います。個人情報が映らないよう、撮影前に少し片付けていただけると安心です。
-            </p>
-            <ul className="space-y-2">
-              {[
-                '郵便物・書類が映っていない',
-                '表札・住所が映っていない',
-                '顔や家族の姿が映っていない',
-                '車のナンバーが映っていない',
-                '貴重品など個人情報がわかる物を片付けた',
-              ].map(item => (
-                <li key={item} className="flex items-center gap-2.5">
-                  <span className="w-4 h-4 rounded border border-amber-300 bg-white flex-shrink-0 flex items-center justify-center">
-                    <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
-                      <path d="M2 5l2.5 2.5 3.5-4" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </span>
-                  <span className="text-xs text-amber-900">{item}</span>
-                </li>
-              ))}
-            </ul>
+          {/* ── ① HERO: HOW TO SHOOT + ランドスケープ撮影モック ── */}
+          <div className="mb-4 rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(160deg, #0f172a 0%, #1e293b 100%)' }}>
+            {/* ヘッダー */}
+            <div style={{ padding: '12px 16px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 3, height: 14, background: '#818cf8', borderRadius: 2 }} />
+                <span style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,.9)', letterSpacing: '0.08em' }}>HOW TO SHOOT</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(129,140,248,.18)', borderRadius: 20, padding: '3px 8px' }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 2v4M12 18v4"/>
+                </svg>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#a5b4fc' }}>横向き推奨</span>
+              </div>
+            </div>
+            {/* 16:9 ランドスケープ撮影モック（全幅） */}
+            <div style={{ padding: '10px 16px 14px' }}>
+              <div style={{
+                position: 'relative', width: '100%', paddingTop: '56.25%',
+                borderRadius: 10, background: '#0a0f1e',
+                border: '2px solid #334155', overflow: 'hidden',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+              }}>
+                <img src="/homepage/room-wide.jpg" alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.7 }} />
+                {/* 四隅コーナー */}
+                {([
+                  { top: 8, left: 8, borderTop: '2px solid rgba(255,255,255,.6)', borderLeft: '2px solid rgba(255,255,255,.6)' },
+                  { top: 8, right: 8, borderTop: '2px solid rgba(255,255,255,.6)', borderRight: '2px solid rgba(255,255,255,.6)' },
+                  { bottom: 8, left: 8, borderBottom: '2px solid rgba(255,255,255,.6)', borderLeft: '2px solid rgba(255,255,255,.6)' },
+                  { bottom: 8, right: 8, borderBottom: '2px solid rgba(255,255,255,.6)', borderRight: '2px solid rgba(255,255,255,.6)' },
+                ] as React.CSSProperties[]).map((style, i) => (
+                  <div key={i} style={{ position: 'absolute', width: 18, height: 18, ...style }} />
+                ))}
+                {/* REC バッジ */}
+                <div style={{ position: 'absolute', top: 10, right: 14, display: 'flex', alignItems: 'center', gap: 3, background: 'rgba(0,0,0,.6)', borderRadius: 6, padding: '3px 7px' }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', display: 'inline-block', animation: 'recBlink 1.2s ease-in-out infinite' }} />
+                  <span style={{ fontSize: 9, fontWeight: 800, color: 'white', letterSpacing: '0.05em' }}>REC</span>
+                </div>
+                {/* 撮影中ラベル */}
+                <div style={{ position: 'absolute', bottom: 10, left: 0, right: 0, textAlign: 'center' }}>
+                  <span style={{ background: 'rgba(255,255,255,.88)', borderRadius: 20, padding: '3px 12px', fontSize: 9, fontWeight: 700, color: '#0f172a' }}>部屋を一周しながら撮影中...</span>
+                </div>
+              </div>
+            </div>
           </div>
 
+          {/* ── ② 3ステップ ビジュアルカード ── */}
+          <div className="grid grid-cols-3 gap-2 mb-5">
+            {[
+              { img: '/homepage/room-wide.jpg', badge: '●REC', badgeColor: '#ef4444', label: '部屋を一周' },
+              { img: '/homepage/wall-damage.jpg', badge: '🔍 ZOOM', badgeColor: '#f59e0b', label: '傷を近くで' },
+              { img: '/homepage/room-wide.jpg', badge: '🚫', badgeColor: '#64748b', label: '個人情報\n映さない', dark: true },
+            ].map((card, i) => (
+              <div key={i} className="rounded-xl overflow-hidden border border-slate-200">
+                <div style={{ position: 'relative', paddingTop: '75%', background: '#e2e8f0' }}>
+                  <img
+                    src={card.img} alt=""
+                    style={{
+                      position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                      ...(card.dark ? { filter: 'brightness(0.35) saturate(0)' } : {}),
+                    }}
+                  />
+                  <div style={{ position: 'absolute', top: 4, left: 4, background: 'rgba(0,0,0,.55)', borderRadius: 4, padding: '1px 5px', display: 'flex', alignItems: 'center', gap: 2 }}>
+                    {i === 0 && <span style={{ width: 4, height: 4, borderRadius: '50%', background: card.badgeColor, display: 'inline-block' }} />}
+                    <span style={{ fontSize: 7, fontWeight: 800, color: 'white' }}>{i === 0 ? 'REC' : card.badge}</span>
+                  </div>
+                  {card.dark && (
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 22 }}>🚫</span>
+                    </div>
+                  )}
+                  <div style={{ position: 'absolute', top: 4, left: 0, right: 0, textAlign: 'center', display: 'none' }} />
+                  {/* step number */}
+                  <div style={{ position: 'absolute', bottom: 4, right: 5, width: 16, height: 16, borderRadius: '50%', background: 'rgba(129,140,248,.85)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: 8, fontWeight: 900, color: 'white' }}>{i + 1}</span>
+                  </div>
+                </div>
+                <div className="bg-white px-1.5 py-1.5 text-center">
+                  <p className="text-[9.5px] font-bold text-slate-600 leading-tight whitespace-pre-line">{card.label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── ③ GOOD / BAD ビジュアル比較 ── */}
+          <div className="mb-5 rounded-2xl overflow-hidden border border-slate-200">
+            <div className="grid grid-cols-2 divide-x divide-slate-200">
+              {/* GOOD */}
+              <div>
+                <div className="flex items-center gap-1 px-3 py-2 bg-emerald-50 border-b border-slate-200">
+                  <span className="text-emerald-500 text-[11px] font-extrabold">✓ GOOD</span>
+                </div>
+                <div className="space-y-0 divide-y divide-slate-100">
+                  {[
+                    { img: '/homepage/room-wide.jpg', label: '明るい・広角', filter: undefined },
+                    { img: '/homepage/room-wide.jpg', label: 'ゆっくり撮影', filter: 'saturate(0.7) brightness(0.92)' },
+                    { img: '/homepage/wall-damage.jpg', label: '傷をアップで', filter: undefined },
+                  ].map((row, i) => (
+                    <div key={i} className="flex items-center gap-2 px-2 py-1.5">
+                      <div style={{ position: 'relative', width: 44, height: 30, borderRadius: 4, overflow: 'hidden', flexShrink: 0 }}>
+                        <img src={row.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: row.filter }} />
+                      </div>
+                      <span className="text-[10px] font-semibold text-slate-600">{row.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* BAD */}
+              <div>
+                <div className="flex items-center gap-1 px-3 py-2 bg-red-50 border-b border-slate-200">
+                  <span className="text-red-500 text-[11px] font-extrabold">✗ BAD</span>
+                </div>
+                <div className="space-y-0 divide-y divide-slate-100">
+                  {[
+                    { img: '/homepage/room-wide.jpg', label: '暗い', filter: 'brightness(0.35) saturate(0.4)' },
+                    { img: '/homepage/room-wide.jpg', label: 'ブレる', filter: 'blur(3px) brightness(1.05)' },
+                    { img: '/homepage/wall-damage.jpg', label: '遠すぎ', filter: 'blur(4px) brightness(0.9)' },
+                  ].map((row, i) => (
+                    <div key={i} className="flex items-center gap-2 px-2 py-1.5">
+                      <div style={{ position: 'relative', width: 44, height: 30, borderRadius: 4, overflow: 'hidden', flexShrink: 0 }}>
+                        <img src={row.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: row.filter }} />
+                      </div>
+                      <span className="text-[10px] font-semibold text-slate-500">{row.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── ④ 動画アップロードエリア ── */}
           <label
             className={`flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-2xl px-6 py-10 cursor-pointer transition-all ${
               videoFile
@@ -669,27 +781,13 @@ export default function CorporateRequest() {
             <input type="file" accept="video/*" className="hidden" onChange={e => setVideoFile(e.target.files?.[0] ?? null)} />
           </label>
 
+          {/* ── ⑤ LP callout ── */}
           {!videoFile && (
-            <div className="mt-5 rounded-2xl bg-slate-50 border border-slate-100 px-4 py-4">
-              <p className="text-xs font-bold text-slate-500 mb-3">📌 撮影のポイント（3ステップ）</p>
-              <ul className="space-y-2.5">
-                {[
-                  { step: '①', title: '部屋をゆっくり一周',      desc: '壁・天井・全体が映るように撮影' },
-                  { step: '②', title: '壁・床を映す',             desc: '施工したい面をゆっくり映してください' },
-                  { step: '③', title: '気になる箇所を近くで撮る', desc: '傷・剥がれなど問題箇所はアップで' },
-                ].map(({ step: s, title, desc }) => (
-                  <li key={s} className="flex items-start gap-3">
-                    <span className="text-violet-500 font-extrabold text-xs mt-0.5 w-4 flex-shrink-0">{s}</span>
-                    <div>
-                      <p className="text-xs font-bold text-slate-700">{title}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              <p className="text-[11px] text-blue-600 mt-3 leading-relaxed">
-                💡 複数部屋の場合は、部屋ごとにゆっくり撮影してください。1本の動画にまとめてもOKです。
-              </p>
+            <div className="mt-4 flex items-center gap-3 bg-blue-50 rounded-xl px-4 py-3">
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 12, color: 'white', marginLeft: 2 }}>▶</span>
+              </div>
+              <p className="text-xs font-semibold text-blue-700 leading-relaxed">動画で送ると、職人が現場を正確に把握できます。複数部屋は1本にまとめてもOK。</p>
             </div>
           )}
         </StepContent>
@@ -909,19 +1007,30 @@ export default function CorporateRequest() {
     <PageShell>
       <PageHeader />
       <StepProgress step={7} />
-      <StepContent title="内容をご確認ください" sub="送信後に担当職人よりご連絡します" scrollable>
+      <StepContent title="内容をご確認ください" sub="送信後、住所はまだ共有されません。まだ契約ではありません。" scrollable>
+
+        {/* 安心バッジ */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {[
+            '✓ お客様完全無料',
+            '✓ 住所はまだ共有されません',
+            '✓ まだ契約ではありません',
+            '✓ 断っても費用なし',
+          ].map(t => (
+            <span key={t} className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-3 py-1">{t}</span>
+          ))}
+        </div>
 
         {/* 基本情報 */}
         <div className="rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden mb-4">
           {[
-            { label: '動画',     value: videoFile?.name ?? 'なし（スキップ）' },
-            { label: '施工内容', value: workType },
-            { label: 'エリア',   value: area },
-            { label: '連絡先',   value: 'メール' },
-            { label: '連絡先',   value: contactValue },
-          ].map(({ label, value }) => (
-            <div key={label} className="flex items-start gap-4 px-5 py-3.5 bg-white hover:bg-slate-50 transition-colors">
-              <p className="text-xs font-bold text-slate-400 w-20 flex-shrink-0 pt-0.5">{label}</p>
+            { label: '動画',        value: videoFile?.name ?? 'なし（スキップ）' },
+            { label: '施工内容',    value: workType },
+            { label: 'エリア',      value: area },
+            { label: '連絡先(メール)', value: contactValue },
+          ].map(({ label, value }, i) => (
+            <div key={i} className="flex items-start gap-4 px-5 py-3.5 bg-white hover:bg-slate-50 transition-colors">
+              <p className="text-xs font-bold text-slate-400 w-24 flex-shrink-0 pt-0.5">{label}</p>
               <p className="text-sm text-slate-800 break-all font-medium">{value || '—'}</p>
             </div>
           ))}
@@ -976,7 +1085,7 @@ export default function CorporateRequest() {
         <div className="rounded-2xl bg-violet-50 border border-violet-100 px-4 py-4 mb-2">
           <p className="text-xs font-bold text-violet-700 mb-2">📋 送信後の流れ</p>
           <ol className="space-y-1.5">
-            {['対応可能な職人が内容を確認します', '登録のメールアドレスにご連絡します', '概算金額をご案内します（無料）'].map((item, i) => (
+            {['対応可能な職人が動画・内容を確認します', 'メールアドレスに職人からご連絡があります（電話・LINEの開示なし）', '気に入った職人を選んで成約。お客様のご利用は完全無料です'].map((item, i) => (
               <li key={i} className="flex items-start gap-2">
                 <span className="text-xs font-extrabold text-violet-400 flex-shrink-0 w-4">{i + 1}.</span>
                 <span className="text-xs text-violet-700">{item}</span>
