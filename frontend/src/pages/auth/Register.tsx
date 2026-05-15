@@ -28,21 +28,22 @@ export default function Register({ onLogin }: Props) {
     setError('');
     setLoading(true);
     try {
-      // TODO: 本番APIに差し替える
-      // const { data } = await api.post('/auth/register', { name, email, password, role });
-      // onLogin(data.token, data.user);
-      console.log('[mock] register success', { name, email, role });
-      const mockUser = { id: 0, name, email, role } as import('../../types').User;
-      onLogin('mock-token', mockUser);
+      const { data } = await api.post('/auth/register', { name, email, password, role });
+      // メール確認が必要な場合
+      if (data.requiresConfirmation) {
+        setError('');
+        alert(data.message ?? '確認メールを送信しました。メールをご確認ください。');
+        setLoading(false);
+        return;
+      }
+      onLogin(data.token, data.user);
       if (role === 'customer' && fromLanding) {
         navigate('/customer/estimate/flow');
       } else {
         navigate(role === 'customer' ? '/customer' : '/craftsman/dashboard');
       }
     } catch (err: any) {
-      console.error('[mock] register error', err);
-      // TODO: 本番実装時に有効化
-      // setError(err.response?.data?.error ?? t('register_error'));
+      setError(err.response?.data?.error ?? t('register_error'));
     } finally {
       setLoading(false);
     }

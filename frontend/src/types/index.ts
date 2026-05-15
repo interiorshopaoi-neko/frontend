@@ -1,7 +1,7 @@
-export type Role = 'customer' | 'craftsman';
+export type Role = 'customer' | 'craftsman' | 'admin';
 
 export interface User {
-  id: number;
+  id: string;   // Supabase Auth UUID
   name: string;
   email: string;
   role: Role;
