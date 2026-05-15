@@ -84,6 +84,7 @@ function buildCustomerHtml(params: {
             <table cellpadding="0" cellspacing="0" role="presentation">
               ${['✅ お客様のご利用は完全無料です',
                  '✅ 断っても一切費用はかかりません',
+                 '✅ 工事代金は職人と直接お支払い（PRO MATCHは預かりません）',
                  '✅ しつこい営業連絡はありません',
                  '✅ 開示されるのはメールアドレスのみです',
                 ].map(t => `<tr><td style="font-size:13px;color:#1e40af;padding:3px 0;line-height:1.5;">${t}</td></tr>`).join('')}
@@ -229,6 +230,7 @@ export default async function handler(req: any, res: any) {
             '── 安心ポイント ──',
             '・お客様のご利用は完全無料です',
             '・断っても一切費用はかかりません',
+            '・工事代金は職人と直接お支払い（PRO MATCHは預かりません）',
             '・しつこい営業連絡はありません',
             '・開示されるのはメールアドレスのみです',
             '',

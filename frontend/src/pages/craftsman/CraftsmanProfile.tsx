@@ -111,18 +111,33 @@ function BoolToggle({
 export default function CraftsmanProfile() {
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const [form,    setForm]    = useState<ProfileForm>(DEFAULT_FORM);
-  const [loading, setLoading] = useState(true);
-  const [saving,  setSaving]  = useState(false);
-  const [saved,   setSaved]   = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
+  const [form,               setForm]               = useState<ProfileForm>(DEFAULT_FORM);
+  const [loading,            setLoading]            = useState(true);
+  const [saving,             setSaving]             = useState(false);
+  const [saved,              setSaved]              = useState(false);
+  const [error,              setError]              = useState<string | null>(null);
+  const [contractedCount,    setContractedCount]    = useState(0);
+  const [reviewPendingCount, setReviewPendingCount] = useState(0);
   const userId = getUserId();
 
   useEffect(() => {
     (async () => {
-      const { data: rows } = await supabase
-        .rpc('get_my_craftsman_profile', { p_user_id: userId });
+      const [{ data: rows }, { data: apps }] = await Promise.all([
+        supabase.rpc('get_my_craftsman_profile', { p_user_id: userId }),
+        supabase
+          .from('job_applications')
+          .select('is_contracted, review_requested_at, reviewed_at')
+          .eq('craftsman_id', userId),
+      ]);
       const data = rows?.[0] ?? null;
+
+      if (apps) {
+        const appRows = apps as Array<{ is_contracted: boolean | null; review_requested_at: string | null; reviewed_at: string | null }>;
+        setContractedCount(appRows.filter(a => a.is_contracted).length);
+        setReviewPendingCount(
+          appRows.filter(a => a.is_contracted && a.review_requested_at && !a.reviewed_at).length,
+        );
+      }
 
       if (data) {
         setForm({
@@ -278,14 +293,26 @@ export default function CraftsmanProfile() {
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-slate-50 px-3 py-2.5">
               <p className="text-[10px] text-slate-400">成約実績</p>
-              <p className="text-lg font-extrabold text-slate-900 leading-tight">0件</p>
+              <p className="text-lg font-extrabold text-slate-900 leading-tight">{contractedCount}件</p>
             </div>
             <div className="rounded-xl bg-slate-50 px-3 py-2.5">
-              <p className="text-[10px] text-slate-400">レビュー</p>
-              <p className="text-sm font-bold text-slate-500 leading-tight mt-0.5">まだありません</p>
+              <p className="text-[10px] text-slate-400">レビュー待ち</p>
+              {reviewPendingCount > 0 ? (
+                <p className="text-lg font-extrabold text-amber-500 leading-tight">{reviewPendingCount}件</p>
+              ) : (
+                <p className="text-sm font-bold text-slate-400 leading-tight mt-0.5">なし</p>
+              )}
             </div>
           </div>
-          <p className="mt-2.5 text-xs text-blue-600 font-semibold">
+          {reviewPendingCount > 0 && (
+            <div className="mt-2.5 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
+              <p className="text-xs font-bold text-amber-700">
+                ⭐ {reviewPendingCount}件のレビューが待っています —
+                <a href="/craftsman/applications" className="underline ml-1">応募管理から確認 →</a>
+              </p>
+            </div>
+          )}
+          <p className={`text-xs text-blue-600 font-semibold ${reviewPendingCount > 0 ? 'mt-2' : 'mt-2.5'}`}>
             💡 実績が増えると案件に選ばれやすくなります
           </p>
           <a

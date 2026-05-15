@@ -716,6 +716,8 @@ function RequestsList({ session }: { session: Session }) {
   const [notifiableCraftsmen, setNotifiableCraftsmen] = useState<NotifiableCraftsman[]>([]);
   const [sendingNotifyKey,   setSendingNotifyKey]   = useState<string | null>(null);
   const [notifySentMap,      setNotifySentMap]      = useState<Record<string, string>>({});
+  const [appCountMap,        setAppCountMap]        = useState<Record<string, number>>({});
+  const [contractedMap,      setContractedMap]      = useState<Record<string, number>>({});
 
   useEffect(() => {
     (async () => {
@@ -739,6 +741,27 @@ function RequestsList({ session }: { session: Session }) {
         .not('email', 'is', null)
         .neq('email', '');
       setNotifiableCraftsmen((data ?? []) as NotifiableCraftsman[]);
+    })();
+  }, []);
+
+  // 応募数・成約数を取得
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('job_applications')
+        .select('estimate_request_id, is_contracted');
+      if (data) {
+        const counts: Record<string, number> = {};
+        const contracted: Record<string, number> = {};
+        (data as Array<{ estimate_request_id: string; is_contracted: boolean | null }>).forEach(a => {
+          const rid = String(a.estimate_request_id ?? '');
+          if (!rid) return;
+          counts[rid] = (counts[rid] ?? 0) + 1;
+          if (a.is_contracted) contracted[rid] = (contracted[rid] ?? 0) + 1;
+        });
+        setAppCountMap(counts);
+        setContractedMap(contracted);
+      }
     })();
   }, []);
 
@@ -995,13 +1018,22 @@ function RequestsList({ session }: { session: Session }) {
               {displayRows.map((r) => {
                 const isStaleCard  = getFreshness(r.created_at).status === 'urgent';
                 const isNeglected  = r._elapsedHours / 24 >= 14;
+                const isVeryNew    = r._elapsedHours <= 2;
+                const todayStr2    = new Date().toISOString().slice(0, 10);
+                const isToday      = r.created_at.startsWith(todayStr2);
                 const sentTime = followupSentMap[r.id];
+                const appCount     = appCountMap[r.id] ?? 0;
+                const hasContracted = (contractedMap[r.id] ?? 0) > 0;
                 const cardBadge = sentTime
                   ? { emoji: '🔵', label: '確認メール送信済み', cls: 'bg-blue-50 text-blue-700 border-b border-blue-100' }
                   : isNeglected
                   ? { emoji: '⚫', label: '長期放置', cls: 'bg-slate-100 text-slate-600 border-b border-slate-200' }
                   : isStaleCard
                   ? { emoji: '🟡', label: '継続確認推奨', cls: 'bg-orange-50 text-orange-700 border-b border-orange-100' }
+                  : isVeryNew
+                  ? { emoji: '🆕', label: 'NEW 新着', cls: 'bg-rose-50 text-rose-700 border-b border-rose-100 font-extrabold' }
+                  : isToday
+                  ? { emoji: '✨', label: '本日新着', cls: 'bg-blue-50 text-blue-700 border-b border-blue-100' }
                   : { emoji: '🟢', label: '新しい案件', cls: 'bg-emerald-50 text-emerald-700 border-b border-emerald-100' };
                 return (
                 <div
@@ -1017,6 +1049,22 @@ function RequestsList({ session }: { session: Session }) {
                   <div className={`flex items-center gap-1.5 px-5 py-1.5 text-[11px] font-semibold ${cardBadge.cls}`}>
                     <span>{cardBadge.emoji}</span>
                     <span>{cardBadge.label}</span>
+                    <span className="ml-auto flex items-center gap-1.5">
+                      {hasContracted && (
+                        <span className="bg-emerald-600 text-white font-extrabold px-2 py-0.5 rounded-full text-[10px]">
+                          🎉 成約済み
+                        </span>
+                      )}
+                      {!hasContracted && (
+                        <span className={`font-bold px-2 py-0.5 rounded-full text-[10px] ${
+                          appCount === 0
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          応募 {appCount}件
+                        </span>
+                      )}
+                    </span>
                   </div>
 
                   {/* ── ① タグ行 ── */}
@@ -1079,6 +1127,42 @@ function RequestsList({ session }: { session: Session }) {
                     {r.memo && (
                       <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
                         <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">📝 {r.memo}</p>
+                      </div>
+                    )}
+
+                    {/* 動画サムネイル */}
+                    {r.video_url && (
+                      <div
+                        className="relative rounded-xl overflow-hidden bg-slate-900 cursor-pointer"
+                        onClick={e => { e.stopPropagation(); setVideoUrl(r.video_url!); }}
+                      >
+                        <video
+                          src={r.video_url}
+                          preload="metadata"
+                          className="w-full object-cover"
+                          style={{ maxHeight: '90px' }}
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                          <div className="w-9 h-9 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                            <svg className="w-4 h-4 text-violet-700 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M8 5v14l11-7z"/>
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="absolute top-2 left-2">
+                          <span className="text-[10px] font-bold text-white bg-violet-600 px-2 py-0.5 rounded-full">
+                            🎬 動画あり
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 応募ゼロ警告 */}
+                    {appCount === 0 && r.status !== 'done' && r._elapsedHours >= 4 && (
+                      <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2">
+                        <p className="text-xs font-bold text-red-700">
+                          ⚠️ 応募がありません — 職人への通知をご検討ください
+                        </p>
                       </div>
                     )}
 
