@@ -34,6 +34,20 @@ type FreeCredits = { remaining: number; bonus: number } | null;
 
 const DEMO: ApplicationRow[] = [
   {
+    // 成約済み（連絡先未開示）— 最上部に表示されるべきカード
+    id: 'demo-a0',
+    estimate_request_id: 'demo-0',
+    status: 'available',
+    price: 45000,
+    message: 'よろしくお願いします',
+    is_contracted: true,
+    contracted_at: new Date(Date.now() - 3600000).toISOString(),
+    review_requested_at: null,
+    reviewed_at: null,
+    created_at: new Date(Date.now() - 86400000).toISOString(),
+    estimate_requests: { work_type: 'クロス全面張替え', area: '前橋市' },
+  },
+  {
     id: 'demo-a1',
     estimate_request_id: 'demo-1',
     status: 'available',
@@ -43,23 +57,36 @@ const DEMO: ApplicationRow[] = [
     contracted_at: null,
     review_requested_at: null,
     reviewed_at: null,
-    created_at: new Date(Date.now() - 86400000).toISOString(),
+    created_at: new Date(Date.now() - 172800000).toISOString(),
     estimate_requests: { work_type: 'クロス張替え', area: '太田市' },
   },
   {
+    // レビュー待ち
     id: 'demo-a2',
     estimate_request_id: 'demo-2',
     status: 'available',
     price: 28000,
     message: '午前中スタート希望です',
     is_contracted: true,
-    contracted_at: new Date(Date.now() - 172800000).toISOString(),
+    contracted_at: new Date(Date.now() - 604800000).toISOString(),
     review_requested_at: new Date(Date.now() - 86400000).toISOString(),
     reviewed_at: null,
-    created_at: new Date(Date.now() - 259200000).toISOString(),
+    created_at: new Date(Date.now() - 691200000).toISOString(),
     estimate_requests: { work_type: '床CF張替え', area: '伊勢崎市' },
   },
 ];
+
+// ─── Sort helper ──────────────────────────────────────────────────────────────
+
+function sortApps(apps: ApplicationRow[]): ApplicationRow[] {
+  const priority = (a: ApplicationRow): number => {
+    if (a.is_contracted && !a.review_requested_at) return 0; // 成約中（TOP）
+    if (a.review_requested_at && !a.reviewed_at)  return 1; // レビュー待ち
+    if (a.reviewed_at)                             return 2; // 完了済み
+    return 3;                                                // 応募中
+  };
+  return [...apps].sort((a, b) => priority(a) - priority(b));
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -67,21 +94,21 @@ function StatusBadge({ app }: { app: ApplicationRow }) {
   if (app.reviewed_at) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-xs font-bold text-green-700">
-        ⭐ 実績確定
+        ✅ 工事完了・実績確定
       </span>
     );
   }
-  if (app.review_requested_at) {
+  if (app.review_requested_at && !app.reviewed_at) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-700">
-        📝 レビュー待ち
+        ⭐ レビュー待ち
       </span>
     );
   }
-  if (app.is_contracted) {
+  if (app.is_contracted && !app.review_requested_at) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700">
-        🤝 成約済み
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-extrabold text-emerald-700">
+        🎉 成約済み
       </span>
     );
   }
@@ -104,31 +131,76 @@ function ContactPanel({
   appId,
   craftsmanId,
   state,
+  freeCredits,
   onReveal,
 }: {
-  appId:       string;
-  craftsmanId: string;
-  state:       ContactState;
-  onReveal:    (appId: string, craftsmanId: string) => void;
+  appId:        string;
+  craftsmanId:  string;
+  state:        ContactState;
+  freeCredits:  FreeCredits;
+  onReveal:     (appId: string, craftsmanId: string) => void;
 }) {
+  const [copied,    setCopied]    = useState(false);
+  const [contacted, setContacted] = useState(false);
+
   if (state.kind === 'unlocked') {
+    const handleCopy = () => {
+      navigator.clipboard.writeText(state.value).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      });
+    };
+
     return (
-      <div className="border-t border-blue-100 bg-blue-50 px-4 py-3">
-        <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wide mb-1.5">
+      <div className="border-t border-emerald-100 bg-emerald-50 px-4 py-4 space-y-3">
+        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">
           依頼者の連絡先
         </p>
-        <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+
+        {/* Email display */}
+        <div className="flex items-center gap-2 bg-white rounded-xl border border-emerald-200 px-3 py-2.5">
+          <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
           </svg>
-          <a
-            href={`mailto:${state.value}`}
-            className="text-sm font-extrabold text-blue-700 hover:underline break-all"
-          >
+          <span className="text-base font-extrabold text-slate-900 break-all flex-1">
             {state.value}
-          </a>
+          </span>
+          <button
+            onClick={handleCopy}
+            className="flex-shrink-0 text-[11px] font-bold text-emerald-600 hover:text-emerald-800 transition"
+          >
+            {copied ? '✅ コピー済み' : 'コピー'}
+          </button>
         </div>
-        <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
+
+        {/* mailto button */}
+        <a
+          href={`mailto:${state.value}`}
+          className="flex items-center justify-center gap-2 w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-2.5 text-sm font-extrabold transition active:scale-[0.98] shadow-sm"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+          メールを送る
+        </a>
+
+        {/* 連絡済みチェック */}
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={contacted}
+            onChange={e => setContacted(e.target.checked)}
+            className="w-4 h-4 accent-emerald-500 rounded"
+          />
+          <span className="text-xs font-bold text-slate-600">
+            📬 連絡済みにする
+          </span>
+          {contacted && (
+            <span className="text-[10px] text-emerald-600 font-bold">（確認済み）</span>
+          )}
+        </label>
+
+        <p className="text-[10px] text-slate-400 leading-relaxed">
           ※ まずはメールで日程・詳細をご確認ください
         </p>
       </div>
@@ -204,9 +276,33 @@ function ContactPanel({
     return null; // 成約前は表示しない
   }
 
-  // idle: ボタン表示
+  // idle: 事前情報 + ボタン表示
+  const totalCredits = freeCredits ? freeCredits.remaining + freeCredits.bonus : null;
+
   return (
-    <div className="border-t border-slate-100 px-4 py-3">
+    <div className="border-t border-slate-100 px-4 py-4 space-y-3">
+      {/* 事前情報 */}
+      <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-3 space-y-1.5">
+        {totalCredits !== null && (
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-slate-500">無料枠残り</span>
+            <span className="text-[11px] font-extrabold text-emerald-600">{totalCredits} 件</span>
+          </div>
+        )}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-slate-400">•</span>
+          <span className="text-[11px] text-slate-600">今回1件消費します</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-slate-400">•</span>
+          <span className="text-[11px] text-slate-600">開示後は取り消せません</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-slate-400">•</span>
+          <span className="text-[11px] text-slate-600">成約時のみ手数料</span>
+        </div>
+      </div>
+
       <button
         onClick={() => onReveal(appId, craftsmanId)}
         className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-xs font-extrabold transition active:scale-[0.98] shadow-sm shadow-blue-200"
@@ -216,12 +312,6 @@ function ContactPanel({
         </svg>
         連絡先を確認する
       </button>
-      <p className="text-[10px] text-slate-400 text-center mt-1.5 leading-relaxed">
-        確認時に無料枠を1件消費します · メールアドレスのみ開示
-      </p>
-      <p className="text-[10px] text-slate-300 text-center mt-0.5 leading-relaxed">
-        無料枠がない場合、今後は決済が必要になります（現在準備中）
-      </p>
     </div>
   );
 }
@@ -241,6 +331,9 @@ export default function CraftsmanApplicationsPage() {
   // 連絡先開示の状態管理（application_id → ContactState）
   const [contactStates, setContactStates] =
     useState<Map<string, ContactState>>(new Map());
+
+  // 工事完了ボタンのローディング状態
+  const [reporting, setReporting] = useState<string | null>(null);
 
   const setContact = useCallback((appId: string, state: ContactState) => {
     setContactStates(prev => new Map(prev).set(appId, state));
@@ -356,8 +449,50 @@ export default function CraftsmanApplicationsPage() {
     }
   }, [contactStates, setContact]);
 
+  // ── 工事完了報告ハンドラ ────────────────────────────────────────────────────
+  const handleReportComplete = useCallback(async (app: ApplicationRow) => {
+    if (reporting === app.id) return;
+    setReporting(app.id);
+
+    try {
+      const { error } = await supabase.rpc('report_work_complete', {
+        p_application_id: app.id,
+      });
+      if (error) {
+        console.error('[report_work_complete] error:', error);
+        setReporting(null);
+        return;
+      }
+
+      // 楽観的更新: review_requested_at をセット
+      setApps(prev =>
+        prev.map(a =>
+          a.id === app.id
+            ? { ...a, review_requested_at: new Date().toISOString() }
+            : a
+        )
+      );
+
+      // fire-and-forget: レビュー依頼通知
+      fetch('/api/notify-review-request', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          request_id:     app.estimate_request_id,
+          application_id: app.id,
+        }),
+      }).catch(() => { /* ignore */ });
+    } catch (err) {
+      console.error('[report_work_complete] fetch error:', err);
+    } finally {
+      setReporting(null);
+    }
+  }, [reporting]);
+
   const contractedCount = apps.filter(a => a.is_contracted).length;
   const reviewedCount   = apps.filter(a => a.reviewed_at).length;
+
+  const sortedApps = sortApps(apps);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -451,7 +586,7 @@ export default function CraftsmanApplicationsPage() {
           <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500 text-sm">
             読み込み中...
           </div>
-        ) : apps.length === 0 ? (
+        ) : sortedApps.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center shadow-sm">
             <p className="text-3xl mb-2">📭</p>
             <p className="text-sm font-bold text-slate-700 mb-4">まだ応募した案件がありません</p>
@@ -464,16 +599,34 @@ export default function CraftsmanApplicationsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {apps.map(app => {
+            {sortedApps.map(app => {
               const workType  = app.estimate_requests?.work_type ?? '内装工事';
               const city      = app.estimate_requests?.area ?? 'エリア未設定';
               const cState    = contactStates.get(app.id) ?? { kind: 'idle' };
+              const isActiveContracted = app.is_contracted && !app.review_requested_at;
 
               return (
                 <article
                   key={app.id}
-                  className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden"
+                  className={[
+                    'bg-white rounded-3xl border shadow-sm overflow-hidden',
+                    isActiveContracted
+                      ? 'border-emerald-300 ring-2 ring-emerald-400'
+                      : 'border-slate-200',
+                  ].join(' ')}
                 >
+                  {/* ── 成約バナー（フル幅）── */}
+                  {isActiveContracted && (
+                    <div className="bg-gradient-to-r from-emerald-500 to-green-600 px-4 py-3">
+                      <p className="text-sm font-extrabold text-white leading-snug">
+                        🎉 依頼者があなたを選びました！
+                      </p>
+                      <p className="text-[11px] text-emerald-100 mt-0.5">
+                        まずはメールでご連絡ください
+                      </p>
+                    </div>
+                  )}
+
                   <div className="px-4 pt-4 pb-3">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div>
@@ -518,16 +671,46 @@ export default function CraftsmanApplicationsPage() {
                       appId={app.id}
                       craftsmanId={craftsmanId}
                       state={cState}
+                      freeCredits={freeCredits}
                       onReveal={handleReveal}
                     />
                   )}
 
-                  {/* ── 成約済み: レビュー案内（連絡先開示とは別）── */}
-                  {app.is_contracted && !app.reviewed_at && (
-                    <div className="border-t border-slate-100 px-4 py-3 bg-amber-50">
+                  {/* ── レビュー待ちメッセージ ── */}
+                  {app.review_requested_at && !app.reviewed_at && (
+                    <div className="border-t border-amber-100 bg-amber-50 px-4 py-3">
                       <p className="text-xs text-amber-700 font-bold">
-                        📝 施工完了後にレビューを受け取ると実績として表示されます
+                        ⭐ 依頼者がレビューを入力できます — まもなく実績に反映されます
                       </p>
+                    </div>
+                  )}
+
+                  {/* ── 完了・レビュー取得済みメッセージ ── */}
+                  {app.reviewed_at && (
+                    <div className="border-t border-green-100 bg-green-50 px-4 py-3">
+                      <p className="text-xs text-green-700 font-bold">
+                        ✅ 工事完了 · ⭐ レビュー取得済み — 実績として登録されました
+                      </p>
+                    </div>
+                  )}
+
+                  {/* ── 成約中: 工事完了報告ボタン ── */}
+                  {isActiveContracted && (
+                    <div className="border-t border-emerald-100 px-4 py-3">
+                      <button
+                        onClick={() => handleReportComplete(app)}
+                        disabled={reporting === app.id}
+                        className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl py-2.5 text-xs font-extrabold transition active:scale-[0.98] shadow-sm"
+                      >
+                        {reporting === app.id ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                            送信中...
+                          </>
+                        ) : (
+                          '✅ 工事完了を報告する'
+                        )}
+                      </button>
                     </div>
                   )}
                 </article>
