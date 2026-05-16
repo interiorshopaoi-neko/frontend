@@ -433,7 +433,8 @@ export default function HelpRequestPage() {
             <span className="text-xs bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-full">任意</span>
           </div>
           <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-            今の現場の雰囲気が分かる写真があると、職人が応募しやすくなります。
+            今の現場の雰囲気が分かる写真があると、職人が応募しやすくなります。<br />
+            その場で撮影しても、アルバムから選んでも大丈夫です。
           </p>
 
           {/* サムネイルプレビュー */}
@@ -462,11 +463,11 @@ export default function HelpRequestPage() {
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              写真を追加（最大3枚）
+              写真を選択・撮影（最大3枚）
               <input
                 type="file"
                 accept="image/*"
-                capture="environment"
+                multiple
                 className="hidden"
                 onChange={e => {
                   const files = Array.from(e.target.files ?? []);
