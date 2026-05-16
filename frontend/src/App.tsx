@@ -35,6 +35,7 @@ import TermsPage   from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import LegalPage   from './pages/LegalPage';
 import RequestExtraInfoPage from './pages/corporate/RequestExtraInfoPage';
+import AuthConfirmed from './pages/auth/AuthConfirmed';
 
 // ─── 紹介コード捕捉（モジュール起動時 — React Router リダイレクト前に実行）────
 {
@@ -163,6 +164,9 @@ export default function App() {
         <Route path="/craftsman/apply/:id"    element={<CraftsmanApplyPage />} />
         <Route path="/craftsman/applications" element={<CraftsmanApplicationsPage />} />
         <Route path="/tools" element={<ToolsPage />} />
+
+        {/* 認証フロー */}
+        <Route path="/auth/confirmed" element={<AuthConfirmed />} />
 
         {/* 公開ページ */}
         <Route path="/complete"   element={<CompletePage />} />

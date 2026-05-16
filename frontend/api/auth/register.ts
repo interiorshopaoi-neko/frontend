@@ -74,6 +74,30 @@ export default async function handler(req: any, res: any) {
 
     // メール確認が必要な場合: access_token が null になる
     const token = data.access_token ?? data.session?.access_token ?? null;
+
+    // role === 'craftsman' のとき craftsmen テーブルに事前 INSERT（確認前でも行を作っておく）
+    // Prefer: resolution=ignore-duplicates で重複 INSERT を防ぐ
+    if (role === 'craftsman' && data.user?.id) {
+      await fetch(
+        `${SUPABASE_URL}/rest/v1/craftsmen`,
+        {
+          method: 'POST',
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+            Prefer: 'resolution=ignore-duplicates',
+          },
+          body: JSON.stringify({
+            user_id: data.user.id,
+            full_name: name,
+            email: email,
+            free_credits_remaining: 2,
+            referral_bonus_credits: 0,
+          }),
+        }
+      ).catch(err => console.warn('[register] craftsmen insert failed:', err));
+    }
+
     if (!token) {
       res.status(200).json({
         requiresConfirmation: true,

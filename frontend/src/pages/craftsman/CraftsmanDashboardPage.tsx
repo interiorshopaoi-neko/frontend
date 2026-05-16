@@ -161,9 +161,25 @@ function SummaryCard({ icon, value, label, accent }: {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+async function ensureCraftsmanProfile(userId: string, userName: string, userEmail: string) {
+  const { error } = await supabase
+    .from('craftsmen')
+    .upsert(
+      {
+        user_id: userId,
+        full_name: userName,
+        email: userEmail,
+        free_credits_remaining: 2,
+        referral_bonus_credits: 0,
+      },
+      { onConflict: 'user_id', ignoreDuplicates: true }
+    );
+  if (error) console.warn('[ensureCraftsmanProfile] error:', error);
+}
+
 export default function CraftsmanDashboardPage() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [apps,        setApps]        = useState<DashboardRow[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [isDemo,      setIsDemo]      = useState(false);
@@ -171,7 +187,8 @@ export default function CraftsmanDashboardPage() {
   const [reporting,   setReporting]   = useState<string | null>(null); // appId
   const [freeCredits,  setFreeCredits]  = useState<{ remaining: number; bonus: number } | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(null);
-  const userId = getUserId();
+  // localStorage の user.id を優先し、なければ useAuth の user.id を使う
+  const userId = getUserId() || (user?.id ?? '');
 
   const handleLogout = () => {
     logout();
@@ -247,8 +264,12 @@ export default function CraftsmanDashboardPage() {
         .order('created_at', { ascending: false });
 
       if (appError || !appData || appData.length === 0) {
-        // 0件は空状態。DEMO に落ちない
         if (appError) console.error('[CraftsmanDashboardPage] fetch error:', appError);
+        // craftsmen テーブルに row が存在しない可能性があるため自動生成を試みる
+        if (user?.id) {
+          await ensureCraftsmanProfile(user.id, user.name ?? '', user.email ?? '');
+        }
+        // 0件は空状態。DEMO には落ちない（security/P1）
         setLoading(false);
         return;
       }
@@ -450,8 +471,9 @@ export default function CraftsmanDashboardPage() {
         {/* カード一覧 */}
         <div className="px-4 mt-4 space-y-3">
           {loading ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-slate-400 text-sm">
-              読み込み中...
+            <div className="bg-white rounded-2xl border border-slate-200 p-10 flex flex-col items-center justify-center gap-3">
+              <div className="w-7 h-7 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+              <p className="text-slate-400 text-sm">読み込み中...</p>
             </div>
           ) : filtered.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center shadow-sm">
