@@ -300,17 +300,12 @@ export default function CraftsmanProfile() {
   // ── 施工事例アップロード ──────────────────────────────────────────────────────
   async function handleWorksChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-<<<<<<< HEAD
     if (!file) return;
     e.target.value = '';
     if (works.length >= 4) {
       setWorksError('施工事例は最大4枚までです。削除してから追加してください。');
       return;
     }
-=======
-    if (!file || works.length >= 4) return;
-    e.target.value = '';
->>>>>>> e0660cb (feat(phase40): プロフィール写真・施工事例アップロード機能を追加)
     setWorksUploading(true);
     setWorksError(null);
     try {
@@ -333,7 +328,6 @@ export default function CraftsmanProfile() {
       setWorks(prev => [...prev, row as WorkItem]);
     } catch (err: unknown) {
       console.error(err);
-<<<<<<< HEAD
       // DBトリガーエラー（4枚制限）を検知
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('施工事例は最大4枚') || msg.includes('P0001')) {
@@ -341,9 +335,6 @@ export default function CraftsmanProfile() {
       } else {
         setWorksError('アップロードに失敗しました。もう一度お試しください。');
       }
-=======
-      setWorksError('アップロードに失敗しました。もう一度お試しください。');
->>>>>>> e0660cb (feat(phase40): プロフィール写真・施工事例アップロード機能を追加)
     } finally {
       setWorksUploading(false);
     }

@@ -41,43 +41,6 @@ export function AdminUnauthorized() {
   );
 }
 
-// ── Admin role ガード ─────────────────────────────────────────────────────────
-// app_metadata.role（サーバーサイド設定・改ざん不可）を優先し、
-// user_metadata.role（旧設定との互換）もフォールバックで確認する。
-export function isAdminRole(session: Session | null): boolean {
-  if (!session) return false;
-  const u = session.user;
-  return (
-    u.app_metadata?.role === 'admin' ||
-    u.user_metadata?.role === 'admin'
-  );
-}
-
-// ── 権限なし画面 ──────────────────────────────────────────────────────────────
-export function AdminUnauthorized() {
-  const handleLogout = () => supabase.auth.signOut();
-  return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm text-center">
-        <div className="inline-flex w-14 h-14 rounded-2xl bg-red-100 items-center justify-center mb-4">
-          <span className="text-2xl">🚫</span>
-        </div>
-        <h1 className="text-lg font-bold text-slate-900 mb-1">管理者権限がありません</h1>
-        <p className="text-sm text-slate-500 mb-6">
-          このページは管理者専用です。<br />
-          別のアカウントでログインしてください。
-        </p>
-        <button
-          onClick={handleLogout}
-          className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-700 transition active:scale-95 text-sm"
-        >
-          ログアウトして戻る
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ── AdminLogin ────────────────────────────────────────────────────────────────
 
 export function AdminLogin() {
