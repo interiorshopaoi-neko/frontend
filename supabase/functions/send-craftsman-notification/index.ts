@@ -277,8 +277,8 @@ serve(async (req) => {
       });
     }
 
-    const logoUrl  = 'https://frontend-alpha-gray-75.vercel.app/logo-full.png';
-    const ctaUrl   = 'https://frontend-alpha-gray-75.vercel.app/craftsman/jobs';
+    const logoUrl  = 'https://promatch-app.jp/logo-full.png';
+    const ctaUrl   = 'https://promatch-app.jp/craftsman/jobs';
     const estimate = calcEstimate(work_type, room_size, size_note, rooms);
 
     const res = await fetch('https://api.resend.com/emails', {
