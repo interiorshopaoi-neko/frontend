@@ -15,6 +15,21 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY
                        || process.env.VITE_SUPABASE_ANON_KEY
                        || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+// 管理者通知設定を取得（失敗時はデフォルト true）
+async function getAdminNotificationEnabled(key: string): Promise<boolean> {
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/admin_notification_settings?select=${key}&id=eq.1&limit=1`,
+      { headers: { apikey: SUPABASE_ANON_KEY!, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
+    );
+    if (!r.ok) return true;
+    const rows = await r.json() as Array<Record<string, boolean>>;
+    return rows?.[0]?.[key] !== false; // undefined も true として扱う
+  } catch {
+    return true; // エラー時はデフォルトで通知する
+  }
+}
+
 function escHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
@@ -47,37 +62,40 @@ export default async function handler(req: any, res: any) {
   const safeMessage  = String(message ?? '（コメントなし）');
   const listUrl      = `${SITE_URL}/craftsman/help-list`;
 
-  // 管理者通知
-  const adminBody = [
-    '助っ人募集に新しい応募がありました。',
-    '',
-    `工事内容　：${safeWorkType}`,
-    `エリア　　：${safeArea}`,
-    `作業日　　：${safeWorkDate}`,
-    `応募者ID　：${craftsman_id ?? '—'}`,
-    `メッセージ：${safeMessage}`,
-    `request_id：${request_id ?? '—'}`,
-    '',
-    '▼ 助っ人一覧',
-    listUrl,
-  ].join('\n');
+  // 管理者通知（設定がONの場合のみ）
+  const adminEnabled = await getAdminNotificationEnabled('notify_helper_application');
+  if (adminEnabled) {
+    const adminBody = [
+      '助っ人募集に新しい応募がありました。',
+      '',
+      `工事内容　：${safeWorkType}`,
+      `エリア　　：${safeArea}`,
+      `作業日　　：${safeWorkDate}`,
+      `応募者ID　：${craftsman_id ?? '—'}`,
+      `メッセージ：${safeMessage}`,
+      `request_id：${request_id ?? '—'}`,
+      '',
+      '▼ 助っ人一覧',
+      listUrl,
+    ].join('\n');
 
-  try {
-    await resend.emails.send({
-      from:    ADMIN_FROM,
-      to:      ['interior.shop.aoi@gmail.com'],
-      subject: '【PRO MATCH】助っ人募集に応募がありました',
-      text:    adminBody,
-    });
-  } catch (err) {
-    console.error('[notify-helper-application] 管理者通知失敗:', err);
+    try {
+      await resend.emails.send({
+        from:    ADMIN_FROM,
+        to:      ['interior.shop.aoi@gmail.com'],
+        subject: '【PRO MATCH】助っ人募集に応募がありました',
+        text:    adminBody,
+      });
+    } catch (err) {
+      console.error('[notify-helper-application] 管理者通知失敗:', err);
+    }
   }
 
   // 募集主への通知（craftsman_id → craftsmenテーブルのemail取得）
   if (requester_craftsman_id && typeof requester_craftsman_id === 'string') {
     try {
       const sbRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/craftsmen?select=email,name&user_id=eq.${encodeURIComponent(requester_craftsman_id)}&limit=1`,
+        `${SUPABASE_URL}/rest/v1/craftsmen?select=email,full_name&user_id=eq.${encodeURIComponent(requester_craftsman_id)}&limit=1`,
         {
           headers: {
             'apikey':        SUPABASE_ANON_KEY,
@@ -87,7 +105,7 @@ export default async function handler(req: any, res: any) {
       );
 
       if (sbRes.ok) {
-        const rows = await sbRes.json() as Array<{ email?: string; name?: string }>;
+        const rows = await sbRes.json() as Array<{ email?: string; full_name?: string }>;
         const requesterEmail = rows?.[0]?.email;
 
         if (requesterEmail && requesterEmail.includes('@')) {

@@ -109,7 +109,7 @@ export default async function handler(req: any, res: any) {
     }
 
     const applicantRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/craftsmen?select=email,name&user_id=eq.${encodeURIComponent(applicantId)}&limit=1`,
+      `${SUPABASE_URL}/rest/v1/craftsmen?select=email,full_name&user_id=eq.${encodeURIComponent(applicantId)}&limit=1`,
       {
         headers: {
           'apikey':        SUPABASE_ANON_KEY,
@@ -128,7 +128,7 @@ export default async function handler(req: any, res: any) {
     let requesterEmail = '';
     if (requesterCraftsmanId) {
       const requesterRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/craftsmen?select=email,name&user_id=eq.${encodeURIComponent(requesterCraftsmanId)}&limit=1`,
+        `${SUPABASE_URL}/rest/v1/craftsmen?select=email,full_name&user_id=eq.${encodeURIComponent(requesterCraftsmanId)}&limit=1`,
         {
           headers: {
             'apikey':        SUPABASE_ANON_KEY,

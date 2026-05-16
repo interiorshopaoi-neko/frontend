@@ -138,6 +138,13 @@ function AdminDashboardPageContent({ session }: { session: Session }) {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDemo, setIsDemo] = useState(false);
+  const [notifSettings, setNotifSettings] = useState({
+    notify_helper_application: true,
+    notify_helper_approved: true,
+    notify_new_request: true,
+  });
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifLoaded, setNotifLoaded] = useState(false);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -171,6 +178,26 @@ function AdminDashboardPageContent({ session }: { session: Session }) {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    supabase.from('admin_notification_settings').select('*').eq('id', 1).single()
+      .then(({ data }) => {
+        if (data) setNotifSettings({
+          notify_helper_application: data.notify_helper_application,
+          notify_helper_approved: data.notify_helper_approved,
+          notify_new_request: data.notify_new_request,
+        });
+        setNotifLoaded(true);
+      });
+  }, [session]);
+
+  async function saveNotifSettings() {
+    setNotifLoading(true);
+    await supabase.from('admin_notification_settings')
+      .upsert({ id: 1, ...notifSettings, updated_at: new Date().toISOString() });
+    setNotifLoading(false);
+  }
 
   // ── Derived metrics ────────────────────────────────────────────────────────
   const todayRequests = requests.filter(r => r.created_at.startsWith(today));
@@ -482,6 +509,37 @@ function AdminDashboardPageContent({ session }: { session: Session }) {
             </div>
           </div>
         </section>
+
+        {/* ── 通知設定 ── */}
+        {notifLoaded && (
+          <section className="max-w-2xl mx-auto px-4 py-6">
+            <h2 className="text-base font-extrabold text-slate-700 mb-3">管理者通知設定</h2>
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+              {([
+                ['notify_new_request',       '新規見積もり依頼'],
+                ['notify_helper_application','助っ人応募'],
+                ['notify_helper_approved',   '助っ人承認'],
+              ] as const).map(([key, label]) => (
+                <label key={key} className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notifSettings[key]}
+                    onChange={e => setNotifSettings(prev => ({ ...prev, [key]: e.target.checked }))}
+                    className="w-4 h-4 accent-blue-600"
+                  />
+                  <span className="text-sm text-slate-700">{label}の通知を受け取る</span>
+                </label>
+              ))}
+              <button
+                onClick={saveNotifSettings}
+                disabled={notifLoading}
+                className="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition"
+              >
+                {notifLoading ? '保存中...' : '設定を保存'}
+              </button>
+            </div>
+          </section>
+        )}
 
         <p className="text-center text-[11px] text-slate-300 pb-6">
           PRO MATCH 管理画面 · データ取得: estimate_requests / craftsmen / job_applications

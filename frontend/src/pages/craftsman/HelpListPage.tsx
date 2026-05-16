@@ -555,11 +555,11 @@ export default function HelpListPage() {
     if (craftsmanIds.length > 0) {
       const { data: craftsmenData } = await supabase
         .from('craftsmen')
-        .select('user_id, name, email')
+        .select('user_id, full_name, email')
         .in('user_id', craftsmanIds);
       if (craftsmenData) {
-        for (const c of craftsmenData as Array<{ user_id: string; name: string; email: string }>) {
-          craftsmanMap[c.user_id] = { name: c.name, email: c.email };
+        for (const c of craftsmenData as Array<{ user_id: string; full_name: string; email: string }>) {
+          craftsmanMap[c.user_id] = { name: c.full_name, email: c.email };
         }
       }
     }
