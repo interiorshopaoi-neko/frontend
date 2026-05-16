@@ -776,6 +776,9 @@ export default function CorporateRequest() {
                   <p className="text-xs text-slate-400 mt-1">壁・床・気になる箇所をゆっくり撮影してください</p>
                 </div>
                 <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">MP4 / MOV / その他動画形式</span>
+                <p className="text-[11px] text-slate-400 text-center leading-relaxed px-2">
+                  10〜15秒の短い動画がおすすめです。長い動画はアップロードや表示に時間がかかる場合があります。
+                </p>
               </>
             )}
             <input type="file" accept="video/*" className="hidden" onChange={e => setVideoFile(e.target.files?.[0] ?? null)} />

@@ -169,7 +169,7 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                     >
                       <video
                         src={job.video_url}
-                        preload="metadata"
+                        preload="none"
                         className="w-full h-36 object-cover opacity-70"
                         muted
                         playsInline

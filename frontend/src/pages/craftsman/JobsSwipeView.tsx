@@ -159,7 +159,7 @@ function SwipeSlide({ job, idx, total, applied, submitting, onApply }: SlideProp
           ref={videoRef}
           src={job.video_url}
           className="absolute inset-0 w-full h-full object-cover"
-          playsInline muted loop preload="metadata"
+          playsInline muted preload="none"
         />
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-black flex items-center justify-center">

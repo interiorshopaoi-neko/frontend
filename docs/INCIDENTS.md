@@ -145,6 +145,59 @@ API が「成功」を返しているのに、実際にはメールが届いて�
 
 ---
 
+## インシデント #6：Supabase Cached Egress が無料枠（5GB）を超過
+
+> 発生：2026年5月16日（Phase54 対応）
+
+### 何が起きたか
+Supabase Usage で Cached Egress が 9.866 GB / 5 GB に達した（無料枠の約2倍）。
+正式リリース前の段階でこの転送量になっており、本番ユーザーが増えると急速に超過する可能性がある。
+
+### 推定原因
+案件一覧・管理画面など、複数の `<video>` タグが `preload="metadata"` で同時にレンダリングされていた。
+`preload="metadata"` はブラウザが自動的に動画の先頭数秒〜メタデータ（多くの場合数百KB〜数MB）を読み込む。
+10件のカードが並ぶ画面を開くたびに、数MB〜数十MBの転送が発生していた可能性がある。
+
+### 修正内容（Phase54）
+
+**`preload="metadata"` → `preload="none"` に変更したファイルと場所：**
+
+| ファイル | 場所 | 変更前 | 変更後 |
+|---|---|---|---|
+| `JobsListView.tsx` | 案件カード一覧（複数同時表示） | `preload="metadata"` | `preload="none"` |
+| `JobsSwipeView.tsx` | スワイプビュー + `loop` 削除 | `preload="metadata" loop` | `preload="none"` |
+| `AdminRequests.tsx` (L499) | 依頼詳細ドロワー内プレビュー | `preload="metadata"` | `preload="none"` |
+| `AdminRequests.tsx` (L1147) | 管理画面一覧カード内サムネイル | `preload="metadata"` | `preload="none"` |
+
+**そのまま維持したもの（ユーザー操作後に開くモーダル）：**
+- `AdminRequests.tsx` L407：動画フルスクリーンモーダル（`autoPlay` + `preload="metadata"`）
+- `ProJobs.tsx` L140：動画フルスクリーンモーダル（`autoPlay` + `preload="metadata"`）
+
+**アップロード画面の改善：**
+- `CorporateRequest.tsx`：動画選択エリアに「10〜15秒の短い動画がおすすめです」と注意文を追加
+
+**既存の動画サイズ・秒数制限：なし**（強制制限の実装は別 Phase で検討）
+
+### 学び
+- **一覧画面では `preload="auto"` / `preload="metadata"` を使わない**
+- **ユーザーが能動的に開いたモーダル・詳細画面のみ preload を許容する**
+- **`loop` 属性はバックグラウンドで無限転送につながるため、必要な場面のみ使う**
+- **Supabase Usage は定期的に確認する**（月次でも週次でも）
+
+### 将来的な対策（今回は未実装）
+
+| 対策 | 優先度 | 内容 |
+|---|---|---|
+| 動画圧縮（アップロード前） | B | ファイルサイズ制限・ffmpeg.wasm などで圧縮 |
+| サムネイル生成 | B | 動画の静止画サムネイルを Storage に保存し、`<img>` で代替 |
+| Cloudflare R2 移行 | C | Supabase の転送量制限を回避。リージョン最適化も可能 |
+| CDN 最適化 | C | Cloudflare 経由でキャッシュ効率を上げる |
+| 動画サイズ強制制限 | A | アップロード時に 50MB または30秒超の場合はエラー表示 |
+
+> **注意：** Cloudflare R2 移行・Supabase リージョン変更は、既存 URL が変わるため正式リリース前に慎重に計画する。
+
+---
+
 ## 今後の対応方針（共通ルール）
 
 1. **実DB・実ログ・実レスポンス・実メール送信結果を確認してから修正を決める**

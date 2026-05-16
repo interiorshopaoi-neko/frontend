@@ -496,7 +496,7 @@ function DetailModal({
             <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">動画</p>
             {row.video_url ? (
               <div className="space-y-2">
-                <video src={row.video_url} controls playsInline preload="metadata"
+                <video src={row.video_url} controls playsInline preload="none"
                   className="w-full rounded-xl bg-slate-900" style={{ maxHeight: '200px' }}>
                   動画を再生できません
                 </video>
@@ -1146,7 +1146,7 @@ function RequestsList({ session }: { session: Session }) {
                       >
                         <video
                           src={r.video_url}
-                          preload="metadata"
+                          preload="none"
                           className="w-full object-cover"
                           style={{ maxHeight: '90px' }}
                         />
