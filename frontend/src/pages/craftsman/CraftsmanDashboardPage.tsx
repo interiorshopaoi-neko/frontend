@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import BottomNav from '../../components/BottomNav';
+import { useAuth } from '../../hooks/useAuth';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -162,6 +163,7 @@ function SummaryCard({ icon, value, label, accent }: {
 
 export default function CraftsmanDashboardPage() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [apps,        setApps]        = useState<DashboardRow[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [isDemo,      setIsDemo]      = useState(false);
@@ -170,6 +172,12 @@ export default function CraftsmanDashboardPage() {
   const [freeCredits,  setFreeCredits]  = useState<{ remaining: number; bonus: number } | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const userId = getUserId();
+
+  const handleLogout = () => {
+    logout();
+    localStorage.clear();
+    navigate('/login');
+  };
 
   // 工事完了報告: SECURITY DEFINER RPC で review_requested_at を設定し、依頼者にレビュー依頼メールを送る
   // 注意: sb_publishable キー環境では .from().update() が hanging するため RPC 経由を使用
@@ -303,9 +311,17 @@ export default function CraftsmanDashboardPage() {
               <p className="text-[10px] text-slate-400 leading-none mt-0.5">応募・進行中・完了の一覧</p>
             </div>
           </div>
-          <a href="/craftsman/jobs" className="text-xs text-blue-600 font-semibold hover:underline">
-            新しい案件を探す →
-          </a>
+          <div className="flex items-center gap-2">
+            <a href="/craftsman/jobs" className="text-xs text-blue-600 font-semibold hover:underline">
+              案件を探す →
+            </a>
+            <button
+              onClick={handleLogout}
+              className="text-xs bg-slate-100 text-slate-600 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-slate-200 transition"
+            >
+              ログアウト
+            </button>
+          </div>
         </div>
       </header>
 

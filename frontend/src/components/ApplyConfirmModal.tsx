@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import type { Job } from '../pages/craftsman/CraftsmanJobsPage';
 import { FEE_TABLE } from '../constants/fees';
+import { calcRevenueStr } from '../lib/revenueEstimate';
 
 type Props = {
   job: Job;
@@ -8,20 +9,8 @@ type Props = {
   onConfirm: () => void;
 };
 
-function estimateRevenue(job: Job): string {
-  const base =
-    job.work_type === '床補修' || job.work_type === '床工事' ? 30000
-    : job.work_type?.includes('クロス') ? 20000
-    : 15000;
-  const factor =
-    job.room_size?.includes('12') ? 2.0
-    : job.room_size?.includes('10') ? 1.6
-    : job.room_size?.includes('8') ? 1.3
-    : 1.0;
-  const min = Math.round((base * factor) / 1000) * 1000;
-  const max = Math.round((min * 1.5) / 1000) * 1000;
-  return `¥${Math.round(min / 10000)}〜${Math.round(max / 10000)}万`;
-}
+// 共通ユーティリティに統一
+const estimateRevenue = calcRevenueStr;
 
 function timingLabel(job: Job): string {
   if (job.preferred_date) return job.preferred_date;
@@ -130,7 +119,7 @@ export default function ApplyConfirmModal({ job, onCancel, onConfirm }: Props) {
             onClick={onConfirm}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl py-3.5 font-extrabold text-base shadow-sm shadow-blue-200 transition active:scale-[0.98]"
           >
-            この案件に応募する
+            見積もり金額を入力する
           </button>
           <button
             onClick={onCancel}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { calculateServiceFee } from '../../lib/serviceFee';
 import { FEE_TABLE } from '../../constants/fees';
 import type { Job } from './CraftsmanJobsPage';
+import { calcRevenueNum } from '../../lib/revenueEstimate';
 
 // ─── Freshness helpers ───────────────────────────────────────────────────────
 
@@ -51,41 +52,9 @@ function getFreshnessBadge(job: Job): FreshnessBadge | null {
   return null;
 }
 
-// ─── Revenue estimator ────────────────────────────────────────────────────────
+// ─── Revenue estimator ─── 共通ユーティリティに統一 ──────────────────────────
 
-function roomBase(workType: string): number {
-  const wt = workType.toLowerCase();
-  if (wt.includes('cf') || wt.includes('クッションフロア')) return 24000;
-  if (wt.includes('補修'))                                 return 16000;
-  if (wt.includes('床'))                                   return 34000;
-  return 32000; // クロス・壁紙デフォルト
-}
-
-function sizeMul(sizeStr: string): number {
-  const m = sizeStr.match(/(\d+)/);
-  const t = m ? parseInt(m[1]) : 6;
-  return t >= 10 ? 1.5 : t >= 8 ? 1.25 : t >= 6 ? 1.0 : 0.8;
-}
-
-function estimateRevenue(job: Job): number {
-  // meta.rooms がある場合は部屋ごとに加算（複数部屋対応）
-  const rooms = job.meta?.rooms;
-  if (rooms && rooms.length > 0) {
-    const total = rooms.reduce((sum, r) => {
-      const base = roomBase(r.workType ?? job.work_type ?? 'クロス');
-      const mul  = sizeMul(r.size ?? '');
-      return sum + Math.round((base * mul) / 1000) * 1000;
-    }, 0);
-    return total;
-  }
-
-  // meta.rooms なし → 従来ロジック（単一部屋）
-  const damage   = job.damage_level;
-  const base     = roomBase(job.work_type ?? '');
-  const mul      = sizeMul(job.room_size ?? '');
-  const dmgMul   = damage === 'high' ? 1.3 : damage === 'middle' ? 1.1 : 1.0;
-  return Math.round((base * mul * dmgMul) / 1000) * 1000;
-}
+const estimateRevenue = calcRevenueNum;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

@@ -2,23 +2,12 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ApplyConfirmModal from '../../components/ApplyConfirmModal';
 import type { Job } from './CraftsmanJobsPage';
+import { calcRevenueStr } from '../../lib/revenueEstimate';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function estimateRevenue(job: Job): string {
-  const base =
-    job.work_type === '床補修' || job.work_type === '床工事' ? 30000
-    : job.work_type?.includes('クロス') ? 20000
-    : 15000;
-  const factor =
-    job.room_size?.includes('12') ? 2.0
-    : job.room_size?.includes('10') ? 1.6
-    : job.room_size?.includes('8') ? 1.3
-    : 1.0;
-  const min = Math.round((base * factor) / 1000) * 1000;
-  const max = Math.round((min * 1.5) / 1000) * 1000;
-  return `¥${Math.round(min / 10000)}〜${Math.round(max / 10000)}万`;
-}
+// 共通ユーティリティに統一
+const estimateRevenue = calcRevenueStr;
 
 function urgencyConfig(job: Job): { text: string; cls: string } {
   if (job.urgency === 'today')    return { text: '⚡ 今日希望',  cls: 'bg-red-500 text-white' };
@@ -195,7 +184,7 @@ function SwipeSlide({ job, idx, total, applied, submitting, onApply }: SlideProp
             style={{ opacity: swipeProgress, transform: `scale(${0.6 + swipeProgress * 0.4})` }}
           >
             <div className="text-8xl font-extrabold leading-none mb-2">✓</div>
-            <p className="text-2xl font-extrabold drop-shadow-lg">今すぐ行けます！</p>
+            <p className="text-2xl font-extrabold drop-shadow-lg">詳細を見る！</p>
           </div>
         </div>
       )}
@@ -324,7 +313,7 @@ function SwipeSlide({ job, idx, total, applied, submitting, onApply }: SlideProp
               idx < total - 1 ? 'flex-[2]' : 'flex-1'
             } ${applied ? 'bg-green-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-60'}`}
           >
-            {applied ? '✓ 応募済み' : submitting ? '送信中...' : '今すぐ行けます'}
+            {applied ? '✓ 応募済み' : submitting ? '送信中...' : '詳細を見る'}
           </button>
         </div>
 

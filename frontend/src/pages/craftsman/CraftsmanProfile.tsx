@@ -381,9 +381,17 @@ export default function CraftsmanProfile() {
               <p className="text-[10px] text-slate-400 leading-none mt-0.5">案件マッチングに使われます</p>
             </div>
           </div>
-          <a href="/craftsman/jobs" className="text-xs text-blue-600 font-semibold hover:underline">
-            ← 案件一覧
-          </a>
+          <div className="flex items-center gap-2">
+            <a href="/craftsman/jobs" className="text-xs text-blue-600 font-semibold hover:underline">
+              ← 案件一覧
+            </a>
+            <button
+              onClick={() => { logout(); localStorage.clear(); navigate('/login'); }}
+              className="text-xs bg-slate-100 text-slate-600 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-slate-200 transition"
+            >
+              ログアウト
+            </button>
+          </div>
         </div>
       </header>
 

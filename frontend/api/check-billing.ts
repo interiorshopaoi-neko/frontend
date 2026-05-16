@@ -21,12 +21,98 @@
 //   - FOR UPDATE で同時アクセス防止
 // ================================================================
 
+import { Resend } from 'resend';
+
 const SUPABASE_URL      = process.env.SUPABASE_URL
                        || process.env.VITE_SUPABASE_URL
                        || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY
                        || process.env.VITE_SUPABASE_ANON_KEY
                        || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const SITE_URL       = 'https://promatch-app.jp';
+
+// ── 依頼者への連絡先開示通知メール ─────────────────────────────────────────────
+async function sendUnlockNotification(params: {
+  customerEmail: string;
+  workType:      string;
+  area:          string;
+}): Promise<void> {
+  if (!RESEND_API_KEY) {
+    console.warn('[check-billing] RESEND_API_KEY 未設定 — 通知メールをスキップ');
+    return;
+  }
+  const resend = new Resend(RESEND_API_KEY);
+  const { customerEmail, workType, area } = params;
+
+  const html = `<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Noto Sans JP',sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:24px 0 40px;">
+  <tr><td align="center">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;">
+      <tr><td style="background:#1e40af;border-radius:16px 16px 0 0;padding:28px 32px 24px;text-align:center;">
+        <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.12em;color:#93c5fd;text-transform:uppercase;">PRO MATCH</p>
+        <p style="margin:0;font-size:22px;font-weight:800;color:#ffffff;line-height:1.3;">職人から連絡があります</p>
+      </td></tr>
+      <tr><td style="background:#ffffff;padding:28px 32px 24px;">
+        <p style="margin:0 0 16px;font-size:15px;color:#1e293b;line-height:1.7;">
+          ご依頼の <strong style="color:#1e40af;">${workType}</strong>（${area}）に対して、<br>
+          職人が案件対応を開始しました。
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:12px;padding:14px 18px;border:1px solid #bbf7d0;">
+          <tr><td>
+            <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#166534;">次にやること</p>
+            <p style="margin:3px 0;font-size:13px;color:#166534;">・職人から直接メールが届く予定です</p>
+            <p style="margin:3px 0;font-size:13px;color:#166534;">・返信でそのままやり取りできます</p>
+            <p style="margin:3px 0;font-size:13px;color:#166534;">・日程や詳細を職人と直接調整してください</p>
+            <p style="margin:10px 0 0;font-size:12px;color:#15803d;">不安なことがあればPRO MATCHサポートへご連絡ください。</p>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td style="background:#f8fafc;border-radius:0 0 16px 16px;padding:20px 32px;text-align:center;border-top:1px solid #e2e8f0;">
+        <p style="margin:0;font-size:12px;font-weight:700;color:#64748b;">PRO MATCH — 内装職人マッチング</p>
+        <p style="margin:4px 0 0;font-size:11px;color:#94a3b8;">このメールはシステムから自動送信されています。</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+
+  const text = [
+    '【PRO MATCH】職人から連絡があります',
+    '',
+    `ご依頼の ${workType}（${area}）に対して、職人が案件対応を開始しました。`,
+    '',
+    '・職人から直接メールが届く予定です',
+    '・返信でそのままやり取りできます',
+    '・日程や詳細を職人と直接調整してください',
+    '',
+    '不安なことがあればPRO MATCHサポートへご連絡ください。',
+    '',
+    'このメールはシステムから自動送信されています。',
+  ].join('\n');
+
+  try {
+    const { error } = await resend.emails.send({
+      from:    'PRO MATCH <noreply@promatch-app.jp>',
+      to:      [customerEmail],
+      subject: '【PRO MATCH】職人から連絡があります',
+      html,
+      text,
+    });
+    if (error) {
+      console.error('[check-billing] 依頼者通知メール Resend error:', error);
+    } else {
+      console.log('[check-billing] 依頼者通知メール 送信成功:', customerEmail);
+    }
+  } catch (err) {
+    console.error('[check-billing] 依頼者通知メール 例外:', err);
+  }
+}
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -174,6 +260,45 @@ export default async function handler(req: any, res: any) {
           });
           return;
         }
+
+        // 新規 unlock 時のみ依頼者へ通知メールを送る（already_unlocked は二重送信防止でスキップ）
+        if (row.result === 'ok') {
+          // estimate_request の work_type / area を取得して通知メール送信（fire-and-forget）
+          void (async () => {
+            try {
+              const sbHeaders = {
+                'apikey':        SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Accept':        'application/json',
+              };
+              const appRes = await fetch(
+                `${SUPABASE_URL}/rest/v1/job_applications?select=estimate_request_id&id=eq.${application_id}&limit=1`,
+                { headers: sbHeaders },
+              );
+              if (appRes.ok) {
+                const appRows = await appRes.json() as Array<{ estimate_request_id: string | null }>;
+                const erIdStr = appRows?.[0]?.estimate_request_id;
+                if (erIdStr) {
+                  const erRes = await fetch(
+                    `${SUPABASE_URL}/rest/v1/estimate_requests?select=work_type,area&id=eq.${erIdStr}&limit=1`,
+                    { headers: sbHeaders },
+                  );
+                  if (erRes.ok) {
+                    const erRows = await erRes.json() as Array<{ work_type?: string; area?: string }>;
+                    await sendUnlockNotification({
+                      customerEmail: row.contact_value!.replace(/^mailto:/i, '').trim(),
+                      workType:      erRows?.[0]?.work_type ?? '内装工事',
+                      area:          erRows?.[0]?.area     ?? '—',
+                    });
+                  }
+                }
+              }
+            } catch (notifyErr) {
+              console.error('[check-billing] 通知メール fire-and-forget 例外:', notifyErr);
+            }
+          })();
+        }
+
         res.status(200).json({
           status:         row.result,
           contact_method: row.contact_method,

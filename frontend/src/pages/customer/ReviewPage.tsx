@@ -107,6 +107,19 @@ export default function ReviewPage() {
       return;
     }
 
+    // Step 4: 職人へレビュー投稿通知メール（fire-and-forget）
+    fetch('/api/notify-review-posted', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        application_id:      app.id,
+        craftsman_id:        app.craftsman_id,
+        estimate_request_id: id,
+        rating,
+        comment: comment.trim() || null,
+      }),
+    }).catch(err => console.warn('[notify-review-posted] fire-and-forget error:', err));
+
     setSubmitted(true);
   }
 
