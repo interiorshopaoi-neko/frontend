@@ -498,10 +498,12 @@ export default function CorporateRequest() {
 
       // 5. 依頼者へ受付完了メール（失敗しても送信完了扱い）
       if (contactMethod === 'メール' && contactValue.includes('@')) {
+        const trimmedEmail = contactValue.trim();
+        console.log('[send-customer-email] invoke 開始 →', trimmedEmail);
         try {
-          await supabase.functions.invoke('send-customer-email', {
+          const { data: mailData, error: mailError } = await supabase.functions.invoke('send-customer-email', {
             body: {
-              to:         contactValue,
+              to:         trimmedEmail,
               area,
               work_type:  workType,
               room_type:  roomType   || undefined,
@@ -510,8 +512,23 @@ export default function CorporateRequest() {
               request_id: inserted?.id,
             },
           });
+          if (mailError) {
+            console.error('[send-customer-email] invoke error:', {
+              error:       mailError,
+              targetEmail: trimmedEmail,
+              requestId:   inserted?.id,
+            });
+          } else {
+            console.log('[send-customer-email] invoke ok:', {
+              response:    mailData,
+              emailSent:   mailData?.emailSent ?? null,
+              targetEmail: trimmedEmail,
+              resendId:    mailData?.resendId  ?? null,
+              reason:      mailData?.reason    ?? null,
+            });
+          }
         } catch (customerMailErr) {
-          console.warn('[send-customer-email] 送信失敗（依頼は受付済み）:', customerMailErr);
+          console.error('[send-customer-email] 予期しないエラー（依頼は受付済み）:', customerMailErr);
         }
       }
 

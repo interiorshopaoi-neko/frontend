@@ -285,14 +285,22 @@ serve(async (req) => {
     }
 
     const payload: Payload = await req.json();
-    const { to, area, work_type, room_type, room_size, timing, request_id } = payload;
+    const { to: toRaw, area, work_type, room_type, room_size, timing, request_id } = payload;
+
+    // trim して空白・改行を除去
+    const to = (toRaw ?? '').trim();
 
     if (!to || !to.includes('@')) {
-      return new Response(JSON.stringify({ error: 'invalid email' }), {
+      console.error('[send-customer-email] invalid email:', JSON.stringify(toRaw));
+      return new Response(JSON.stringify({
+        ok: false, emailSent: false, reason: 'invalid_email', targetEmail: to,
+      }), {
         status: 400,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
     }
+
+    console.log('[send-customer-email] Resend 送信開始 →', to, '/ request_id:', request_id);
 
     const sentAt = formatJST(new Date());
     const params = {
@@ -317,25 +325,41 @@ serve(async (req) => {
       }),
     });
 
+    const resBody = await res.text();
+
     if (!res.ok) {
-      const body = await res.text();
-      console.error('[send-customer-email] Resend error:', res.status, body);
-      return new Response(JSON.stringify({ error: 'resend failed', status: res.status, detail: body }), {
+      console.error('[send-customer-email] Resend error:', res.status, resBody, '/ to:', to);
+      return new Response(JSON.stringify({
+        ok: false, emailSent: false,
+        reason: 'resend_error',
+        targetEmail: to,
+        resendStatus: res.status,
+        resendDetail: resBody,
+      }), {
         status: 500,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
     }
 
-    const data = await res.json();
-    console.log('[send-customer-email] 送信成功:', data.id);
-    return new Response(JSON.stringify({ ok: true, id: data.id }), {
+    let resendData: { id?: string } = {};
+    try { resendData = JSON.parse(resBody); } catch { /* ignore */ }
+
+    console.log('[send-customer-email] 送信成功 id:', resendData.id, '/ to:', to);
+    return new Response(JSON.stringify({
+      ok: true, emailSent: true,
+      reason: 'sent',
+      targetEmail: to,
+      resendId: resendData.id ?? null,
+    }), {
       status: 200,
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });
 
   } catch (err) {
     console.error('[send-customer-email] 予期しないエラー:', err);
-    return new Response(JSON.stringify({ error: 'unexpected error' }), {
+    return new Response(JSON.stringify({
+      ok: false, emailSent: false, reason: 'unexpected_error',
+    }), {
       status: 500,
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });
