@@ -1,0 +1,10 @@
+# Supabase local / deploy configuration
+# https://supabase.com/docs/guides/functions/deploy
+
+# send-customer-email は /corporate（未ログイン）から anon key で invoke するため
+# JWT 検証を無効化する。スパム対策はアプリ層（contactValue バリデーション）で行う。
+[functions.send-customer-email]
+verify_jwt = false
+
+# send-craftsman-notification は /admin（ログイン済み管理者）から呼ぶため
+# デフォルト verify_jwt = true のまま（明示しない）
