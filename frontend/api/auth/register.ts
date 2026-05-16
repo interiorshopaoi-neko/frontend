@@ -37,9 +37,16 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
+  // 確認メールのリンクが /auth/confirmed に来るよう redirectTo を指定する
+  // Supabase GoTrue REST API: redirect_to はクエリパラメータで渡す
+  const REDIRECT_TO = 'https://promatch-app.jp/auth/confirmed';
+
   try {
+    const signupUrl = new URL(`${SUPABASE_URL}/auth/v1/signup`);
+    signupUrl.searchParams.set('redirect_to', REDIRECT_TO);
+
     const sbRes = await fetch(
-      `${SUPABASE_URL}/auth/v1/signup`,
+      signupUrl.toString(),
       {
         method: 'POST',
         headers: {
