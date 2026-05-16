@@ -143,6 +143,51 @@ curl -X POST -H 'apikey: <ANON_KEY>' -H 'Content-Type: application/json' \
 
 ---
 
+## 🗂️ Step 10：Vercel Serverless API ルール（必読）
+
+> **インシデント #7（2026-05-17）の再発防止ルール。**
+> `/api/auth/login` が 405 になってログインできなくなった事故の教訓。
+
+### ✅ Vercel は root `api/` だけを serverless function として認識する
+
+```
+リポジトリ構成:
+  vercel.json         ← Vercel が参照（root 配置）
+  api/                ← ✅ Vercel が serverless function として認識するのはここだけ
+    auth/login.ts     → POST /api/auth/login
+    notify.ts         → POST /api/notify
+  frontend/
+    api/              ← ❌ Vercel には見えない（フロントのソース管理用）
+      auth/login.ts   → 本番 /api/auth/login にはならない
+```
+
+### ✅ 新しい `/api/...` endpoint を追加するときのルール
+
+1. **必ず `api/` (root) にファイルを作る** — `frontend/api/` に置いても本番では動かない
+2. ファイル名＝エンドポイント名：`api/foo-bar.ts` → `/api/foo-bar`
+3. サブディレクトリ対応：`api/auth/login.ts` → `/api/auth/login`
+
+### ✅ デプロイ前の確認コマンド
+
+```bash
+# フロントから呼ばれている /api/* と root api/ の対応を確認
+node scripts/check-api-routes.mjs
+```
+
+問題があれば `⚠️ MISSING` が表示される。全て `✅ OK` になってからデプロイする。
+
+### ✅ デプロイ後の確認
+
+```bash
+# ログイン API が 405 でないことを確認（200 or 401 が期待値）
+curl -s -o /dev/null -w "%{http_code}" -X POST https://promatch-app.jp/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"test@example.com","password":"wrong"}'
+# → 401 なら OK（405 は NG）
+```
+
+---
+
 ## ⚠️ 絶対にやってはいけないこと
 
 | NG | 理由 |
@@ -153,3 +198,4 @@ curl -X POST -H 'apikey: <ANON_KEY>' -H 'Content-Type: application/json' \
 | anon に craftsmen の SELECT を直接開ける | 個人情報漏洩リスク |
 | build を確認せずにデプロイ | Vercel ビルドが失敗して本番が壊れる |
 | git status を確認せずにデプロイ | 意図しないファイルが含まれる |
+| **`frontend/api/` に新しい API を置く** | **本番の `/api/...` にならず 405 になる** |

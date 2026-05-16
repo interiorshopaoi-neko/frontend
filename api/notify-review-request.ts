@@ -55,11 +55,15 @@ function buildCustomerHtml(params: {
       </td></tr>
 
       <!-- 本文 -->
-      <tr><td style="background:#ffffff;padding:28px 32px 20px;">
-        <p style="margin:0 0 20px;font-size:15px;color:#1e293b;line-height:1.7;">
+      <tr><td style="background:#ffffff;padding:28px 32px 16px;">
+        <p style="margin:0 0 8px;font-size:18px;font-weight:800;color:#1e293b;line-height:1.4;">
+          工事はいかがでしたか？
+        </p>
+        <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.7;">
           ご依頼の <strong style="color:#1e40af;">${escHtml(workType)}</strong>（${escHtml(area)}）の<br>
           工事完了の報告が届きました。<br>
-          よろしければ 1 分で完了するレビューをお願いします。
+          よかった点・気になった点を 1 分で教えてください。<br>
+          レビューは職人の信用と次の依頼者への大切な参考になります。
         </p>
       </td></tr>
 
@@ -68,9 +72,12 @@ function buildCustomerHtml(params: {
         <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
           <tr><td align="center">
             <a href="${escHtml(reviewUrl)}"
-               style="display:inline-block;background:#1d4ed8;color:#ffffff;font-size:15px;font-weight:800;text-decoration:none;padding:16px 36px;border-radius:12px;letter-spacing:0.02em;">
-              レビューを書く →
+               style="display:inline-block;background:#1d4ed8;color:#ffffff;font-size:16px;font-weight:800;text-decoration:none;padding:18px 40px;border-radius:12px;letter-spacing:0.02em;">
+              ⭐ 1分でレビューを書く →
             </a>
+          </td></tr>
+          <tr><td align="center" style="padding-top:10px;">
+            <p style="margin:0;font-size:12px;color:#94a3b8;">レビューの投稿は任意です。強制ではありません。</p>
           </td></tr>
         </table>
       </td></tr>
@@ -83,7 +90,7 @@ function buildCustomerHtml(params: {
             <p style="margin:0 0 10px;font-size:11px;font-weight:700;color:#3b82f6;letter-spacing:0.08em;text-transform:uppercase;">レビューについて</p>
             <table cellpadding="0" cellspacing="0" role="presentation">
               ${['✅ レビューは1分で完了します',
-                 '✅ 職人の信用につながります',
+                 '✅ 職人の信用と次の依頼者への参考になります',
                  '✅ 投稿後、職人プロフィールに評価が反映されます',
                  '✅ 個人情報は表示されません',
                 ].map(t => `<tr><td style="font-size:13px;color:#1e40af;padding:3px 0;line-height:1.5;">${t}</td></tr>`).join('')}
@@ -117,15 +124,18 @@ function buildCustomerText(params: {
   return [
     '【PRO MATCH】工事完了の確認とレビューをお願いします',
     '',
-    `ご依頼の ${workType}（${area}）の工事完了の報告が届きました。`,
-    'よろしければ 1 分で完了するレビューをお願いします。',
+    '工事はいかがでしたか？',
     '',
-    '▼ レビューを書く',
+    `ご依頼の ${workType}（${area}）の工事完了の報告が届きました。`,
+    'よかった点・気になった点を 1 分で教えてください。',
+    'レビューは職人の信用と次の依頼者への大切な参考になります。',
+    '',
+    '▼ 1分でレビューを書く',
     reviewUrl,
     '',
     '── レビューについて ──',
     '・レビューは1分で完了します',
-    '・職人の信用につながります',
+    '・職人の信用と次の依頼者への参考になります',
     '・投稿後、職人プロフィールに評価が反映されます',
     '・個人情報は表示されません',
     '',

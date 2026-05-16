@@ -65,16 +65,25 @@ function buildCraftsmanHtml(params: {
         </p>
       </td></tr>
 
-      <!-- 連絡先確認の案内 -->
+      <!-- 次にやること -->
       <tr><td style="background:#ffffff;padding:0 32px 20px;">
         <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
                style="background:#f0fdf4;border-radius:12px;padding:14px 18px;border:1px solid #bbf7d0;">
           <tr><td>
-            <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#166534;">連絡先の確認方法</p>
-            <p style="margin:0;font-size:13px;color:#15803d;line-height:1.8;">
-              案件管理画面を開き、成約済み案件の<br>
-              「連絡先を確認する」ボタンから依頼者の連絡先をご確認ください。<br>
-              <strong>初回2件まで無料</strong>でご確認いただけます。
+            <p style="margin:0 0 10px;font-size:12px;font-weight:700;color:#166534;">📋 次にやること</p>
+            <table cellpadding="0" cellspacing="0" role="presentation">
+              ${[
+                '① 「案件管理を開く」ボタンをタップ',
+                '② 成約済み案件の「連絡先を確認する」で依頼者のメールを取得',
+                '③ メールで依頼者に連絡・日程調整',
+                '④ 工事実施',
+                '⑤ 完了後「工事完了を報告する」をタップ',
+              ].map((t, i) => `<tr><td style="font-size:13px;color:${i === 0 ? '#15803d' : '#166534'};padding:3px 0;line-height:1.6;font-weight:${i === 0 ? '700' : '400'};">${t}</td></tr>`).join('')}
+            </table>
+            <p style="margin:10px 0 0;font-size:12px;color:#15803d;line-height:1.7;border-top:1px solid #bbf7d0;padding-top:10px;">
+              <strong>初回2件まで無料</strong>でご確認いただけます。<br>
+              ※ 工事代金は依頼者と直接やり取りしてください。<br>
+              　 PRO MATCH は工事代金を預かりません。
             </p>
           </td></tr>
         </table>
@@ -99,8 +108,9 @@ function buildCraftsmanHtml(params: {
           <tr><td>
             <p style="margin:0 0 10px;font-size:11px;font-weight:700;color:#3b82f6;letter-spacing:0.08em;text-transform:uppercase;">PRO MATCH からのお願い</p>
             <table cellpadding="0" cellspacing="0" role="presentation">
-              ${['✅ 案件管理画面から「連絡先を確認する」で連絡先を取得してください',
-                 '✅ 連絡先は成約済みの案件のみ開示されます',
+              ${['✅ 連絡先は成約済みの案件のみ開示されます',
+                 '✅ 工事代金は依頼者と直接やり取りしてください',
+                 '✅ PRO MATCH は工事代金を預かりません',
                  '✅ 工事完了後は「工事完了を報告する」をお忘れなく',
                  '✅ 不明点はダッシュボードのお問い合わせよりご連絡ください',
                 ].map(t => `<tr><td style="font-size:13px;color:#1e40af;padding:3px 0;line-height:1.5;">${t}</td></tr>`).join('')}
@@ -138,17 +148,24 @@ function buildCraftsmanText(params: {
     `${craftsmanName} さん、おめでとうございます！`,
     `${workType}（${area}）の依頼者があなたを選択しました。`,
     '',
-    '【連絡先の確認方法】',
-    '案件管理画面を開き、成約済み案件の',
-    '「連絡先を確認する」ボタンから依頼者の連絡先をご確認ください。',
+    '【次にやること】',
+    '① 「案件管理を開く」ボタンをタップ',
+    '② 成約済み案件の「連絡先を確認する」で依頼者のメールを取得',
+    '③ メールで依頼者に連絡・日程調整',
+    '④ 工事実施',
+    '⑤ 完了後「工事完了を報告する」をタップ',
+    '',
     '初回2件まで無料でご確認いただけます。',
+    '※ 工事代金は依頼者と直接やり取りしてください。',
+    '　 PRO MATCH は工事代金を預かりません。',
     '',
     '▼ 案件管理を開く',
     dashboardUrl,
     '',
     '── PRO MATCH からのお願い ──',
-    '・「連絡先を確認する」ボタンから連絡先を取得してください',
     '・連絡先は成約済みの案件のみ開示されます',
+    '・工事代金は依頼者と直接やり取りしてください',
+    '・PRO MATCH は工事代金を預かりません',
     '・工事完了後は「工事完了を報告する」をお忘れなく',
     '・不明点はダッシュボードのお問い合わせよりご連絡ください',
     '',
@@ -247,7 +264,7 @@ export default async function handler(req: any, res: any) {
 
     const craftsmanEmail = craftsmanRow.craftsman_email.replace(/^mailto:/i, '').trim();
     const craftsmanName  = craftsmanRow.shop_name || craftsmanRow.full_name || '職人さん';
-    const dashboardUrl   = `${SITE_URL}/craftsman/dashboard`;
+    const dashboardUrl   = `${SITE_URL}/craftsman/applications`;
 
     const emailParams = { craftsmanName, workType, area, dashboardUrl };
 

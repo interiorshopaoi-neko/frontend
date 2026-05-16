@@ -198,6 +198,56 @@ Supabase Usage で Cached Egress が 9.866 GB / 5 GB に達した（無料枠の
 
 ---
 
+## インシデント #7：`/api/auth/login` が 405 — ログイン完全不能
+
+> 発生：2026年5月17日
+
+### 何が起きたか
+
+本番で職人ログインが全て失敗した。DevTools の Network タブで確認すると：
+
+```
+POST https://promatch-app.jp/api/auth/login → 405 Method Not Allowed
+```
+
+### 実際の原因
+
+`frontend/api/auth/login.ts` は Vercel から serverless function として認識されない位置にあった。
+
+```
+vercel.json（root）
+  outputDirectory: frontend/dist
+  → Vercel は root api/ だけを /api/* にマップする
+
+frontend/api/auth/login.ts  ← ❌ Vercel には見えない
+api/auth/login.ts            ← ✅ ここにないと本番で動かない
+```
+
+POST `/api/auth/login` は対応する serverless function がなかったため、
+SPA の rewrite（`/(.*) → /index.html`）にフォールスルー →
+静的ファイル `index.html` は POST を受け付けない → **405**。
+
+### 気づきにくかった理由
+
+- `frontend/api/auth/login.ts` が存在し、ローカルでは Vite dev server が `frontend/vercel.json` のルールで中継して動いていた
+- 本番とローカルで API routing の動作が異なることが見えていなかった
+- エラーが「パスワード間違い」に見えた（実際は HTTP layer の問題）
+- **Network タブで HTTP status を確認して初めて 405 と判明した**
+
+### 修正内容
+
+1. `api/auth/login.ts`（root）を作成 — `frontend/api/auth/login.ts` と同期
+2. `api/auth/register.ts`（root）を作成 — 同じ問題が register にもあった
+
+### 教訓
+
+- **ログインできない = パスワード問題とは限らない。まず Network タブで HTTP status を確認する**
+- **新しい `/api/...` endpoint は必ず root `api/` に作る。`frontend/api/` は本番では動かない**
+- **デプロイ前に `node scripts/check-api-routes.mjs` でルート対応を確認する**
+- **デプロイ後に `curl -X POST https://promatch-app.jp/api/auth/login` で 405 でないことを確認する**
+
+---
+
 ## 今後の対応方針（共通ルール）
 
 1. **実DB・実ログ・実レスポンス・実メール送信結果を確認してから修正を決める**
