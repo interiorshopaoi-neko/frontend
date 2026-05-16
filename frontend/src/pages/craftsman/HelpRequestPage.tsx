@@ -1,6 +1,14 @@
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
+function getUserId(): string {
+  const stored = localStorage.getItem('user');
+  if (stored) {
+    try { return String(JSON.parse(stored).id); } catch { /* ignore */ }
+  }
+  return localStorage.getItem('craftsman_guest_id') ?? '';
+}
+
 type Form = {
   work_date: string;
   area: string;
@@ -8,6 +16,11 @@ type Form = {
   people_needed: number;
   daily_rate: number;
   comment: string;
+  start_time: string;
+  end_time: string;
+  has_parking: boolean;
+  required_tools: string;
+  notes: string;
 };
 
 const DEFAULT: Form = {
@@ -17,6 +30,11 @@ const DEFAULT: Form = {
   people_needed: 1,
   daily_rate: 15000,
   comment: '',
+  start_time: '',
+  end_time: '',
+  has_parking: false,
+  required_tools: '',
+  notes: '',
 };
 
 export default function HelpRequestPage() {
@@ -24,6 +42,7 @@ export default function HelpRequestPage() {
   const [saving, setSaving] = useState(false);
   const [done,   setDone]   = useState(false);
   const [error,  setError]  = useState<string | null>(null);
+  const currentUserId = getUserId();
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -37,12 +56,18 @@ export default function HelpRequestPage() {
     setError(null);
 
     const { error: err } = await supabase.from('help_requests').insert({
-      work_date:     form.work_date,
-      area:          form.area,
-      work_type:     form.work_type,
-      people_needed: form.people_needed,
-      daily_rate:    form.daily_rate,
-      comment:       form.comment,
+      work_date:      form.work_date,
+      area:           form.area,
+      work_type:      form.work_type,
+      people_needed:  form.people_needed,
+      daily_rate:     form.daily_rate,
+      comment:        form.comment || null,
+      craftsman_id:   currentUserId || null,
+      start_time:     form.start_time || null,
+      end_time:       form.end_time || null,
+      has_parking:    form.has_parking,
+      required_tools: form.required_tools || null,
+      notes:          form.notes || null,
     });
 
     setSaving(false);
@@ -188,6 +213,61 @@ export default function HelpRequestPage() {
 
           <div className="border-t border-slate-100" />
 
+          {/* 作業時間 */}
+          <div>
+            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">作業時間（任意）</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-[10px] text-slate-400 mb-1">開始</p>
+                <input
+                  type="time"
+                  value={form.start_time}
+                  onChange={e => set('start_time', e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-400 mb-1">終了</p>
+                <input
+                  type="time"
+                  value={form.end_time}
+                  onChange={e => set('end_time', e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 駐車場 */}
+          <div>
+            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">駐車場</p>
+            <button
+              type="button"
+              onClick={() => set('has_parking', !form.has_parking)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-bold transition ${
+                form.has_parking
+                  ? 'bg-green-50 border-green-300 text-green-700'
+                  : 'bg-white border-slate-200 text-slate-500'
+              }`}
+            >
+              <span>{form.has_parking ? '🚗 駐車場あり' : '🚫 駐車場なし'}</span>
+            </button>
+          </div>
+
+          {/* 持参道具 */}
+          <div>
+            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">持参道具（任意）</p>
+            <input
+              type="text"
+              value={form.required_tools}
+              onChange={e => set('required_tools', e.target.value)}
+              placeholder="例：カッター・定規・ローラー"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
+
+          <div className="border-t border-slate-100" />
+
           {/* コメント */}
           <div>
             <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">コメント</p>
@@ -196,6 +276,18 @@ export default function HelpRequestPage() {
               onChange={e => set('comment', e.target.value)}
               placeholder="例：道具は貸し出せます。昼飯付き。"
               rows={3}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
+
+          {/* 備考 */}
+          <div>
+            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">備考（任意）</p>
+            <textarea
+              value={form.notes}
+              onChange={e => set('notes', e.target.value)}
+              placeholder="例：現地集合・交通費支給あり"
+              rows={2}
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
           </div>

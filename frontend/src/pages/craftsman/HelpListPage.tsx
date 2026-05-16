@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import BottomNav from '../../components/BottomNav';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 type HelpRequest = {
   id: string;
   work_date: string;
@@ -9,37 +11,37 @@ type HelpRequest = {
   work_type: string;
   people_needed: number;
   daily_rate: number;
-  comment: string;
+  comment: string | null;
+  craftsman_id: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  has_parking: boolean | null;
+  required_tools: string | null;
+  notes: string | null;
   created_at: string;
 };
 
-const DEMO: HelpRequest[] = [
-  {
-    id: 'demo-1',
-    work_date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
-    area: '太田市',
-    work_type: 'クロス張替え（2LDK原状回復）',
-    people_needed: 2,
-    daily_rate: 18000,
-    comment: '道具は貸し出せます。昼飯付きです。',
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'demo-2',
-    work_date: new Date(Date.now() + 172800000).toISOString().slice(0, 10),
-    area: '伊勢崎市',
-    work_type: '床CF張替え',
-    people_needed: 1,
-    daily_rate: 15000,
-    comment: '半日で終わる量です。午前スタート希望。',
-    created_at: new Date().toISOString(),
-  },
-];
-
-const DEMO_APP_COUNTS: Record<string, number> = {
-  'demo-1': 2,
-  'demo-2': 1,
+type HelpApplication = {
+  id: string;
+  request_id: string;
+  craftsman_id: string | null;
+  message: string | null;
+  status: 'pending' | 'approved' | 'rejected' | 'completed';
+  requester_completed: boolean;
+  applicant_completed: boolean;
+  created_at: string;
+  updated_at: string | null;
 };
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getUserId(): string {
+  const stored = localStorage.getItem('user');
+  if (stored) {
+    try { return String(JSON.parse(stored).id); } catch { /* ignore */ }
+  }
+  return localStorage.getItem('craftsman_guest_id') ?? '';
+}
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -55,62 +57,580 @@ function daysUntil(dateStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / 86400000);
 }
 
+// ─── Demo data ────────────────────────────────────────────────────────────────
+
+const DEMO: HelpRequest[] = [
+  {
+    id: 'demo-1',
+    work_date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+    area: '太田市',
+    work_type: 'クロス張替え（2LDK原状回復）',
+    people_needed: 2,
+    daily_rate: 18000,
+    comment: '道具は貸し出せます。昼飯付きです。',
+    craftsman_id: 'demo-owner',
+    start_time: '08:00',
+    end_time: '17:00',
+    has_parking: true,
+    required_tools: null,
+    notes: null,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'demo-2',
+    work_date: new Date(Date.now() + 172800000).toISOString().slice(0, 10),
+    area: '伊勢崎市',
+    work_type: '床CF張替え',
+    people_needed: 1,
+    daily_rate: 15000,
+    comment: '半日で終わる量です。午前スタート希望。',
+    craftsman_id: 'demo-other',
+    start_time: '09:00',
+    end_time: '13:00',
+    has_parking: false,
+    required_tools: null,
+    notes: null,
+    created_at: new Date().toISOString(),
+  },
+];
+
+// ─── Detail Modal ─────────────────────────────────────────────────────────────
+
+type DetailModalProps = {
+  job: HelpRequest;
+  applicantCount: number;
+  myApplication: HelpApplication | null;
+  onClose: () => void;
+  onApply: (message: string) => Promise<void>;
+  applying: boolean;
+};
+
+function HelperJobDetailModal({ job, applicantCount, myApplication, onClose, onApply, applying }: DetailModalProps) {
+  const [message, setMessage] = useState('');
+  const days = daysUntil(job.work_date);
+
+  const alreadyApplied = myApplication !== null;
+  const statusLabel: Record<HelpApplication['status'], string> = {
+    pending:   '応募済み（承認待ち）',
+    approved:  '承認されました！',
+    rejected:  '今回は見送りとなりました',
+    completed: '完了',
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center" onClick={onClose}>
+      <div
+        className="bg-white rounded-t-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* ハンドル */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 bg-slate-200 rounded-full" />
+        </div>
+
+        <div className="px-5 pb-8">
+          <div className="flex items-start justify-between mb-4">
+            <h2 className="text-lg font-extrabold text-slate-900">助っ人募集の詳細</h2>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* 工事内容 */}
+          <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl p-4 mb-4">
+            <h3 className="text-base font-extrabold text-slate-900 mb-1">{job.work_type}</h3>
+            <p className="text-sm text-slate-500 flex items-center gap-1">
+              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              {job.area}
+            </p>
+          </div>
+
+          {/* 詳細グリッド */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="bg-slate-50 rounded-xl p-3">
+              <p className="text-[10px] text-slate-400 font-bold mb-1">作業日</p>
+              <p className="text-sm font-extrabold text-slate-900">{formatDate(job.work_date)}</p>
+              <p className="text-xs text-slate-400">
+                {days === 0 ? '今日' : days > 0 ? `あと${days}日` : `${Math.abs(days)}日前`}
+              </p>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-3">
+              <p className="text-[10px] text-slate-400 font-bold mb-1">日当</p>
+              <p className="text-xl font-extrabold text-slate-900">¥{job.daily_rate.toLocaleString()}</p>
+              <p className="text-xs text-slate-400">/ 日</p>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-3">
+              <p className="text-[10px] text-slate-400 font-bold mb-1">作業時間</p>
+              <p className="text-sm font-bold text-slate-900">
+                {job.start_time && job.end_time ? `${job.start_time} 〜 ${job.end_time}` : '要相談'}
+              </p>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-3">
+              <p className="text-[10px] text-slate-400 font-bold mb-1">募集人数</p>
+              <p className="text-sm font-bold text-slate-900">{job.people_needed}名</p>
+              <p className="text-xs text-slate-400">{applicantCount}名が応募中</p>
+            </div>
+          </div>
+
+          {/* 駐車場 */}
+          <div className="flex items-center gap-2 mb-3">
+            <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold ${
+              job.has_parking ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-500'
+            }`}>
+              {job.has_parking ? '🚗 駐車場あり' : '🚫 駐車場なし'}
+            </span>
+          </div>
+
+          {/* 必要道具 */}
+          {job.required_tools && (
+            <div className="bg-yellow-50 rounded-xl px-3 py-2.5 mb-3">
+              <p className="text-[10px] text-yellow-700 font-bold mb-1">持参道具</p>
+              <p className="text-sm text-slate-700">{job.required_tools}</p>
+            </div>
+          )}
+
+          {/* コメント */}
+          {job.comment && (
+            <p className="text-sm text-slate-600 bg-blue-50 rounded-xl px-3 py-2.5 mb-4 leading-relaxed">
+              💬 {job.comment}
+            </p>
+          )}
+
+          {/* 備考 */}
+          {job.notes && (
+            <p className="text-sm text-slate-600 bg-slate-50 rounded-xl px-3 py-2.5 mb-4 leading-relaxed">
+              📝 {job.notes}
+            </p>
+          )}
+
+          {/* 応募済み表示 */}
+          {alreadyApplied ? (
+            <div className={`rounded-2xl p-4 mb-2 text-center ${
+              myApplication.status === 'approved' ? 'bg-green-50 border border-green-200' :
+              myApplication.status === 'rejected' ? 'bg-slate-100 border border-slate-200' :
+              'bg-blue-50 border border-blue-200'
+            }`}>
+              <p className={`font-extrabold text-sm ${
+                myApplication.status === 'approved' ? 'text-green-700' :
+                myApplication.status === 'rejected' ? 'text-slate-500' :
+                'text-blue-700'
+              }`}>
+                {statusLabel[myApplication.status]}
+              </p>
+              {myApplication.status === 'approved' && (
+                <p className="text-xs text-green-600 mt-1">
+                  募集主からの連絡先確認は「案件管理」ページをご確認ください
+                </p>
+              )}
+              {myApplication.status === 'pending' && (
+                <p className="text-xs text-blue-500 mt-1">募集主が応募を確認次第、承認/拒否の通知が届きます</p>
+              )}
+            </div>
+          ) : (
+            <>
+              <textarea
+                value={message}
+                onChange={e => setMessage(e.target.value)}
+                placeholder="一言コメント（任意）例：道具は全て持参できます"
+                className="w-full border border-slate-200 rounded-xl p-3 text-sm mt-2 mb-3 resize-none focus:outline-none focus:ring-2 focus:ring-orange-300"
+                rows={3}
+              />
+              <button
+                onClick={() => onApply(message)}
+                disabled={applying}
+                className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl font-extrabold text-sm shadow-sm transition active:scale-[0.99] disabled:opacity-60"
+              >
+                {applying ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    送信中...
+                  </span>
+                ) : 'この助っ人募集に応募する'}
+              </button>
+              <p className="text-center text-xs text-slate-400 mt-2">
+                応募後、募集主の承認をお待ちください
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Approval Management Modal ────────────────────────────────────────────────
+
+type MyJobApplication = HelpApplication & {
+  craftsman_name?: string;
+  craftsman_email?: string;
+};
+
+type MyJobManageModalProps = {
+  job: HelpRequest;
+  applications: MyJobApplication[];
+  onClose: () => void;
+  onApprove: (appId: string) => Promise<void>;
+  onReject: (appId: string) => Promise<void>;
+  onComplete: (appId: string) => Promise<void>;
+  processingId: string | null;
+};
+
+function MyJobManageModal({ job, applications, onClose, onApprove, onReject, onComplete, processingId }: MyJobManageModalProps) {
+  const statusLabel: Record<HelpApplication['status'], string> = {
+    pending:   '承認待ち',
+    approved:  '承認済み',
+    rejected:  '拒否済み',
+    completed: '完了',
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center" onClick={onClose}>
+      <div
+        className="bg-white rounded-t-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 bg-slate-200 rounded-full" />
+        </div>
+
+        <div className="px-5 pb-8">
+          <div className="flex items-start justify-between mb-2">
+            <div>
+              <h2 className="text-lg font-extrabold text-slate-900">応募管理</h2>
+              <p className="text-xs text-slate-400">{job.work_type} / {formatDate(job.work_date)}</p>
+            </div>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {applications.length === 0 ? (
+            <div className="text-center py-8 text-slate-400">
+              <p className="text-2xl mb-2">📭</p>
+              <p className="text-sm">まだ応募がありません</p>
+            </div>
+          ) : (
+            <div className="space-y-3 mt-4">
+              {applications.map(app => (
+                <div key={app.id} className={`rounded-2xl border p-4 ${
+                  app.status === 'approved' ? 'border-green-200 bg-green-50' :
+                  app.status === 'rejected' ? 'border-slate-200 bg-slate-50' :
+                  app.status === 'completed' ? 'border-emerald-200 bg-emerald-50' :
+                  'border-blue-200 bg-blue-50'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">
+                        {app.craftsman_name ?? `職人 ${app.craftsman_id?.slice(0, 8) ?? '不明'}`}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {new Date(app.created_at).toLocaleDateString('ja-JP')} に応募
+                      </p>
+                    </div>
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                      app.status === 'approved' ? 'bg-green-200 text-green-700' :
+                      app.status === 'rejected' ? 'bg-slate-200 text-slate-500' :
+                      app.status === 'completed' ? 'bg-emerald-200 text-emerald-700' :
+                      'bg-blue-200 text-blue-700'
+                    }`}>
+                      {statusLabel[app.status]}
+                    </span>
+                  </div>
+
+                  {app.message && (
+                    <p className="text-xs text-slate-600 bg-white rounded-lg px-3 py-2 mb-3 leading-relaxed">
+                      💬 {app.message}
+                    </p>
+                  )}
+
+                  {/* 承認後: 連絡先開示 */}
+                  {(app.status === 'approved' || app.status === 'completed') && app.craftsman_email && (
+                    <div className="bg-white rounded-xl px-3 py-2.5 mb-3 border border-green-200">
+                      <p className="text-[10px] text-green-600 font-bold mb-1">連絡先（承認後に開示）</p>
+                      <a href={`mailto:${app.craftsman_email}`} className="text-sm font-bold text-blue-600 underline">
+                        {app.craftsman_email}
+                      </a>
+                    </div>
+                  )}
+
+                  {/* 承認待ち: 承認/拒否ボタン */}
+                  {app.status === 'pending' && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => onApprove(app.id)}
+                        disabled={processingId === app.id}
+                        className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white rounded-xl py-2.5 text-xs font-extrabold transition active:scale-95"
+                      >
+                        {processingId === app.id ? '処理中...' : '✓ 承認する'}
+                      </button>
+                      <button
+                        onClick={() => onReject(app.id)}
+                        disabled={processingId === app.id}
+                        className="flex-1 bg-slate-200 hover:bg-slate-300 disabled:opacity-60 text-slate-600 rounded-xl py-2.5 text-xs font-extrabold transition active:scale-95"
+                      >
+                        見送り
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 承認済み: 完了ボタン */}
+                  {app.status === 'approved' && (
+                    <button
+                      onClick={() => onComplete(app.id)}
+                      disabled={processingId === app.id}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl py-2.5 text-xs font-extrabold transition active:scale-95"
+                    >
+                      {processingId === app.id ? '処理中...' : '✅ 作業完了にする'}
+                    </button>
+                  )}
+
+                  {/* 完了: レビュー・利益記録 */}
+                  {app.status === 'completed' && (
+                    <div className="flex gap-2">
+                      <a
+                        href="/tools"
+                        className="flex-1 bg-blue-600 text-white rounded-xl py-2.5 text-xs font-extrabold text-center transition active:scale-95"
+                      >
+                        利益を記録
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 export default function HelpListPage() {
-  const [requests,   setRequests]   = useState<HelpRequest[]>([]);
-  const [appCounts,  setAppCounts]  = useState<Record<string, number>>({});
-  const [loading,    setLoading]    = useState(true);
-  const [isDemo,     setIsDemo]     = useState(false);
-  const [applyingId, setApplyingId] = useState<string | null>(null);
-  const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
+  const currentUserId = getUserId();
+
+  const [requests,    setRequests]    = useState<HelpRequest[]>([]);
+  const [appCounts,   setAppCounts]   = useState<Record<string, number>>({});
+  const [myApps,      setMyApps]      = useState<Record<string, HelpApplication>>({});
+  const [loading,     setLoading]     = useState(true);
+  const [isDemo,      setIsDemo]      = useState(false);
+  const [applying,    setApplying]    = useState(false);
+  const [selectedJob, setSelectedJob] = useState<HelpRequest | null>(null);
+
+  // 自分の募集管理モーダル
+  const [manageJob,    setManageJob]    = useState<HelpRequest | null>(null);
+  const [manageApps,   setManageApps]   = useState<MyJobApplication[]>([]);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase
-        .from('help_requests')
-        .select('*')
-        .order('work_date', { ascending: true });
-
-      if (error || !data || data.length === 0) {
-        if (import.meta.env.DEV) {
-          setRequests(DEMO);
-          setAppCounts(DEMO_APP_COUNTS);
-          setIsDemo(true);
-        }
-      } else {
-        setRequests(data as HelpRequest[]);
-        // 応募数を集計
-        const ids = (data as HelpRequest[]).map(r => r.id);
-        const { data: apps } = await supabase
-          .from('help_applications')
-          .select('request_id')
-          .in('request_id', ids);
-        if (apps) {
-          const counts: Record<string, number> = {};
-          for (const a of apps) counts[a.request_id] = (counts[a.request_id] ?? 0) + 1;
-          setAppCounts(counts);
-        }
-      }
-      setLoading(false);
-    })();
+    loadData();
   }, []);
 
-  async function handleApply(req: HelpRequest) {
-    if (appliedIds.has(req.id)) return;
-    setApplyingId(req.id);
+  async function loadData() {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('help_requests')
+      .select('*')
+      .order('work_date', { ascending: true });
 
-    const { error } = await supabase.from('help_applications').insert({
-      request_id: req.id,
-      message: '行けます',
-    });
-
-    setApplyingId(null);
-
-    if (error) {
-      alert('送信に失敗しました。もう一度お試しください。');
+    if (error || !data || data.length === 0) {
+      if (import.meta.env.DEV) {
+        setRequests(DEMO);
+        setAppCounts({ 'demo-1': 2, 'demo-2': 1 });
+        setIsDemo(true);
+      }
+      setLoading(false);
       return;
     }
 
-    setAppliedIds(prev => new Set([...prev, req.id]));
+    setRequests(data as HelpRequest[]);
+
+    // 応募数を集計
+    const ids = (data as HelpRequest[]).map(r => r.id);
+    const { data: apps } = await supabase
+      .from('help_applications')
+      .select('*')
+      .in('request_id', ids);
+
+    if (apps) {
+      const counts: Record<string, number> = {};
+      const myAppMap: Record<string, HelpApplication> = {};
+      for (const a of apps as HelpApplication[]) {
+        counts[a.request_id] = (counts[a.request_id] ?? 0) + 1;
+        if (a.craftsman_id && a.craftsman_id === currentUserId) {
+          myAppMap[a.request_id] = a;
+        }
+      }
+      setAppCounts(counts);
+      setMyApps(myAppMap);
+    }
+
+    setLoading(false);
+  }
+
+  // 応募処理
+  async function handleApply(job: HelpRequest, message: string) {
+    if (!currentUserId) {
+      alert('ログインが必要です');
+      return;
+    }
+    setApplying(true);
+
+    const { error } = await supabase.from('help_applications').insert({
+      request_id:   job.id,
+      craftsman_id: currentUserId,
+      message:      message || null,
+      status:       'pending',
+    });
+
+    setApplying(false);
+
+    if (error) {
+      if (error.code === '23505') {
+        alert('すでにこの募集に応募しています');
+      } else {
+        alert('送信に失敗しました。もう一度お試しください。');
+      }
+      return;
+    }
+
+    // ローカルステート更新
+    const newApp: HelpApplication = {
+      id: 'temp-' + Date.now(),
+      request_id: job.id,
+      craftsman_id: currentUserId,
+      message: message || null,
+      status: 'pending',
+      requester_completed: false,
+      applicant_completed: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    setMyApps(prev => ({ ...prev, [job.id]: newApp }));
+    setAppCounts(prev => ({ ...prev, [job.id]: (prev[job.id] ?? 0) + 1 }));
+
+    // 応募通知（fire-and-forget）
+    fetch('/api/notify-helper-application', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        request_id:   job.id,
+        craftsman_id: currentUserId,
+        work_type:    job.work_type,
+        area:         job.area,
+        work_date:    job.work_date,
+        message:      message || null,
+        requester_craftsman_id: job.craftsman_id,
+      }),
+    }).catch(() => {});
+
+    alert('応募しました。募集主の承認をお待ちください。');
+    setSelectedJob(null);
+  }
+
+  // 自分の募集の応募管理
+  async function openManageModal(job: HelpRequest) {
+    const { data } = await supabase
+      .from('help_applications')
+      .select('*')
+      .eq('request_id', job.id)
+      .order('created_at', { ascending: true });
+
+    if (!data) { setManageApps([]); setManageJob(job); return; }
+
+    // craftsman情報を取得
+    const craftsmanIds = (data as HelpApplication[])
+      .map(a => a.craftsman_id)
+      .filter((id): id is string => id !== null);
+
+    let craftsmanMap: Record<string, { name: string; email: string }> = {};
+    if (craftsmanIds.length > 0) {
+      const { data: craftsmenData } = await supabase
+        .from('craftsmen')
+        .select('user_id, name, email')
+        .in('user_id', craftsmanIds);
+      if (craftsmenData) {
+        for (const c of craftsmenData as Array<{ user_id: string; name: string; email: string }>) {
+          craftsmanMap[c.user_id] = { name: c.name, email: c.email };
+        }
+      }
+    }
+
+    const enriched: MyJobApplication[] = (data as HelpApplication[]).map(a => ({
+      ...a,
+      craftsman_name:  a.craftsman_id ? craftsmanMap[a.craftsman_id]?.name : undefined,
+      craftsman_email: a.craftsman_id && (a.status === 'approved' || a.status === 'completed')
+        ? craftsmanMap[a.craftsman_id]?.email
+        : undefined,
+    }));
+
+    setManageApps(enriched);
+    setManageJob(job);
+  }
+
+  async function handleApprove(appId: string) {
+    setProcessingId(appId);
+    const { error } = await supabase
+      .from('help_applications')
+      .update({ status: 'approved', updated_at: new Date().toISOString() })
+      .eq('id', appId);
+    setProcessingId(null);
+
+    if (error) { alert('更新に失敗しました'); return; }
+
+    setManageApps(prev => prev.map(a =>
+      a.id === appId ? { ...a, status: 'approved' } : a
+    ));
+
+    // 承認通知（fire-and-forget）
+    fetch('/api/notify-helper-approved', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ application_id: appId }),
+    }).catch(() => {});
+  }
+
+  async function handleReject(appId: string) {
+    setProcessingId(appId);
+    const { error } = await supabase
+      .from('help_applications')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .eq('id', appId);
+    setProcessingId(null);
+
+    if (error) { alert('更新に失敗しました'); return; }
+
+    setManageApps(prev => prev.map(a =>
+      a.id === appId ? { ...a, status: 'rejected' } : a
+    ));
+  }
+
+  async function handleComplete(appId: string) {
+    setProcessingId(appId);
+    const { error } = await supabase
+      .from('help_applications')
+      .update({
+        status: 'completed',
+        requester_completed: true,
+        applicant_completed: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', appId);
+    setProcessingId(null);
+
+    if (error) { alert('更新に失敗しました'); return; }
+
+    setManageApps(prev => prev.map(a =>
+      a.id === appId ? { ...a, status: 'completed', requester_completed: true, applicant_completed: true } : a
+    ));
   }
 
   return (
@@ -162,7 +682,8 @@ export default function HelpListPage() {
         ) : (
           <div className="space-y-4">
             {requests.map(req => {
-              const applied    = appliedIds.has(req.id);
+              const isMyPost   = currentUserId !== '' && req.craftsman_id === currentUserId;
+              const myApp      = myApps[req.id] ?? null;
               const appCount   = appCounts[req.id] ?? 0;
               const days       = daysUntil(req.work_date);
               const isToday    = days === 0;
@@ -170,7 +691,16 @@ export default function HelpListPage() {
               const isLastSlot = req.people_needed === 1;
 
               return (
-                <article key={req.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                <article key={req.id} className={`bg-white rounded-3xl shadow-sm overflow-hidden ${
+                  isMyPost ? 'border-2 border-orange-300' : 'border border-slate-200'
+                }`}>
+                  {/* 自分の募集バナー */}
+                  {isMyPost && (
+                    <div className="bg-gradient-to-r from-orange-400 to-amber-400 px-4 py-2.5">
+                      <p className="text-white font-extrabold text-xs">📋 あなたの募集です</p>
+                    </div>
+                  )}
+
                   {/* ヘッダー */}
                   <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-b border-slate-100 px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -202,7 +732,7 @@ export default function HelpListPage() {
                         )}
                         {appCount > 0 && (
                           <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">
-                            👀 現在{appCount}人が検討中
+                            👀 {appCount}名が応募中
                           </span>
                         )}
                       </div>
@@ -233,23 +763,33 @@ export default function HelpListPage() {
                       </p>
                     )}
 
-                    <button
-                      onClick={() => handleApply(req)}
-                      disabled={applied || applyingId === req.id}
-                      className={`w-full rounded-2xl py-3 text-sm font-extrabold shadow-sm transition active:scale-[0.99] disabled:opacity-60 ${
-                        applied
-                          ? 'bg-green-500 text-white'
-                          : 'bg-orange-500 hover:bg-orange-600 text-white'
-                      }`}
-                    >
-                      {applied
-                        ? '✓ 応募済み'
-                        : applyingId === req.id
-                        ? '送信中...'
-                        : '行けます！'}
-                    </button>
+                    {/* CTAボタン */}
+                    {isMyPost ? (
+                      <button
+                        onClick={() => openManageModal(req)}
+                        className="w-full rounded-2xl py-3 text-sm font-extrabold shadow-sm bg-orange-100 text-orange-700 hover:bg-orange-200 transition active:scale-[0.99]"
+                      >
+                        応募を管理する（{appCount}件）
+                      </button>
+                    ) : myApp ? (
+                      <button
+                        onClick={() => setSelectedJob(req)}
+                        className="w-full rounded-2xl py-3 text-sm font-extrabold shadow-sm bg-green-500 text-white"
+                      >
+                        {myApp.status === 'approved' ? '✓ 承認されました' :
+                         myApp.status === 'rejected' ? '今回は見送り' :
+                         myApp.status === 'completed' ? '✅ 完了' :
+                         '応募済み（承認待ち）'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setSelectedJob(req)}
+                        className="w-full rounded-2xl py-3 text-sm font-extrabold shadow-sm bg-orange-500 hover:bg-orange-600 text-white transition active:scale-[0.99]"
+                      >
+                        詳細を見る
+                      </button>
+                    )}
                     <p className="mt-1.5 text-center text-xs text-slate-400">現在は無料で利用できます</p>
-                    <p className="mt-0.5 text-center text-xs text-slate-400">正式版では参加時300円を予定しています</p>
                     <p className="mt-1 text-center">
                       <a href="/support?type=report" className="text-[10px] text-slate-300 hover:text-red-400 transition-colors underline">問題を報告</a>
                     </p>
@@ -260,6 +800,32 @@ export default function HelpListPage() {
           </div>
         )}
       </div>
+
+      {/* 詳細確認モーダル */}
+      {selectedJob && (
+        <HelperJobDetailModal
+          job={selectedJob}
+          applicantCount={appCounts[selectedJob.id] ?? 0}
+          myApplication={myApps[selectedJob.id] ?? null}
+          onClose={() => setSelectedJob(null)}
+          onApply={(msg) => handleApply(selectedJob, msg)}
+          applying={applying}
+        />
+      )}
+
+      {/* 応募管理モーダル */}
+      {manageJob && (
+        <MyJobManageModal
+          job={manageJob}
+          applications={manageApps}
+          onClose={() => { setManageJob(null); setManageApps([]); }}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          onComplete={handleComplete}
+          processingId={processingId}
+        />
+      )}
+
       <BottomNav />
     </div>
   );
