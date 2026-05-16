@@ -2,10 +2,12 @@ import { Resend } from 'resend';
 
 // Phase47: 助っ人応募通知
 // 応募者が応募した際に募集主へ通知するAPI
+// Phase51: ログ強化・ownerOk/adminOk レスポンス追加
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const ADMIN_FROM   = 'Aoi Interior <onboarding@resend.dev>';
+const ADMIN_TO     = 'interior.shop.aoi@gmail.com';
 const SITE_URL     = 'https://promatch-app.jp';
 
 const SUPABASE_URL      = process.env.SUPABASE_URL
@@ -24,9 +26,9 @@ async function getAdminNotificationEnabled(key: string): Promise<boolean> {
     );
     if (!r.ok) return true;
     const rows = await r.json() as Array<Record<string, boolean>>;
-    return rows?.[0]?.[key] !== false; // undefined も true として扱う
+    return rows?.[0]?.[key] !== false;
   } catch {
-    return true; // エラー時はデフォルトで通知する
+    return true;
   }
 }
 
@@ -51,6 +53,13 @@ export default async function handler(req: any, res: any) {
     requester_craftsman_id,
   } = req.body ?? {};
 
+  // ── ログ: 受信パラメータ ──────────────────────────────────
+  console.log('[notify-helper-application] received:', {
+    request_id:             request_id ?? null,
+    applicant_craftsman_id: craftsman_id ?? null,
+    owner_craftsman_id:     requester_craftsman_id ?? null,
+  });
+
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     res.status(500).json({ error: 'missing env' });
     return;
@@ -62,7 +71,12 @@ export default async function handler(req: any, res: any) {
   const safeMessage  = String(message ?? '（コメントなし）');
   const listUrl      = `${SITE_URL}/craftsman/help-list`;
 
-  // 管理者通知（設定がONの場合のみ）
+  let adminOk     = false;
+  let ownerOk     = false;
+  let ownerReason = 'not_attempted';
+  let ownerEmail  = '';
+
+  // ── 管理者通知（設定がONの場合のみ）─────────────────────────
   const adminEnabled = await getAdminNotificationEnabled('notify_helper_application');
   if (adminEnabled) {
     const adminBody = [
@@ -72,6 +86,7 @@ export default async function handler(req: any, res: any) {
       `エリア　　：${safeArea}`,
       `作業日　　：${safeWorkDate}`,
       `応募者ID　：${craftsman_id ?? '—'}`,
+      `募集主ID　：${requester_craftsman_id ?? '—'}`,
       `メッセージ：${safeMessage}`,
       `request_id：${request_id ?? '—'}`,
       '',
@@ -80,35 +95,69 @@ export default async function handler(req: any, res: any) {
     ].join('\n');
 
     try {
-      await resend.emails.send({
+      const result = await resend.emails.send({
         from:    ADMIN_FROM,
-        to:      ['interior.shop.aoi@gmail.com'],
+        to:      [ADMIN_TO],
         subject: '【PRO MATCH】助っ人募集に応募がありました',
         text:    adminBody,
       });
+      adminOk = true;
+      console.log('[notify-helper-application] 管理者通知 OK:', result);
     } catch (err) {
       console.error('[notify-helper-application] 管理者通知失敗:', err);
     }
+  } else {
+    adminOk = true; // OFFは成功扱い（意図的スキップ）
+    console.log('[notify-helper-application] 管理者通知 OFF (設定)');
   }
 
-  // 募集主への通知（craftsman_id → craftsmenテーブルのemail取得）
-  if (requester_craftsman_id && typeof requester_craftsman_id === 'string') {
+  // ── 募集主への通知（管理者設定に関係なく必ず試みる）──────────
+  if (!requester_craftsman_id || typeof requester_craftsman_id !== 'string') {
+    ownerReason = 'no_owner_uid';
+    console.warn('[notify-helper-application] 募集主IDが未指定:', { requester_craftsman_id });
+  } else {
     try {
+      // craftsmen テーブルからメールを取得
+      // SECURITY DEFINER RPC 経由でメール取得（anon key でも RLS バイパス）
       const sbRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/craftsmen?select=email,full_name&user_id=eq.${encodeURIComponent(requester_craftsman_id)}&limit=1`,
+        `${SUPABASE_URL}/rest/v1/rpc/get_craftsman_contact`,
         {
+          method: 'POST',
           headers: {
             'apikey':        SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type':  'application/json',
           },
+          body: JSON.stringify({ p_user_id: requester_craftsman_id }),
         },
       );
 
-      if (sbRes.ok) {
-        const rows = await sbRes.json() as Array<{ email?: string; full_name?: string }>;
-        const requesterEmail = rows?.[0]?.email;
+      if (!sbRes.ok) {
+        const errBody = await sbRes.text().catch(() => '');
+        ownerReason = `craftsmen_rpc_failed_${sbRes.status}`;
+        console.error('[notify-helper-application] get_craftsman_contact RPC 失敗:', sbRes.status, errBody);
+      } else {
+        const contact = await sbRes.json() as { email?: string; full_name?: string } | null;
+        ownerEmail = contact?.email ?? '';
+        const ownerName = contact?.full_name ?? '';
 
-        if (requesterEmail && requesterEmail.includes('@')) {
+        console.log('[notify-helper-application] craftsmen 取得:', {
+          owner_uid:    requester_craftsman_id,
+          owner_email:  ownerEmail || '(なし)',
+          owner_name:   ownerName  || '(なし)',
+          rows_count:   rows.length,
+        });
+
+        if (!ownerEmail) {
+          ownerReason = contact === null
+            ? 'craftsmen_row_not_found'
+            : 'email_empty';
+          console.error('[notify-helper-application] 募集主メール取得不能:', ownerReason, { requester_craftsman_id });
+        } else if (!ownerEmail.includes('@')) {
+          ownerReason = 'email_invalid_format';
+          console.error('[notify-helper-application] 募集主メール形式不正:', ownerEmail);
+        } else {
+          // メール送信
           const html = `<!DOCTYPE html>
 <html lang="ja">
 <head><meta charset="UTF-8"><title>助っ人応募が届きました</title></head>
@@ -136,6 +185,9 @@ ${escHtml(safeMessage)}
 </a>
 </td></tr>
 </table>
+<p style="margin:0;font-size:11px;color:#94a3b8;text-align:center;">
+連絡は必ずメールで。電話・LINEは使用しないでください。
+</p>
 </td></tr>
 <tr><td style="background:#f8fafc;border-radius:0 0 16px 16px;padding:20px 32px;text-align:center;border-top:1px solid #e2e8f0;">
 <p style="margin:0;font-size:11px;color:#94a3b8;">PRO MATCH — 内装職人マッチング</p>
@@ -146,19 +198,41 @@ ${escHtml(safeMessage)}
 </body>
 </html>`;
 
-          await resend.emails.send({
-            from:    ADMIN_FROM,
-            to:      [requesterEmail],
-            subject: '【PRO MATCH】助っ人応募が届きました',
-            html,
-            text: `助っ人募集（${safeWorkType} / ${safeArea}）に応募がありました。\n応募者コメント：${safeMessage}\n\n▼ 応募を確認\n${listUrl}`,
-          });
+          try {
+            const ownerResult = await resend.emails.send({
+              from:    ADMIN_FROM,
+              to:      [ownerEmail],
+              subject: '【PRO MATCH】助っ人応募が届きました',
+              html,
+              text: `助っ人募集（${safeWorkType} / ${safeArea}）に応募がありました。\n応募者コメント：${safeMessage}\n\n▼ 応募を確認\n${listUrl}`,
+            });
+            ownerOk     = true;
+            ownerReason = 'sent';
+            console.log('[notify-helper-application] 募集主通知 OK:', {
+              to:     ownerEmail,
+              result: ownerResult,
+            });
+          } catch (sendErr: any) {
+            ownerReason = 'resend_error';
+            console.error('[notify-helper-application] 募集主Resend送信失敗:', {
+              to:    ownerEmail,
+              error: sendErr?.message ?? sendErr,
+            });
+          }
         }
       }
-    } catch (err) {
-      console.error('[notify-helper-application] 募集主通知失敗:', err);
+    } catch (err: any) {
+      ownerReason = 'exception';
+      console.error('[notify-helper-application] 募集主通知 例外:', err?.message ?? err);
     }
   }
 
-  res.status(200).json({ ok: true });
+  const responseBody = {
+    adminOk,
+    ownerOk,
+    ownerReason,
+    ownerEmail: ownerEmail || null,
+  };
+  console.log('[notify-helper-application] response:', responseBody);
+  res.status(200).json(responseBody);
 }

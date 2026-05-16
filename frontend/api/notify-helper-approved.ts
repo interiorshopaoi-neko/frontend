@@ -102,43 +102,55 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // 3. 応募者のメールを取得
+    // 3. 応募者のメールを取得（SECURITY DEFINER RPC 経由 — anon でも RLS バイパス）
     if (!applicantId) {
       res.status(200).json({ ok: false, reason: 'no applicant craftsman_id' });
       return;
     }
 
     const applicantRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/craftsmen?select=email,full_name&user_id=eq.${encodeURIComponent(applicantId)}&limit=1`,
+      `${SUPABASE_URL}/rest/v1/rpc/get_craftsman_contact`,
       {
+        method: 'POST',
         headers: {
           'apikey':        SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type':  'application/json',
         },
+        body: JSON.stringify({ p_user_id: applicantId }),
       },
     );
 
     let applicantEmail = '';
     if (applicantRes.ok) {
-      const rows = await applicantRes.json() as Array<{ email?: string }>;
-      applicantEmail = rows?.[0]?.email ?? '';
+      const contact = await applicantRes.json() as { email?: string } | null;
+      applicantEmail = contact?.email ?? '';
+      console.log('[notify-helper-approved] 応募者contact:', { applicantId, applicantEmail: applicantEmail || '(なし)' });
+    } else {
+      console.error('[notify-helper-approved] 応募者RPC失敗:', applicantRes.status);
     }
 
-    // 4. 募集主のメールを取得（連絡先開示用）
+    // 4. 募集主のメールを取得（連絡先開示用 — 同じくRPC経由）
     let requesterEmail = '';
     if (requesterCraftsmanId) {
       const requesterRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/craftsmen?select=email,full_name&user_id=eq.${encodeURIComponent(requesterCraftsmanId)}&limit=1`,
+        `${SUPABASE_URL}/rest/v1/rpc/get_craftsman_contact`,
         {
+          method: 'POST',
           headers: {
             'apikey':        SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type':  'application/json',
           },
+          body: JSON.stringify({ p_user_id: requesterCraftsmanId }),
         },
       );
       if (requesterRes.ok) {
-        const rows = await requesterRes.json() as Array<{ email?: string }>;
-        requesterEmail = rows?.[0]?.email ?? '';
+        const contact = await requesterRes.json() as { email?: string } | null;
+        requesterEmail = contact?.email ?? '';
+        console.log('[notify-helper-approved] 募集主contact:', { requesterCraftsmanId, requesterEmail: requesterEmail || '(なし)' });
+      } else {
+        console.error('[notify-helper-approved] 募集主RPC失敗:', requesterRes.status);
       }
     }
 
