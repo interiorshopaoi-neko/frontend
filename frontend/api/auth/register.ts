@@ -82,27 +82,30 @@ export default async function handler(req: any, res: any) {
     // メール確認が必要な場合: access_token が null になる
     const token = data.access_token ?? data.session?.access_token ?? null;
 
-    // role === 'craftsman' のとき craftsmen テーブルに事前 INSERT（確認前でも行を作っておく）
-    // Prefer: resolution=ignore-duplicates で重複 INSERT を防ぐ
+    // role === 'craftsman' のとき SECURITY DEFINER RPC 経由で craftsmen 行を作成する
+    // anon RLS バイパスなし・service_role キー不要・重複は RPC 側で ignore
     if (role === 'craftsman' && data.user?.id) {
-      await fetch(
-        `${SUPABASE_URL}/rest/v1/craftsmen`,
+      const rpcRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/rpc/ensure_craftsman_for_auth_user`,
         {
           method: 'POST',
           headers: {
             apikey: SUPABASE_ANON_KEY,
             'Content-Type': 'application/json',
-            Prefer: 'resolution=ignore-duplicates',
           },
           body: JSON.stringify({
-            user_id: data.user.id,
-            full_name: name,
-            email: email,
-            free_credits_remaining: 2,
-            referral_bonus_credits: 0,
+            p_user_id:   data.user.id,
+            p_email:     email,
+            p_full_name: name,
           }),
         }
-      ).catch(err => console.warn('[register] craftsmen insert failed:', err));
+      );
+      if (!rpcRes.ok) {
+        const rpcErr = await rpcRes.json().catch(() => ({}));
+        console.error('[register] ensure_craftsman_for_auth_user failed:', rpcErr);
+        res.status(500).json({ error: '職人プロフィールの作成に失敗しました。もう一度お試しください。' });
+        return;
+      }
     }
 
     if (!token) {

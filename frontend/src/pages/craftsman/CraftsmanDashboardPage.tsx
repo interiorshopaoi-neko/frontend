@@ -293,6 +293,15 @@ export default function CraftsmanDashboardPage() {
     })();
   }, [userId]);
 
+  // ローディング中は白画面にならないようスピナーを表示
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="w-7 h-7 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   const withStatus = apps.map(a => ({ ...a, _status: deriveStatus(a) }));
 
   // 成約済みを最上部に優先表示（職人が選ばれたことをすぐ分かるように）

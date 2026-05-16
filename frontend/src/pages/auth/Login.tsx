@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import type { User, Role } from '../../types';
 import api from '../../utils/api';
+import { supabase } from '../../lib/supabase';
 
 interface Props {
   onLogin: (token: string, user: User) => void;
@@ -48,10 +49,13 @@ export default function Login({ onLogin }: Props) {
   const [role,     setRole]     = useState<'customer' | 'craftsman'>(
     defaultRole === 'craftsman' ? 'craftsman' : 'customer',
   );
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
-  const [error,    setError]    = useState('');
-  const [loading,  setLoading]  = useState(false);
+  const [email,        setEmail]        = useState('');
+  const [password,     setPassword]     = useState('');
+  const [error,        setError]        = useState('');
+  const [loading,      setLoading]      = useState(false);
+  const [forgotMode,   setForgotMode]   = useState(false);
+  const [forgotSent,   setForgotSent]   = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
   const navigate = useNavigate();
 
   const cfg = ROLE_CFG[role];
@@ -68,6 +72,24 @@ export default function Login({ onLogin }: Props) {
       setError(err.response?.data?.error ?? 'ログインに失敗しました。メール・パスワードを確認してください。');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) { setError('メールアドレスを入力してください'); return; }
+    setError('');
+    setForgotLoading(true);
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'https://promatch-app.jp/reset-password',
+      });
+      if (resetError) throw resetError;
+      setForgotSent(true);
+    } catch (err: any) {
+      setError(err?.message ?? 'パスワードリセットメールの送信に失敗しました');
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -203,6 +225,48 @@ export default function Login({ onLogin }: Props) {
             ) : 'ログイン →'}
           </button>
         </form>
+
+        {/* パスワードをお忘れですか */}
+        <div className="mt-3 text-center">
+          {!forgotMode && !forgotSent && (
+            <button
+              type="button"
+              onClick={() => { setForgotMode(true); setError(''); }}
+              className="text-xs text-slate-400 hover:text-slate-600 underline"
+            >
+              パスワードをお忘れですか？
+            </button>
+          )}
+          {forgotMode && !forgotSent && (
+            <form onSubmit={handleForgotPassword} className="mt-3 space-y-2">
+              <p className="text-xs text-slate-500 mb-1">登録メールアドレスにリセットリンクを送信します</p>
+              {error && (
+                <p className="text-red-600 text-xs bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                  {error}
+                </p>
+              )}
+              <button
+                type="submit"
+                disabled={forgotLoading}
+                className="w-full py-2.5 bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-all"
+              >
+                {forgotLoading ? '送信中...' : 'リセットメールを送信'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setForgotMode(false); setError(''); }}
+                className="text-xs text-slate-400 hover:text-slate-600 underline"
+              >
+                キャンセル
+              </button>
+            </form>
+          )}
+          {forgotSent && (
+            <p className="text-xs text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 mt-2">
+              パスワードリセットメールを送信しました。受信ボックスをご確認ください。
+            </p>
+          )}
+        </div>
 
         <div className="mt-6 text-center space-y-2">
           {/* お客様: ログイン不要の直接依頼導線 */}

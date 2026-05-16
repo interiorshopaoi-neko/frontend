@@ -36,6 +36,7 @@ import PrivacyPage from './pages/PrivacyPage';
 import LegalPage   from './pages/LegalPage';
 import RequestExtraInfoPage from './pages/corporate/RequestExtraInfoPage';
 import AuthConfirmed from './pages/auth/AuthConfirmed';
+import ResetPassword from './pages/auth/ResetPassword';
 
 // ─── 紹介コード捕捉（モジュール起動時 — React Router リダイレクト前に実行）────
 {
@@ -167,6 +168,7 @@ export default function App() {
 
         {/* 認証フロー */}
         <Route path="/auth/confirmed" element={<AuthConfirmed />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* 公開ページ */}
         <Route path="/complete"   element={<CompletePage />} />
