@@ -55,6 +55,14 @@ function getSiteRadar(meta: Record<string, unknown> | null): SiteRadar | null {
   return r as SiteRadar;
 }
 
+/** meta から helperImages を安全に取り出す */
+function getHelperImages(meta: Record<string, unknown> | null): string[] {
+  if (!meta || typeof meta !== 'object') return [];
+  const imgs = meta['helperImages'];
+  if (!Array.isArray(imgs)) return [];
+  return imgs.filter((v): v is string => typeof v === 'string');
+}
+
 function getUserId(): string {
   const stored = localStorage.getItem('user');
   if (stored) {
@@ -239,6 +247,25 @@ function HelperJobDetailModal({ job, applicantCount, myApplication, onClose, onA
               📝 {job.notes}
             </p>
           )}
+
+          {/* 現場写真（モーダルでは最大3枚グリッド） */}
+          {(() => {
+            const imgs = getHelperImages(job.meta);
+            if (imgs.length === 0) return null;
+            return (
+              <div className={`grid gap-2 mb-4 ${imgs.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                {imgs.slice(0, 3).map((url, i) => (
+                  <img
+                    key={i}
+                    src={url}
+                    alt={`現場写真${i + 1}`}
+                    className={`w-full object-cover rounded-xl ${imgs.length === 1 ? 'h-48' : 'h-32'}`}
+                    loading="lazy"
+                  />
+                ))}
+              </div>
+            );
+          })()}
 
           {/* 現場レーダー（詳細モーダルでは全項目を表示） */}
           {(() => {
@@ -799,6 +826,20 @@ export default function HelpListPage() {
                       <p className="text-white font-extrabold text-xs">📋 あなたの募集です</p>
                     </div>
                   )}
+
+                  {/* 現場写真（1枚目） */}
+                  {(() => {
+                    const imgs = getHelperImages(req.meta);
+                    if (imgs.length === 0) return null;
+                    return (
+                      <img
+                        src={imgs[0]}
+                        alt="現場写真"
+                        className="w-full h-40 object-cover"
+                        loading="lazy"
+                      />
+                    );
+                  })()}
 
                   {/* ヘッダー */}
                   <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-b border-slate-100 px-4 py-3 flex items-center justify-between">

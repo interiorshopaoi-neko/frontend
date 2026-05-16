@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { compressImage } from '../../utils/imageUtils';
 
 function getUserId(): string {
   const stored = localStorage.getItem('user');
@@ -126,10 +127,11 @@ function MultiChips({
 // ─── メインコンポーネント ────────────────────────────────────────────────────
 
 export default function HelpRequestPage() {
-  const [form,   setForm]   = useState<Form>(DEFAULT);
-  const [saving, setSaving] = useState(false);
-  const [done,   setDone]   = useState(false);
-  const [error,  setError]  = useState<string | null>(null);
+  const [form,             setForm]             = useState<Form>(DEFAULT);
+  const [helperImageFiles, setHelperImageFiles] = useState<File[]>([]);
+  const [saving,           setSaving]           = useState(false);
+  const [done,             setDone]             = useState(false);
+  const [error,            setError]            = useState<string | null>(null);
   const currentUserId = getUserId();
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) =>
@@ -146,12 +148,42 @@ export default function HelpRequestPage() {
     setSaving(true);
     setError(null);
 
+    // 現場写真をアップロード
+    const helperImageUrls: string[] = [];
+    if (helperImageFiles.length > 0) {
+      const ts = Date.now();
+      for (let i = 0; i < helperImageFiles.length; i++) {
+        try {
+          const blob = await compressImage(helperImageFiles[i], 1200, 0.80);
+          const path = `helper-images/${ts}/${i}.jpg`;
+          const { error: uploadErr } = await supabase.storage
+            .from('estimate-videos')
+            .upload(path, blob, { contentType: 'image/jpeg' });
+          if (!uploadErr) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('estimate-videos')
+              .getPublicUrl(path);
+            helperImageUrls.push(publicUrl);
+          } else {
+            console.error('[HelpRequestPage] 画像アップロード失敗:', uploadErr);
+          }
+        } catch (imgErr) {
+          console.error('[HelpRequestPage] 画像処理エラー:', imgErr);
+        }
+      }
+    }
+
     // 現場レーダー: 1つでも入力があれば meta に含める
     const r = form.radar;
     const hasRadar = r.siteType || r.siteScale || r.crewSize ||
       r.siteConditions.length > 0 || r.accessCondition ||
       r.requiredTools.length > 0 || r.toolNotes;
-    const meta = hasRadar ? { siteRadar: r } : null;
+    const meta = (hasRadar || helperImageUrls.length > 0)
+      ? {
+          ...(hasRadar        ? { siteRadar: r }                 : {}),
+          ...(helperImageUrls.length > 0 ? { helperImages: helperImageUrls } : {}),
+        }
+      : null;
 
     const { error: err } = await supabase.from('help_requests').insert({
       work_date:      form.work_date,
@@ -391,6 +423,63 @@ export default function HelpRequestPage() {
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
           </div>
+        </div>
+
+        {/* ── 現場写真 ────────────────────────────────────────────────────── */}
+        <div className="mt-4 bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">📷</span>
+            <p className="text-sm font-extrabold text-slate-900">現場写真</p>
+            <span className="text-xs bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-full">任意</span>
+          </div>
+          <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+            今の現場の雰囲気が分かる写真があると、職人が応募しやすくなります。
+          </p>
+
+          {/* サムネイルプレビュー */}
+          {helperImageFiles.length > 0 && (
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {helperImageFiles.map((file, idx) => (
+                <div key={idx} className="relative w-24 h-24">
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt={`現場写真${idx + 1}`}
+                    className="w-24 h-24 object-cover rounded-xl border border-slate-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setHelperImageFiles(prev => prev.filter((_, i) => i !== idx))}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-slate-700 text-white rounded-full text-[10px] flex items-center justify-center font-bold leading-none"
+                    aria-label="削除"
+                  >×</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {helperImageFiles.length < 3 && (
+            <label className="flex items-center gap-2 px-4 py-3 border-2 border-dashed border-slate-200 rounded-xl text-sm text-slate-400 font-semibold cursor-pointer hover:border-blue-300 hover:text-blue-400 transition">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              写真を追加（最大3枚）
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={e => {
+                  const files = Array.from(e.target.files ?? []);
+                  if (files.length === 0) return;
+                  setHelperImageFiles(prev => {
+                    const combined = [...prev, ...files];
+                    return combined.slice(0, 3);
+                  });
+                  e.target.value = '';
+                }}
+              />
+            </label>
+          )}
         </div>
 
         {/* ── 現場レーダー ────────────────────────────────────────────────── */}
