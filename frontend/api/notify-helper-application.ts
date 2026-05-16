@@ -143,10 +143,10 @@ export default async function handler(req: any, res: any) {
         const ownerName = contact?.full_name ?? '';
 
         console.log('[notify-helper-application] craftsmen 取得:', {
-          owner_uid:    requester_craftsman_id,
-          owner_email:  ownerEmail || '(なし)',
-          owner_name:   ownerName  || '(なし)',
-          rows_count:   rows.length,
+          owner_uid:   requester_craftsman_id,
+          owner_email: ownerEmail || '(なし)',
+          owner_name:  ownerName  || '(なし)',
+          found:       contact !== null,
         });
 
         if (!ownerEmail) {
