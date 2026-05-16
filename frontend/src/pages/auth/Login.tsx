@@ -69,7 +69,20 @@ export default function Login({ onLogin }: Props) {
       onLogin(data.token, data.user);
       navigate(from ?? (data.user.role === 'customer' ? '/customer' : '/craftsman/dashboard'));
     } catch (err: any) {
-      setError(err.response?.data?.error ?? 'ログインに失敗しました。メール・パスワードを確認してください。');
+      const reason = err.response?.data?.reason as string | undefined;
+      const userMessage: Record<string, string> = {
+        invalid_credentials:  'メールアドレスまたはパスワードを確認してください。',
+        email_not_confirmed:  'メール確認が完了していません。登録時に届いたメールのリンクをクリックしてください。',
+        missing_user:         '認証に問題が発生しました。時間をおいて再度お試しください。',
+        supabase_auth_error:  '認証サービスでエラーが発生しました。時間をおいて再度お試しください。',
+        server_error:         'サーバーでエラーが発生しました。時間をおいて再度お試しください。',
+      };
+      console.error('[Login] auth error', { reason, status: err.response?.status });
+      setError(
+        (reason && userMessage[reason])
+          ?? err.response?.data?.error
+          ?? 'ログインに失敗しました。メール・パスワードを確認してください。'
+      );
     } finally {
       setLoading(false);
     }
