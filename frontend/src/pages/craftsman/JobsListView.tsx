@@ -167,13 +167,24 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                       className="relative bg-slate-900 cursor-pointer"
                       onClick={() => navigate(`/craftsman/apply/${job.id}`, { state: { job } })}
                     >
-                      <video
-                        src={job.video_url}
-                        preload="none"
-                        className="w-full h-36 object-cover opacity-70"
-                        muted
-                        playsInline
-                      />
+                      {job.meta?.thumbnail_url ? (
+                        /* サムネイル画像あり → <img> で表示（帯域ゼロ） */
+                        <img
+                          src={job.meta.thumbnail_url}
+                          alt="現場動画サムネイル"
+                          className="w-full h-36 object-cover opacity-70"
+                          loading="lazy"
+                        />
+                      ) : (
+                        /* 旧データ（thumbnail_url なし）→ <video preload="none"> にフォールバック */
+                        <video
+                          src={job.video_url}
+                          preload="none"
+                          className="w-full h-36 object-cover opacity-70"
+                          muted
+                          playsInline
+                        />
+                      )}
                       {/* 再生ボタンオーバーレイ */}
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg backdrop-blur-sm">

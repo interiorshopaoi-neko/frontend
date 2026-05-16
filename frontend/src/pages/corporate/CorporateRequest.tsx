@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layers, Scissors, LayoutGrid, MessageSquare, Mail } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { generateThumbnail } from '../../utils/videoUtils';
 
 // ── 定数 ─────────────────────────────────────────────────────────────────────
 
@@ -402,9 +403,11 @@ export default function CorporateRequest() {
     try {
       // 1. 動画を Storage にアップロード
       let video_url: string | null = null;
+      let thumbnail_url: string | null = null;
       if (videoFile) {
         const ext = videoFile.name.split('.').pop() ?? 'mp4';
-        const path = `${Date.now()}.${ext}`;
+        const ts  = Date.now();
+        const path = `${ts}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from('estimate-videos')
           .upload(path, videoFile);
@@ -413,11 +416,34 @@ export default function CorporateRequest() {
             .from('estimate-videos')
             .getPublicUrl(path);
           video_url = publicUrl;
+
+          // 1b. サムネイル（失敗しても送信は続行）
+          try {
+            const thumbBlob = await generateThumbnail(videoFile);
+            if (thumbBlob) {
+              const thumbPath = `thumbnails/${ts}.jpg`;
+              const { error: thumbUploadError } = await supabase.storage
+                .from('estimate-videos')
+                .upload(thumbPath, thumbBlob, { contentType: 'image/jpeg' });
+              if (!thumbUploadError) {
+                const { data: { publicUrl: thumbPublicUrl } } = supabase.storage
+                  .from('estimate-videos')
+                  .getPublicUrl(thumbPath);
+                thumbnail_url = thumbPublicUrl;
+              }
+            }
+          } catch (thumbErr) {
+            console.warn('[CorporateRequest] サムネイル生成スキップ:', thumbErr);
+          }
         }
       }
 
       // 2. estimate_requests に保存（SECURITY DEFINER RPC 経由でRLSをバイパス）
-      const metaPayload = { rooms: hasRoomInfo ? rooms : null, extra_info: null };
+      const metaPayload = {
+        rooms:         hasRoomInfo ? rooms : null,
+        extra_info:    null,
+        ...(thumbnail_url ? { thumbnail_url } : {}),
+      };
       console.log('[CorporateRequest] rpc payload meta:', JSON.stringify(metaPayload, null, 2));
 
       const { data: rpcResult, error } = await supabase.rpc('create_estimate_request', {

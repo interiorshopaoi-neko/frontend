@@ -24,6 +24,7 @@ export type JobMeta = {
     timing?: string;
     memo?: string;
   };
+  thumbnail_url?: string;
 };
 
 export type Job = {
