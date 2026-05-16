@@ -351,7 +351,9 @@ export default function CorporateRequest() {
   const [step, setStep] = useState(1);
 
   // フォームデータ（基本）
-  const [videoFile,    setVideoFile]    = useState<File | null>(null);
+  const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50 MB
+  const [videoFile,       setVideoFile]       = useState<File | null>(null);
+  const [videoSizeError,  setVideoSizeError]  = useState(false);
   const [workType,     setWorkType]     = useState('');
   const [area,         setArea]         = useState('');
   const [contactValue, setContactValue] = useState('');
@@ -781,10 +783,38 @@ export default function CorporateRequest() {
                 </p>
               </>
             )}
-            <input type="file" accept="video/*" className="hidden" onChange={e => setVideoFile(e.target.files?.[0] ?? null)} />
+            <input
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={e => {
+                const file = e.target.files?.[0] ?? null;
+                if (file && file.size > MAX_VIDEO_BYTES) {
+                  setVideoSizeError(true);
+                  // input をリセットして同じファイルを再選択できるようにする
+                  e.target.value = '';
+                } else {
+                  setVideoSizeError(false);
+                  setVideoFile(file);
+                }
+              }}
+            />
           </label>
 
-          {/* ── ⑤ LP callout ── */}
+          {/* ── ⑤ 動画サイズエラー ── */}
+          {videoSizeError && (
+            <div className="mt-3 rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3">
+              <p className="text-sm font-bold text-amber-800 mb-0.5">
+                動画が少し長いようです
+              </p>
+              <p className="text-xs text-amber-700 leading-relaxed">
+                10〜15秒程度の短い動画を選んでください。<br />
+                複数部屋を撮影している場合は、まず1部屋だけでも大丈夫です。
+              </p>
+            </div>
+          )}
+
+          {/* ── ⑥ LP callout ── */}
           {!videoFile && (
             <div className="mt-4 flex items-center gap-3 bg-blue-50 rounded-xl px-4 py-3">
               <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
