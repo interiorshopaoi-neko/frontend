@@ -4,6 +4,17 @@ import BottomNav from '../../components/BottomNav';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+// Phase53: 現場レーダー
+type SiteRadar = {
+  siteType?:        string;
+  siteScale?:       string;
+  crewSize?:        string;
+  siteConditions?:  string[];
+  accessCondition?: string;
+  requiredTools?:   string[];
+  toolNotes?:       string;
+};
+
 type HelpRequest = {
   id: string;
   work_date: string;
@@ -18,6 +29,7 @@ type HelpRequest = {
   has_parking: boolean | null;
   required_tools: string | null;
   notes: string | null;
+  meta: Record<string, unknown> | null;
   created_at: string;
 };
 
@@ -34,6 +46,14 @@ type HelpApplication = {
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** meta から siteRadar を安全に取り出す。古いデータ・null・parse 失敗はすべて null を返す */
+function getSiteRadar(meta: Record<string, unknown> | null): SiteRadar | null {
+  if (!meta || typeof meta !== 'object') return null;
+  const r = meta['siteRadar'];
+  if (!r || typeof r !== 'object') return null;
+  return r as SiteRadar;
+}
 
 function getUserId(): string {
   const stored = localStorage.getItem('user');
@@ -74,6 +94,17 @@ const DEMO: HelpRequest[] = [
     has_parking: true,
     required_tools: null,
     notes: null,
+    meta: {
+      siteRadar: {
+        siteType: '空室',
+        siteScale: '1日',
+        crewSize: '2〜3人',
+        siteConditions: ['駐車場あり', 'エレベーターあり', '糊付けスペースあり'],
+        accessCondition: '乗り付け可能',
+        requiredTools: ['腰道具', '脚立', 'パテ道具'],
+        toolNotes: '糊付け機は現場にあります',
+      },
+    },
     created_at: new Date().toISOString(),
   },
   {
@@ -90,6 +121,7 @@ const DEMO: HelpRequest[] = [
     has_parking: false,
     required_tools: null,
     notes: null,
+    meta: null,  // 古いデータを模倣（meta なしでもエラーにならないことを確認）
     created_at: new Date().toISOString(),
   },
 ];
@@ -207,6 +239,73 @@ function HelperJobDetailModal({ job, applicantCount, myApplication, onClose, onA
               📝 {job.notes}
             </p>
           )}
+
+          {/* 現場レーダー（詳細モーダルでは全項目を表示） */}
+          {(() => {
+            const radar = getSiteRadar(job.meta);
+            if (!radar) return null;
+            const hasAny = radar.siteType || radar.siteScale || radar.crewSize ||
+              (radar.siteConditions?.length ?? 0) > 0 || radar.accessCondition ||
+              (radar.requiredTools?.length ?? 0) > 0 || radar.toolNotes;
+            if (!hasAny) return null;
+            return (
+              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3.5 mb-4">
+                <p className="text-xs font-extrabold text-indigo-600 mb-3">📡 現場レーダー</p>
+                <div className="space-y-2.5">
+                  {radar.siteType && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-400 w-16 shrink-0">現場タイプ</span>
+                      <span className="text-xs font-bold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-indigo-100">{radar.siteType}</span>
+                    </div>
+                  )}
+                  {radar.siteScale && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-400 w-16 shrink-0">現場規模</span>
+                      <span className="text-xs font-bold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-indigo-100">{radar.siteScale}</span>
+                    </div>
+                  )}
+                  {radar.crewSize && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-400 w-16 shrink-0">人数感</span>
+                      <span className="text-xs font-bold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-indigo-100">{radar.crewSize}</span>
+                    </div>
+                  )}
+                  {radar.siteConditions && radar.siteConditions.length > 0 && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-[10px] text-slate-400 w-16 shrink-0 mt-1">現場状況</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {radar.siteConditions.map(c => (
+                          <span key={c} className="text-xs font-bold text-slate-700 bg-white px-2.5 py-1 rounded-lg border border-indigo-100">{c}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {radar.accessCondition && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-400 w-16 shrink-0">搬入条件</span>
+                      <span className="text-xs font-bold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-indigo-100">{radar.accessCondition}</span>
+                    </div>
+                  )}
+                  {radar.requiredTools && radar.requiredTools.length > 0 && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-[10px] text-slate-400 w-16 shrink-0 mt-1">必要道具</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {radar.requiredTools.map(t => (
+                          <span key={t} className="text-xs font-bold text-slate-700 bg-white px-2.5 py-1 rounded-lg border border-indigo-100">{t}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {radar.toolNotes && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-[10px] text-slate-400 w-16 shrink-0 mt-0.5">補足</span>
+                      <p className="text-xs text-slate-600 leading-relaxed">{radar.toolNotes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* 応募済み表示 */}
           {alreadyApplied ? (
@@ -758,10 +857,50 @@ export default function HelpListPage() {
                     </div>
 
                     {req.comment && (
-                      <p className="text-sm text-slate-600 bg-blue-50 rounded-xl px-3 py-2.5 mb-4 leading-relaxed">
+                      <p className="text-sm text-slate-600 bg-blue-50 rounded-xl px-3 py-2.5 mb-3 leading-relaxed">
                         💬 {req.comment}
                       </p>
                     )}
+
+                    {/* 現場レーダー（カードではコンパクトに重要な情報だけ） */}
+                    {(() => {
+                      const radar = getSiteRadar(req.meta);
+                      if (!radar) return null;
+                      const chips = [
+                        radar.siteType,
+                        radar.siteScale,
+                        radar.crewSize,
+                        ...(radar.siteConditions?.filter(c =>
+                          ['駐車場あり', 'エレベーターあり', '糊付けスペースあり'].includes(c)
+                        ) ?? []),
+                        radar.accessCondition && radar.accessCondition !== '未確認'
+                          ? radar.accessCondition : null,
+                      ].filter(Boolean) as string[];
+                      if (chips.length === 0) return null;
+                      return (
+                        <div className="mb-3">
+                          <p className="text-[10px] text-indigo-500 font-bold mb-1.5">📡 現場レーダー</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {chips.slice(0, 5).map(chip => (
+                              <span
+                                key={chip}
+                                className="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded-lg border border-indigo-100"
+                              >
+                                {chip}
+                              </span>
+                            ))}
+                            {chips.length > 5 && (
+                              <span className="text-[10px] text-slate-400 py-1">+{chips.length - 5}</span>
+                            )}
+                          </div>
+                          {radar.requiredTools && radar.requiredTools.length > 0 && (
+                            <p className="text-[10px] text-slate-500 mt-1.5">
+                              🔧 {radar.requiredTools.join('・')}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* CTAボタン */}
                     {isMyPost ? (

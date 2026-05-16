@@ -9,33 +9,121 @@ function getUserId(): string {
   return localStorage.getItem('craftsman_guest_id') ?? '';
 }
 
+// ─── 現場レーダー型定義 ───────────────────────────────────────────────────────
+
+type SiteRadar = {
+  siteType:       string;
+  siteScale:      string;
+  crewSize:       string;
+  siteConditions: string[];
+  accessCondition: string;
+  requiredTools:  string[];
+  toolNotes:      string;
+};
+
+const SITE_TYPES: readonly string[] = [
+  '個人宅', '空室', '原状回復', '新築', '店舗', '大型現場', 'マンション共用部', 'その他',
+];
+const SITE_SCALES: readonly string[] = ['半日くらい', '1日', '2〜3日', '1週間以上'];
+const CREW_SIZES:  readonly string[] = ['1人現場', '2〜3人', '4人以上'];
+const SITE_CONDITIONS: readonly string[] = [
+  '駐車場あり', 'エレベーターあり', '家具少なめ', '荷物多め',
+  '糊付けスペースあり', '天井高め', '残業の可能性あり', '施主在宅の可能性あり',
+];
+const ACCESS_CONDITIONS: readonly string[] = [
+  '乗り付け可能', '少し離れる', '台車があると安心', '階段メイン', '未確認',
+];
+const TOOL_OPTIONS: readonly string[] = [
+  '腰道具', '脚立', 'パテ道具', '糊付け機', 'レーザー',
+  'ヘルメット', '安全帯', 'インパクト', '丸ノコ', 'その他',
+];
+
+const DEFAULT_RADAR: SiteRadar = {
+  siteType: '', siteScale: '', crewSize: '',
+  siteConditions: [], accessCondition: '', requiredTools: [], toolNotes: '',
+};
+
+// ─── フォーム型定義 ──────────────────────────────────────────────────────────
+
 type Form = {
-  work_date: string;
-  area: string;
-  work_type: string;
-  people_needed: number;
-  daily_rate: number;
-  comment: string;
-  start_time: string;
-  end_time: string;
-  has_parking: boolean;
+  work_date:      string;
+  area:           string;
+  work_type:      string;
+  people_needed:  number;
+  daily_rate:     number;
+  comment:        string;
+  start_time:     string;
+  end_time:       string;
+  has_parking:    boolean;
   required_tools: string;
-  notes: string;
+  notes:          string;
+  radar:          SiteRadar;
 };
 
 const DEFAULT: Form = {
-  work_date: '',
-  area: '',
-  work_type: '',
-  people_needed: 1,
-  daily_rate: 15000,
-  comment: '',
-  start_time: '',
-  end_time: '',
-  has_parking: false,
-  required_tools: '',
-  notes: '',
+  work_date: '', area: '', work_type: '',
+  people_needed: 1, daily_rate: 15000,
+  comment: '', start_time: '', end_time: '',
+  has_parking: false, required_tools: '', notes: '',
+  radar: DEFAULT_RADAR,
 };
+
+// ─── 選択チップコンポーネント ────────────────────────────────────────────────
+
+function SingleChips({
+  options, value, onChange,
+}: {
+  options: readonly string[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map(opt => (
+        <button
+          key={opt} type="button"
+          onClick={() => onChange(value === opt ? '' : opt)}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition active:scale-95 ${
+            value === opt
+              ? 'bg-blue-600 border-blue-600 text-white'
+              : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'
+          }`}
+        >{opt}</button>
+      ))}
+    </div>
+  );
+}
+
+function MultiChips({
+  options, values, onChange,
+}: {
+  options: readonly string[];
+  values: string[];
+  onChange: (v: string[]) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map(opt => {
+        const selected = values.includes(opt);
+        return (
+          <button
+            key={opt} type="button"
+            onClick={() => onChange(
+              selected ? values.filter(v => v !== opt) : [...values, opt]
+            )}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition active:scale-95 ${
+              selected
+                ? 'bg-blue-600 border-blue-600 text-white'
+                : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'
+            }`}
+          >{opt}</button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── メインコンポーネント ────────────────────────────────────────────────────
 
 export default function HelpRequestPage() {
   const [form,   setForm]   = useState<Form>(DEFAULT);
@@ -47,6 +135,9 @@ export default function HelpRequestPage() {
   const set = <K extends keyof Form>(key: K, value: Form[K]) =>
     setForm(prev => ({ ...prev, [key]: value }));
 
+  const setRadar = <K extends keyof SiteRadar>(key: K, value: SiteRadar[K]) =>
+    setForm(prev => ({ ...prev, radar: { ...prev.radar, [key]: value } }));
+
   async function handleSubmit() {
     if (!form.work_date || !form.area || !form.work_type) {
       setError('作業日・エリア・作業内容は必須です');
@@ -54,6 +145,13 @@ export default function HelpRequestPage() {
     }
     setSaving(true);
     setError(null);
+
+    // 現場レーダー: 1つでも入力があれば meta に含める
+    const r = form.radar;
+    const hasRadar = r.siteType || r.siteScale || r.crewSize ||
+      r.siteConditions.length > 0 || r.accessCondition ||
+      r.requiredTools.length > 0 || r.toolNotes;
+    const meta = hasRadar ? { siteRadar: r } : null;
 
     const { error: err } = await supabase.from('help_requests').insert({
       work_date:      form.work_date,
@@ -68,6 +166,7 @@ export default function HelpRequestPage() {
       has_parking:    form.has_parking,
       required_tools: form.required_tools || null,
       notes:          form.notes || null,
+      meta,
     });
 
     setSaving(false);
@@ -138,6 +237,7 @@ export default function HelpRequestPage() {
           </div>
         )}
 
+        {/* ── 基本情報 ─────────────────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5">
 
           {/* 作業日 */}
@@ -290,6 +390,104 @@ export default function HelpRequestPage() {
               rows={2}
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
+          </div>
+        </div>
+
+        {/* ── 現場レーダー ────────────────────────────────────────────────── */}
+        <div className="mt-4 bg-white rounded-2xl border border-indigo-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">📡</span>
+            <p className="text-sm font-extrabold text-slate-900">現場レーダー</p>
+            <span className="text-xs bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-full">任意</span>
+          </div>
+          <p className="text-xs text-slate-400 mb-5 leading-relaxed">
+            行く前に現場の雰囲気が分かると、職人が応募しやすくなります。
+          </p>
+
+          <div className="space-y-5">
+
+            {/* 現場タイプ */}
+            <div>
+              <p className="text-xs font-bold text-slate-500 mb-2">現場タイプ</p>
+              <SingleChips
+                options={SITE_TYPES}
+                value={form.radar.siteType}
+                onChange={v => setRadar('siteType', v)}
+              />
+            </div>
+
+            <div className="border-t border-slate-100" />
+
+            {/* 現場規模 */}
+            <div>
+              <p className="text-xs font-bold text-slate-500 mb-2">現場規模</p>
+              <SingleChips
+                options={SITE_SCALES}
+                value={form.radar.siteScale}
+                onChange={v => setRadar('siteScale', v)}
+              />
+            </div>
+
+            <div className="border-t border-slate-100" />
+
+            {/* 人数感 */}
+            <div>
+              <p className="text-xs font-bold text-slate-500 mb-2">人数感</p>
+              <SingleChips
+                options={CREW_SIZES}
+                value={form.radar.crewSize}
+                onChange={v => setRadar('crewSize', v)}
+              />
+            </div>
+
+            <div className="border-t border-slate-100" />
+
+            {/* 現場状況チェック */}
+            <div>
+              <p className="text-xs font-bold text-slate-500 mb-2">現場状況（複数選択可）</p>
+              <MultiChips
+                options={SITE_CONDITIONS}
+                values={form.radar.siteConditions}
+                onChange={v => setRadar('siteConditions', v)}
+              />
+            </div>
+
+            <div className="border-t border-slate-100" />
+
+            {/* 搬入条件 */}
+            <div>
+              <p className="text-xs font-bold text-slate-500 mb-2">搬入条件</p>
+              <SingleChips
+                options={ACCESS_CONDITIONS}
+                value={form.radar.accessCondition}
+                onChange={v => setRadar('accessCondition', v)}
+              />
+            </div>
+
+            <div className="border-t border-slate-100" />
+
+            {/* 必要な道具 */}
+            <div>
+              <p className="text-xs font-bold text-slate-500 mb-2">必要な道具（複数選択可）</p>
+              <MultiChips
+                options={TOOL_OPTIONS}
+                values={form.radar.requiredTools}
+                onChange={v => setRadar('requiredTools', v)}
+              />
+            </div>
+
+            {/* その他必要な道具・注意点 */}
+            <div>
+              <p className="text-xs font-bold text-slate-500 mb-2">その他の道具・注意点（任意）</p>
+              <textarea
+                value={form.radar.toolNotes}
+                onChange={e => setRadar('toolNotes', e.target.value)}
+                placeholder="例：3尺脚立でOK・乗り付け不可・糊付け機は現場にあります"
+                rows={2}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
+
           </div>
         </div>
       </div>
