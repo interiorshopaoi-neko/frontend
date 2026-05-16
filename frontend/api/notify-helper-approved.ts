@@ -6,7 +6,8 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const ADMIN_FROM   = 'Aoi Interior <onboarding@resend.dev>';
+const ADMIN_FROM     = 'Aoi Interior <onboarding@resend.dev>';   // 管理者通知専用
+const CRAFTSMAN_FROM = 'PRO MATCH <noreply@promatch-app.jp>';   // 職人向け（認証済みドメイン）
 const SITE_URL     = 'https://promatch-app.jp';
 
 const SUPABASE_URL      = process.env.SUPABASE_URL
@@ -215,7 +216,7 @@ ${requesterEmail ? `
       ].filter(Boolean).join('\n');
 
       await resend.emails.send({
-        from:    ADMIN_FROM,
+        from:    CRAFTSMAN_FROM,   // 認証済みドメインから送信
         to:      [applicantEmail],
         subject: '【PRO MATCH】助っ人応募が承認されました',
         html,
