@@ -2,6 +2,7 @@ import { useState }          from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import type { Session }       from '@supabase/supabase-js';
 import { supabase }           from '../../lib/supabase';
+import LogoutConfirmModal     from '../../components/LogoutConfirmModal';
 
 // ── Admin role ガード ─────────────────────────────────────────────────────────
 // app_metadata.role（サーバーサイド設定・改ざん不可）を優先し、
@@ -104,24 +105,34 @@ const NAV_LINKS = [
 
 export function AdminNav({ email }: { email?: string }) {
   const { pathname } = useLocation();
+  const [showLogout, setShowLogout] = useState(false);
+
   return (
-    <nav className="bg-slate-900 text-white px-5 py-2 flex items-center gap-1 text-[11px] font-semibold sticky top-0 z-40">
-      <span className="text-slate-500 font-bold mr-3 shrink-0">PRO MATCH 管理</span>
-      {NAV_LINKS.map(({ to, label }) => (
-        <Link key={to} to={to}
-          className={`px-2.5 py-1.5 rounded-lg transition-colors shrink-0 ${
-            pathname === to ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'
-          }`}>
-          {label}
-        </Link>
-      ))}
-      {email && <span className="hidden sm:block text-slate-500 ml-2 shrink-0">{email}</span>}
-      <button
-        onClick={() => supabase.auth.signOut()}
-        className="ml-auto px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors shrink-0"
-      >
-        ログアウト
-      </button>
-    </nav>
+    <>
+      <nav className="bg-slate-900 text-white px-5 py-2 flex items-center gap-1 text-[11px] font-semibold sticky top-0 z-40">
+        <span className="text-slate-500 font-bold mr-3 shrink-0">PRO MATCH 管理</span>
+        {NAV_LINKS.map(({ to, label }) => (
+          <Link key={to} to={to}
+            className={`px-2.5 py-1.5 rounded-lg transition-colors shrink-0 ${
+              pathname === to ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'
+            }`}>
+            {label}
+          </Link>
+        ))}
+        {email && <span className="hidden sm:block text-slate-500 ml-2 shrink-0">{email}</span>}
+        <button
+          onClick={() => setShowLogout(true)}
+          className="ml-auto px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors shrink-0"
+        >
+          ログアウト
+        </button>
+      </nav>
+      {showLogout && (
+        <LogoutConfirmModal
+          onConfirm={() => { setShowLogout(false); supabase.auth.signOut(); }}
+          onCancel={() => setShowLogout(false)}
+        />
+      )}
+    </>
   );
 }

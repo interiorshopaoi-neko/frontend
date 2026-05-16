@@ -156,7 +156,16 @@ export default async function handler(req: any, res: any) {
     }
 
     // 5. 応募者へ承認通知メール（連絡先開示）
-    if (applicantEmail && applicantEmail.includes('@')) {
+    let applicantOk     = false;
+    let applicantReason = 'not_sent';
+
+    if (!applicantEmail || !applicantEmail.includes('@')) {
+      applicantReason = applicantEmail ? 'email_invalid_format' : 'email_empty';
+      console.warn('[notify-helper-approved] 応募者メール送信スキップ:', {
+        applicantReason,
+        applicantId,
+      });
+    } else {
       const listUrl = `${SITE_URL}/craftsman/help-list`;
 
       const html = `<!DOCTYPE html>
@@ -180,6 +189,7 @@ ${requesterEmail ? `
 <p style="margin:0 0 8px;font-size:11px;font-weight:700;color:#16a34a;">募集主の連絡先（承認後に開示）</p>
 <a href="mailto:${escHtml(requesterEmail)}" style="font-size:16px;font-weight:800;color:#1d4ed8;text-decoration:underline;">${escHtml(requesterEmail)}</a>
 <p style="margin:8px 0 0;font-size:11px;color:#64748b;">作業日 ${escHtml(workDate)} までに連絡を取ってください</p>
+<p style="margin:6px 0 0;font-size:11px;color:#94a3b8;">連絡はメールで。電話・LINEは使用しないでください。</p>
 </div>
 ` : `
 <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;margin:0 0 24px;">
@@ -215,18 +225,37 @@ ${requesterEmail ? `
         `${SITE_URL}/craftsman/help-list`,
       ].filter(Boolean).join('\n');
 
-      await resend.emails.send({
-        from:    CRAFTSMAN_FROM,   // 認証済みドメインから送信
-        to:      [applicantEmail],
-        subject: '【PRO MATCH】助っ人応募が承認されました',
-        html,
-        text,
-      });
+      try {
+        const sendResult = await resend.emails.send({
+          from:    CRAFTSMAN_FROM,   // 認証済みドメインから送信
+          to:      [applicantEmail],
+          subject: '【PRO MATCH】助っ人応募が承認されました',
+          html,
+          text,
+        });
+        applicantOk     = true;
+        applicantReason = 'sent';
+        console.log('[notify-helper-approved] 応募者通知 OK:', { to: applicantEmail, result: sendResult });
+      } catch (sendErr: any) {
+        applicantReason = 'resend_error';
+        console.error('[notify-helper-approved] 応募者Resend送信失敗:', {
+          to:    applicantEmail,
+          error: sendErr?.message ?? sendErr,
+        });
+      }
     }
 
-    res.status(200).json({ ok: true });
-  } catch (err) {
-    console.error('[notify-helper-approved] 例外:', err);
-    res.status(200).json({ ok: false, reason: 'exception' });
+    const responseBody = {
+      ok:             applicantOk,
+      applicantOk,
+      applicantReason,
+      requesterEmailFound: Boolean(requesterEmail),
+    };
+    console.log('[notify-helper-approved] response:', responseBody);
+    res.status(200).json(responseBody);
+
+  } catch (err: any) {
+    console.error('[notify-helper-approved] 例外:', err?.message ?? err);
+    res.status(200).json({ ok: false, applicantOk: false, applicantReason: 'exception' });
   }
 }

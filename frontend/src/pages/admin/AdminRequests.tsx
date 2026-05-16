@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { getFreshness, FRESHNESS_CLASS } from '../../lib/freshness';
 import { AdminLogin, AdminNav, AdminUnauthorized, isAdminRole } from './shared';
+import LogoutConfirmModal from '../../components/LogoutConfirmModal';
 
 const URL_FILTER_LABELS: Record<string, string> = {
   new:         '新しい案件',
@@ -883,6 +884,7 @@ function RequestsList({ session }: { session: Session }) {
     );
   }, [enrichedRows]);
 
+  const [showLogout, setShowLogout] = useState(false);
   const handleLogout = async () => { await supabase.auth.signOut(); };
 
   return (
@@ -918,10 +920,16 @@ function RequestsList({ session }: { session: Session }) {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-slate-400 hidden sm:block">{session.user.email}</span>
-            <button onClick={handleLogout}
+            <button onClick={() => setShowLogout(true)}
               className="text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-1.5 transition-colors hover:border-slate-400">
               ログアウト
             </button>
+            {showLogout && (
+              <LogoutConfirmModal
+                onConfirm={() => { setShowLogout(false); handleLogout(); }}
+                onCancel={() => setShowLogout(false)}
+              />
+            )}
           </div>
         </div>
       </header>

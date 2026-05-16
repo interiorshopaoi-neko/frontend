@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import BottomNav from '../../components/BottomNav';
 import { useAuth } from '../../hooks/useAuth';
 import { compressImage } from '../../utils/imageUtils';
+import LogoutConfirmModal from '../../components/LogoutConfirmModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -119,6 +120,7 @@ function BoolToggle({
 export default function CraftsmanProfile() {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const [showLogout,         setShowLogout]         = useState(false);
   const [form,               setForm]               = useState<ProfileForm>(DEFAULT_FORM);
   const [loading,            setLoading]            = useState(true);
   const [saving,             setSaving]             = useState(false);
@@ -386,11 +388,17 @@ export default function CraftsmanProfile() {
               ← 案件一覧
             </a>
             <button
-              onClick={() => { logout(); localStorage.clear(); navigate('/login'); }}
+              onClick={() => setShowLogout(true)}
               className="text-xs bg-slate-100 text-slate-600 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-slate-200 transition"
             >
               ログアウト
             </button>
+            {showLogout && (
+              <LogoutConfirmModal
+                onConfirm={() => { setShowLogout(false); logout(); localStorage.clear(); navigate('/login'); }}
+                onCancel={() => setShowLogout(false)}
+              />
+            )}
           </div>
         </div>
       </header>

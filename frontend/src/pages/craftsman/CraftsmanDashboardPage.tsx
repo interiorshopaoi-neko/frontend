@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import BottomNav from '../../components/BottomNav';
 import { useAuth } from '../../hooks/useAuth';
+import LogoutConfirmModal from '../../components/LogoutConfirmModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -190,6 +191,8 @@ export default function CraftsmanDashboardPage() {
   // localStorage の user.id を優先し、なければ useAuth の user.id を使う
   const userId = getUserId() || (user?.id ?? '');
 
+  const [showLogout, setShowLogout] = useState(false);
+
   const handleLogout = () => {
     logout();
     localStorage.clear();
@@ -346,11 +349,17 @@ export default function CraftsmanDashboardPage() {
               案件を探す →
             </a>
             <button
-              onClick={handleLogout}
+              onClick={() => setShowLogout(true)}
               className="text-xs bg-slate-100 text-slate-600 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-slate-200 transition"
             >
               ログアウト
             </button>
+            {showLogout && (
+              <LogoutConfirmModal
+                onConfirm={() => { setShowLogout(false); handleLogout(); }}
+                onCancel={() => setShowLogout(false)}
+              />
+            )}
           </div>
         </div>
       </header>

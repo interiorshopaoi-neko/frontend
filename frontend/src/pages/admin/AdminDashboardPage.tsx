@@ -146,6 +146,11 @@ function AdminDashboardPageContent({ session }: { session: Session }) {
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifLoaded, setNotifLoaded] = useState(false);
 
+  // 助っ人募集の募集主ID不明（craftsman_id=null）リスト
+  const [nullOwnerHelps, setNullOwnerHelps] = useState<Array<{
+    id: string; work_type: string | null; area: string | null; work_date: string | null; created_at: string;
+  }>>([]);
+
   const today = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
@@ -177,6 +182,17 @@ function AdminDashboardPageContent({ session }: { session: Session }) {
         setLoading(false);
       }
     })();
+  }, []);
+
+  // 助っ人募集の craftsman_id=null リスト取得
+  useEffect(() => {
+    supabase
+      .from('help_requests')
+      .select('id,work_type,area,work_date,created_at')
+      .is('craftsman_id', null)
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => { if (data) setNullOwnerHelps(data); });
   }, []);
 
   useEffect(() => {
@@ -509,6 +525,30 @@ function AdminDashboardPageContent({ session }: { session: Session }) {
             </div>
           </div>
         </section>
+
+        {/* ── 助っ人募集：募集主不明の警告 ── */}
+        {nullOwnerHelps.length > 0 && (
+          <section className="max-w-2xl mx-auto px-4 py-4">
+            <h2 className="text-sm font-extrabold text-amber-700 mb-2">
+              ⚠️ 助っ人募集：募集主情報なし（{nullOwnerHelps.length}件）
+            </h2>
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
+              <p className="text-xs text-amber-700 mb-3">
+                以下の募集は <code className="bg-amber-100 px-1 rounded">craftsman_id = null</code> のため、応募が入っても募集主への通知メールを送信できません。
+                古いテストデータか、ログインせずに投稿されたものです。
+              </p>
+              {nullOwnerHelps.map(h => (
+                <div key={h.id} className="bg-white rounded-xl px-3 py-2 border border-amber-100 text-xs text-slate-600 flex flex-wrap gap-x-4 gap-y-0.5">
+                  <span className="font-semibold text-slate-800">{h.work_type ?? '（不明）'}</span>
+                  <span>{h.area ?? '—'}</span>
+                  <span>{h.work_date ?? '日付不明'}</span>
+                  <span className="text-slate-400">{new Date(h.created_at).toLocaleDateString('ja-JP')}</span>
+                  <span className="text-slate-300 font-mono">{h.id.slice(0, 8)}…</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* ── 通知設定 ── */}
         {notifLoaded && (
