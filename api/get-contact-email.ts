@@ -32,8 +32,6 @@ const SUPABASE_URL        = process.env.SUPABASE_URL
                          || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 function supabaseHeaders() {
   return {
     'apikey':        SUPABASE_SERVICE_KEY!,
@@ -61,8 +59,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!craftsman_id || typeof craftsman_id !== 'string' || craftsman_id.trim() === '') {
     return res.status(400).json({ error: 'craftsman_id は必須です' });
   }
-  if (!estimate_request_id || typeof estimate_request_id !== 'string' || !UUID_RE.test(estimate_request_id)) {
-    return res.status(400).json({ error: 'estimate_request_id は有効な UUID が必要です' });
+  if (!estimate_request_id || typeof estimate_request_id !== 'string' || estimate_request_id.trim() === '') {
+    return res.status(400).json({ error: 'estimate_request_id は必須です' });
   }
 
   const craftsmanId       = craftsman_id.trim();

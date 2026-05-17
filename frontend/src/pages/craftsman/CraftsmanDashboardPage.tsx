@@ -937,24 +937,23 @@ export default function CraftsmanDashboardPage() {
                     </div>
                   )}
 
-                  {/* アクションボタン */}
-                  <div className="border-t border-slate-100 px-4 py-3 flex gap-2">
-                    <button
-                      onClick={() => isSensitive
-                        ? handleRevealClick(app.id, app.estimate_request_id)
-                        : navigate(`/craftsman/apply/${app.estimate_request_id}`, { state: { readOnly: true } })
-                      }
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-xs font-extrabold transition active:scale-95"
-                    >
-                      {isSensitive ? '📧 連絡先を確認する' : '詳細を見る'}
-                    </button>
-                    <button
-                      onClick={() => navigate(`/craftsman/profile/${userId}`)}
-                      className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl py-2.5 text-xs font-bold transition active:scale-95"
-                    >
-                      マイプロフィール
-                    </button>
-                  </div>
+                  {/* アクションボタン — 非成約案件のみ */}
+                  {!isSensitive && (
+                    <div className="border-t border-slate-100 px-4 py-3 flex gap-2">
+                      <button
+                        onClick={() => navigate(`/craftsman/apply/${app.estimate_request_id}`, { state: { readOnly: true } })}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-xs font-extrabold transition active:scale-95"
+                      >
+                        詳細を見る
+                      </button>
+                      <button
+                        onClick={() => navigate(`/craftsman/profile/${userId}`)}
+                        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl py-2.5 text-xs font-bold transition active:scale-95"
+                      >
+                        マイプロフィール
+                      </button>
+                    </div>
+                  )}
                 </article>
               );
             })

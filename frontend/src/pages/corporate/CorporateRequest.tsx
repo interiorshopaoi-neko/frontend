@@ -91,16 +91,18 @@ function PageHeader() {
 
 // ── StepProgress ──────────────────────────────────────────────────────────────
 
-function StepProgress({ step }: { step: number }) {
-  const pct = Math.round((Math.min(step, TOTAL_STEPS) / TOTAL_STEPS) * 100);
+function StepProgress({ step, displayStep, total }: { step: number; displayStep?: number; total?: number }) {
+  const totalSteps = total ?? TOTAL_STEPS;
+  const shown = displayStep ?? Math.min(step, totalSteps);
+  const pct = Math.round((shown / totalSteps) * 100);
   return (
     <div className="px-6 py-4 border-b border-slate-100 bg-white flex-shrink-0">
       <div className="flex items-center justify-between mb-2.5">
         <span className="text-xs font-extrabold text-violet-600 tracking-[0.15em] uppercase">
-          Step {Math.min(step, TOTAL_STEPS)}
+          Step {shown}
         </span>
         <span className="text-xs font-semibold text-slate-400">
-          {Math.min(step, TOTAL_STEPS)} <span className="text-slate-300">/</span> {TOTAL_STEPS}
+          {shown} <span className="text-slate-300">/</span> {totalSteps}
         </span>
       </div>
       <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -389,12 +391,32 @@ export default function CorporateRequest() {
   });
 
   // 送信状態
+  const [step3Skipped,   setStep3Skipped]   = useState(false);
   const [submitState,    setSubmitState]    = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [devErrorDetail, setDevErrorDetail] = useState<string | null>(null);
   const [newRequestId,   setNewRequestId]   = useState<string | null>(null);
 
   const hasDetail = !!(timing || desireType || memo);
   const hasRoomInfo = rooms.some(r => r.workType || r.size);
+
+  // 部屋の workType から施工内容を自動導出してStep3をスキップ
+  function goFromRoomsToNext() {
+    const roomTypes = rooms.map(r => r.workType).filter(Boolean);
+    if (roomTypes.length > 0 && !workType) {
+      const hasCF  = roomTypes.some(w => w === 'クッションフロア');
+      const hasWall = roomTypes.some(w => w === '壁紙・クロス' || w === '両方');
+      const hasBoth = roomTypes.some(w => w === '両方');
+      if (hasBoth || (hasCF && hasWall)) {
+        setWorkType('クロス張り替え');
+      } else if (hasCF) {
+        setWorkType('床工事');
+      } else {
+        setWorkType('クロス張り替え');
+      }
+    }
+    setStep3Skipped(true);
+    setStep(4);
+  }
 
   // ── Supabase 送信処理 ──────────────────────────────────────────────────────
   const handleSubmit = async () => {
@@ -903,7 +925,7 @@ export default function CorporateRequest() {
         </StepContent>
         <BottomNav
           onBack={() => setStep(1)}
-          onNext={() => setStep(3)}
+          onNext={goFromRoomsToNext}
           nextLabel={hasRoomInfo ? '次へ →' : 'スキップ →'}
         />
       </PageShell>
@@ -952,7 +974,7 @@ export default function CorporateRequest() {
     return (
       <PageShell>
         <PageHeader />
-        <StepProgress step={4} />
+        <StepProgress step={4} displayStep={step3Skipped ? 3 : 4} total={step3Skipped ? 5 : 6} />
         <StepContent title="施工エリアを教えてください" sub="住所は不要です。〇〇市・〇〇区レベルでOK">
           <div className="space-y-3">
             <input
@@ -976,7 +998,7 @@ export default function CorporateRequest() {
             </div>
           </div>
         </StepContent>
-        <BottomNav onBack={() => setStep(3)} onNext={() => setStep(5)} nextDisabled={area.trim() === ''} nextLabel="次へ →" />
+        <BottomNav onBack={() => setStep(step3Skipped ? 2 : 3)} onNext={() => setStep(5)} nextDisabled={area.trim() === ''} nextLabel="次へ →" />
       </PageShell>
     );
   }
@@ -986,7 +1008,7 @@ export default function CorporateRequest() {
     return (
       <PageShell>
         <PageHeader />
-        <StepProgress step={5} />
+        <StepProgress step={5} displayStep={step3Skipped ? 4 : 5} total={step3Skipped ? 5 : 6} />
         <StepContent
           title="ご希望を少しだけ教えてください"
           sub="任意です。わかる範囲だけで大丈夫です"
@@ -1048,7 +1070,7 @@ export default function CorporateRequest() {
     return (
       <PageShell>
         <PageHeader />
-        <StepProgress step={6} />
+        <StepProgress step={6} displayStep={step3Skipped ? 5 : 6} total={step3Skipped ? 5 : 6} />
         <StepContent title="メールアドレスを入力してください" sub="見積もりのご案内をメールでお送りします">
           <div className="space-y-3">
             <div className="flex items-center gap-3 bg-violet-50 border border-violet-100 rounded-2xl px-4 py-3 mb-1">

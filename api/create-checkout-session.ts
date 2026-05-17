@@ -30,9 +30,6 @@ const STRIPE_SECRET_KEY      = process.env.STRIPE_SECRET_KEY;
 const STRIPE_PRICE_ID        = process.env.STRIPE_PRICE_CONTACT_UNLOCK;
 const SITE_URL               = process.env.SITE_URL || 'https://promatch-app.jp';
 
-// ── UUID バリデーション ────────────────────────────────────────────────────────
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 // ── contact_unlocks 開示済み確認（service role key で RLS バイパス）────────────
 async function isAlreadyUnlocked(
   craftsmanId: string,
@@ -110,12 +107,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!craftsman_id || typeof craftsman_id !== 'string' || craftsman_id.trim() === '') {
     return res.status(400).json({ error: 'craftsman_id は必須です' });
   }
-  if (
-    !estimate_request_id ||
-    typeof estimate_request_id !== 'string' ||
-    !UUID_RE.test(estimate_request_id)
-  ) {
-    return res.status(400).json({ error: 'estimate_request_id は有効な UUID が必要です' });
+  if (!estimate_request_id || typeof estimate_request_id !== 'string' || estimate_request_id.trim() === '') {
+    return res.status(400).json({ error: 'estimate_request_id は必須です' });
   }
 
   const craftsmanId       = craftsman_id.trim();
