@@ -206,6 +206,7 @@ export default function CraftsmanDashboardPage() {
   const [contactStates, setContactStates] = useState<Map<string, ContactState>>(new Map());
   const [modal,         setModal]         = useState<ContactModal | null>(null);
   const [paymentBanner, setPaymentBanner] = useState<'success' | 'cancel' | null>(null);
+  const [isPolling,     setIsPolling]     = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -367,6 +368,84 @@ export default function CraftsmanDashboardPage() {
     if (p === 'cancel')  setPaymentBanner('cancel');
   }, []);
 
+  // payment=success 時、成約済み案件の連絡先開示をポーリング（Webhook反映待ち）
+  // - apps 読み込み完了後 & デモ非時のみ実行
+  // - 対象：成約済み・工事完了で未開示のもの
+  // - 最大3回 / 2秒間隔 / ok になればメール表示
+  useEffect(() => {
+    if (paymentBanner !== 'success' || isDemo || !userId || loading) return;
+
+    const targets = apps.filter(a => {
+      const s = deriveStatus(a);
+      return s === '成約済み' || s === '工事完了';
+    });
+    if (targets.length === 0) return;
+
+    let isMounted = true;
+    setIsPolling(true);
+
+    // ローディング状態をまとめてセット
+    setContactStates(prev => {
+      const next = new Map(prev);
+      targets.forEach(a => { if (!next.has(a.id)) next.set(a.id, { kind: 'loading' }); });
+      return next;
+    });
+
+    void (async () => {
+      const INTERVAL = 2000;
+      const MAX      = 3;
+
+      for (const app of targets) {
+        if (!isMounted) return;
+        let resolved = false;
+
+        for (let attempt = 0; attempt < MAX; attempt++) {
+          if (!isMounted) return;
+          if (attempt > 0) {
+            await new Promise(r => setTimeout(r, INTERVAL));
+            if (!isMounted) return;
+          }
+          try {
+            const res  = await fetch('/api/get-contact-email', {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify({ craftsman_id: userId, estimate_request_id: app.estimate_request_id }),
+            });
+            const data = await res.json();
+            if (!isMounted) return;
+
+            if (data.status === 'ok') {
+              setContactStates(prev => new Map(prev).set(app.id, { kind: 'unlocked', email: data.email }));
+              resolved = true;
+              break;
+            }
+            if (data.status === 'no_email') {
+              setContactStates(prev => new Map(prev).set(app.id, { kind: 'no_email' }));
+              resolved = true;
+              break;
+            }
+            // not_unlocked → 次の attempt へ
+          } catch {
+            // ネットワークエラーは attempt 継続
+          }
+        }
+
+        // 3回全て not_unlocked / エラー → 手動ボタンに戻す + エラーメッセージ
+        if (!resolved && isMounted) {
+          setContactStates(prev => new Map(prev).set(app.id, {
+            kind:    'error',
+            message: '反映に少し時間がかかっています。数秒後にもう一度お試しください。',
+          }));
+        }
+      }
+
+      if (isMounted) setIsPolling(false);
+    })();
+
+    return () => { isMounted = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentBanner, loading, isDemo, userId]);
+
   // 無料枠残数 + 紹介コード取得
   useEffect(() => {
     if (!userId) return;
@@ -516,12 +595,24 @@ export default function CraftsmanDashboardPage() {
 
         {/* Stripe 決済結果バナー */}
         {paymentBanner === 'success' && (
-          <div className="mx-4 mt-4 rounded-xl bg-green-50 border border-green-200 px-3 py-2.5 flex items-center gap-2">
-            <span className="text-green-600 text-sm">✅</span>
-            <p className="text-xs text-green-700 font-semibold flex-1">
-              決済が完了しました。連絡先を確認してください。
-            </p>
-            <button onClick={() => setPaymentBanner(null)} className="text-xs text-slate-400 p-1">✕</button>
+          <div className="mx-4 mt-4 rounded-xl bg-green-50 border border-green-200 px-3 py-2.5 flex items-start gap-2">
+            {isPolling
+              ? <div className="mt-0.5 w-3.5 h-3.5 flex-shrink-0 border-2 border-green-300 border-t-green-600 rounded-full animate-spin" />
+              : <span className="text-green-600 text-sm flex-shrink-0">✅</span>
+            }
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-green-700 font-semibold">
+                {isPolling
+                  ? '決済が完了しました。連絡先を確認しています...'
+                  : '決済が完了しました。連絡先を確認してください。'}
+              </p>
+              {isPolling && (
+                <p className="text-[10px] text-green-600 mt-0.5">
+                  数秒かかる場合があります。そのままお待ちください。
+                </p>
+              )}
+            </div>
+            <button onClick={() => setPaymentBanner(null)} className="text-xs text-slate-400 p-1 flex-shrink-0">✕</button>
           </div>
         )}
         {paymentBanner === 'cancel' && (
