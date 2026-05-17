@@ -228,30 +228,59 @@ export default function CraftsmanApplyPage() {
           {/* 部屋情報 */}
           {(() => {
             const rooms = job?.meta?.rooms ?? [];
-            if (rooms.length === 0) return null;
+            const wallPref = job?.meta?.wallpaper_preference;
+            const hasCeiling = rooms.some(r => r.workType === '天井クロス' || r.workType === '壁＋天井');
+            if (rooms.length === 0 && !wallPref) return null;
             return (
               <div className="mx-5 mb-3">
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">
-                  部屋情報（{rooms.length}部屋）
-                </p>
-                <div className="space-y-2">
-                  {rooms.map((room, i) => {
-                    const conds = room.condition ?? [];
-                    return (
-                      <div key={i} className="rounded-2xl bg-slate-50 px-4 py-3">
-                        <p className="text-sm font-bold text-slate-800">
-                          {room.name || `部屋${i + 1}`}
-                          {room.workType && <span className="ml-2 text-xs font-normal text-slate-500">{room.workType}</span>}
-                        </p>
-                        {(room.size || conds.length > 0) && (
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            {[room.size, ...conds].filter(Boolean).join(' · ')}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                {/* ヘッダーチップ行 */}
+                {(wallPref || hasCeiling) && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {wallPref && (
+                      <span className="bg-teal-50 text-teal-700 text-[11px] font-bold px-2.5 py-1 rounded-full border border-teal-100">
+                        🎨 雰囲気：{wallPref}
+                      </span>
+                    )}
+                    {hasCeiling && (
+                      <span className="bg-amber-50 text-amber-700 text-[11px] font-bold px-2.5 py-1 rounded-full border border-amber-100">
+                        天井あり
+                      </span>
+                    )}
+                  </div>
+                )}
+                {rooms.length > 0 && (
+                  <>
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">
+                      部屋情報（{rooms.length}部屋）
+                    </p>
+                    <div className="space-y-2">
+                      {rooms.map((room, i) => {
+                        const conds = room.condition ?? [];
+                        return (
+                          <div key={i} className="rounded-2xl bg-slate-50 px-4 py-3">
+                            <p className="text-sm font-bold text-slate-800">
+                              {room.name || `部屋${i + 1}`}
+                              {room.workType && <span className="ml-2 text-xs font-normal text-slate-500">{room.workType}</span>}
+                            </p>
+                            {(room.size || conds.length > 0) && (
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                {[room.size, ...conds].filter(Boolean).join(' · ')}
+                              </p>
+                            )}
+                            {room.materialPref && room.materialPref !== 'まだ決まっていない' && (
+                              <span className="inline-block mt-1.5 bg-teal-50 text-teal-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-teal-100">
+                                材料希望：{room.materialPref}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {rooms.some(r => r.materialPref && r.materialPref !== 'まだ決まっていない') && (
+                      <p className="text-[10px] text-amber-600 mt-1.5 leading-relaxed">材料によって金額が変わる場合があります</p>
+                    )}
+                  </>
+                )}
               </div>
             );
           })()}

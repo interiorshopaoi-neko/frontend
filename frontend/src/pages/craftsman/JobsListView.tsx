@@ -302,6 +302,16 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                         損傷: {job.damage_level === 'low' ? '軽め' : job.damage_level === 'middle' ? '普通' : '重め'}
                       </span>
                     )}
+                    {job.meta?.rooms?.some(r => r.workType === '天井クロス' || r.workType === '壁＋天井') && (
+                      <span className="bg-amber-50 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                        天井あり
+                      </span>
+                    )}
+                    {job.meta?.wallpaper_preference && job.meta.wallpaper_preference !== 'まだ決まっていない' && (
+                      <span className="bg-teal-50 text-teal-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                        🎨 {job.meta.wallpaper_preference}
+                      </span>
+                    )}
                   </div>
 
                   {/* ── メモ（折り畳み） ── */}

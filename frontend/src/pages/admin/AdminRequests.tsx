@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { getFreshness, FRESHNESS_CLASS } from '../../lib/freshness';
 import { AdminLogin, AdminNav, AdminUnauthorized, isAdminRole } from './shared';
 import LogoutConfirmModal from '../../components/LogoutConfirmModal';
+import { getWallpaperPreference, getMaterialPreferenceChips, hasCeilingWork } from '../../lib/requestMeta';
 
 const URL_FILTER_LABELS: Record<string, string> = {
   new:         '新しい案件',
@@ -38,6 +39,7 @@ type EstimateRequest = {
   site_condition: string | null;
   desire_type: string | null;
   memo: string | null;
+  meta: unknown;
 };
 
 type EnrichedRow = EstimateRequest & {
@@ -492,6 +494,38 @@ function DetailModal({
             </div>
           )}
 
+          {/* クロス希望・材料情報（meta から） */}
+          {(() => {
+            const wallPref = getWallpaperPreference(row.meta);
+            const matChips = getMaterialPreferenceChips(row.meta);
+            const ceiling  = hasCeilingWork(row.meta);
+            if (!wallPref && matChips.length === 0 && !ceiling) return null;
+            return (
+              <div className="rounded-2xl border border-teal-100 bg-teal-50/30 overflow-hidden">
+                <div className="px-4 py-2 bg-teal-50 border-b border-teal-100">
+                  <p className="text-[10px] font-bold text-teal-600 uppercase tracking-widest">クロス希望・材料情報</p>
+                </div>
+                <div className="px-4 py-3 flex flex-wrap gap-1.5">
+                  {ceiling && (
+                    <span className="bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                      天井あり
+                    </span>
+                  )}
+                  {wallPref && (
+                    <span className="bg-teal-100 border border-teal-200 text-teal-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                      🎨 雰囲気：{wallPref}
+                    </span>
+                  )}
+                  {matChips.map(({ room, pref }) => (
+                    <span key={room} className="bg-violet-50 border border-violet-100 text-violet-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                      {room}：{pref}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">動画</p>
             {row.video_url ? (
@@ -724,7 +758,7 @@ function RequestsList({ session }: { session: Session }) {
     (async () => {
       const { data, error } = await supabase
         .from('estimate_requests')
-        .select('id, created_at, area, work_type, contact_method, contact_value, status, video_url, room_type, room_size, rooms, size_note, timing, site_condition, desire_type, memo')
+        .select('id, created_at, area, work_type, contact_method, contact_value, status, video_url, room_type, room_size, rooms, size_note, timing, site_condition, desire_type, memo, meta')
         .order('created_at', { ascending: false });
       if (error) setErrMsg(`[SupabaseError] ${error.message}\n${JSON.stringify(error, null, 2)}`);
       else setRows(data ?? []);

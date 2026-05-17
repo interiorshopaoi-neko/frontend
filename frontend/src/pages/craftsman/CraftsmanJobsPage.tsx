@@ -12,6 +12,7 @@ export type RoomInfo = {
   workType: string;
   size: string;
   condition?: string[];
+  materialPref?: string;
 };
 
 export type JobMeta = {
@@ -25,6 +26,7 @@ export type JobMeta = {
     memo?: string;
   };
   thumbnail_url?: string;
+  wallpaper_preference?: string;
 };
 
 export type Job = {
