@@ -38,11 +38,11 @@
 
 | ルート | 役割 |
 |---|---|
-| `/customer` | お客様ダッシュボード（ログイン必須） |
-| `/customer/estimate/new` | 新規見積もり作成（ログイン必須） |
-| `/customer/estimate/:id` | 見積もり詳細（ログイン必須） |
-| `/craftsman` | 職人ダッシュボード旧版（ログイン必須） |
-| `/craftsman/estimate/:id` | 見積もりレビュー（ログイン必須 or demo） |
+| `/customer` | お客様ダッシュボード（ログイン必須）⚠️ `/estimates/my` API 本番不動作 |
+| `/customer/estimate/new` | 新規見積もり作成（ログイン必須）⚠️ `/estimates` POST 本番不動作 |
+| `/customer/estimate/:id` | 見積もり詳細（ログイン必須）⚠️ `/estimates/:id` API 本番不動作 |
+| `/craftsman` | `/craftsman/dashboard` へリダイレクト |
+| `/craftsman/estimate/:id` | 見積もりレビュー（ログイン必須 or demo）⚠️ `/estimates/:id/confirm` 本番不動作 |
 | `/request/:id/applications` | 依頼への応募一覧（お客様側） |
 | `/request/:id/extra-info` | 依頼送信後の任意追加情報入力（家具・駐車・材料等。meta JSONB に保存） |
 
@@ -75,8 +75,8 @@
 
 | ルート | ファイル | 役割 |
 |---|---|---|
-| `/demo` | `DemoLauncher.tsx` | デモ起動ランチャー |
-| `/pro/jobs` | `pro/ProJobs.tsx` | 旧職人案件ボード（残存） |
+| `/demo` | `DemoLauncher.tsx` | デモ起動ランチャー（本番では `/` へリダイレクト） |
+| `/pro/jobs` | (なし) | `/craftsman/jobs` へリダイレクト。`ProJobs.tsx` は Phase61 で削除済み |
 
 ---
 

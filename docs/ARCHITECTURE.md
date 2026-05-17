@@ -1,6 +1,6 @@
 # PRO MATCH — システム構成
 
-> 最終更新：2026年5月16日（Phase52 時点）
+> 最終更新：2026年5月17日（Phase61 時点）
 
 ---
 
@@ -21,7 +21,7 @@
 |---|---|
 | フロントエンド | Vite + React + TypeScript（strict）+ Tailwind CSS |
 | バックエンド（DB・Auth・RLS） | Supabase（PostgreSQL + PostgREST + Auth） |
-| サーバーレス API | Vercel API Routes（`frontend/api/` ディレクトリ） |
+| サーバーレス API | Vercel API Routes（`root api/` ディレクトリのみ。`frontend/api/` は Phase60 で削除済み） |
 | メール送信 | Resend（`noreply@promatch-app.jp` で verified済み） |
 | Edge Functions | Supabase Edge Functions（Deno ランタイム） |
 | ホスティング | Vercel（`https://promatch-app.jp`） |

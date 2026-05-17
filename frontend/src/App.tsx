@@ -16,7 +16,6 @@ import PolicyPage from './pages/PolicyPage';
 import CorporateRequest from './pages/corporate/CorporateRequest';
 import AdminRequests from './pages/admin/AdminRequests';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import ProJobs from './pages/pro/ProJobs';
 import CraftsmanJobsPage from './pages/craftsman/CraftsmanJobsPage';
 import CraftsmanProfile from './pages/craftsman/CraftsmanProfile';
 import HelpRequestPage from './pages/craftsman/HelpRequestPage';

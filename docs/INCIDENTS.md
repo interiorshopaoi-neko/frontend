@@ -317,3 +317,10 @@ Phase59 の調査で `notify.ts` が out-of-sync（frontend 側が古い test se
    - レスポンスに失敗理由フィールドを含める
    - `try/catch` で例外をキャッチし、理由を返す
    - デプロイ後に実際にメールが届くか確認する
+
+4. dead code / legacy route の扱い:
+   - **ファイルを削除する前に App.tsx のimport・route・他ファイルからのimportを全て確認する**
+   - 「route がない = dead」とは限らない（sub-component として使われている場合がある）
+   - import されているが render されていないコード（例: unused import）は tsc では検出されないことがある
+   - `basename` substring マッチの grep では `CraftsmanDashboard` が `CraftsmanDashboardPage` にマッチするなど誤検出が起きる。**完全一致 `from '...CraftsmanDashboard'` で検索する**
+   - legacy route がある画面は「APIが動かない」ことをコード（TODO コメント）と docs の両方に明記する

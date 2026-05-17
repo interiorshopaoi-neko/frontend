@@ -132,10 +132,26 @@ Phase52 をもって、通知・RLS・本番デプロイまで到達しました
 
 | ファイル | ルート | 呼び出し | 状態 |
 |---|---|---|---|
-| `CustomerDashboard.tsx` | `/customer` | `api.get('/estimates/my')` | ❌ 本番不動作 |
-| `NewEstimate.tsx` | `/customer/estimate/new` | `api.post('/estimates')` | ❌ 本番不動作 |
-| `EstimateDetail.tsx` | `/customer/estimate/:id` | `api.get/post/put('/estimates/:id/*')` | ❌ 本番不動作 |
-| `ReviewEstimate.tsx` | `/craftsman/estimate/:id` | `api.put('/estimates/:id/confirm')` など | ❌ 本番不動作 |
-| `CraftsmanDashboard.tsx` | (未登録) | `api.get('/estimates/craftsman')` | 🗑️ App.tsx に未登録のデッドファイル |
+| `CustomerDashboard.tsx` | `/customer` | `api.get('/estimates/my')` | ❌ 本番不動作（route登録済み） |
+| `NewEstimate.tsx` | `/customer/estimate/new` | `api.post('/estimates')` | ❌ 本番不動作（route登録済み） |
+| `EstimateDetail.tsx` | `/customer/estimate/:id` | `api.get/post/put('/estimates/:id/*')` | ❌ 本番不動作（route登録済み） |
+| `ReviewEstimate.tsx` | `/craftsman/estimate/:id` | `api.put('/estimates/:id/confirm')` など | ❌ 本番不動作（route登録済み） |
 
-**対処方針：** 将来 Supabase client 直接統合に移行する。それまでは `check-api-routes.mjs` の `LEGACY_ROUTES` に登録済みで、デプロイチェックからは除外されています。
+**Phase61 で削除済み（dead file）：**
+
+| ファイル | 削除理由 |
+|---|---|
+| `CraftsmanDashboard.tsx` | App.tsx に import・route なし。`CraftsmanDashboardPage.tsx` が現行 |
+| `LandingPage.tsx` | App.tsx に import・route なし。`/request` route は存在しない |
+| `LandingEstimate.tsx` | App.tsx に import・route なし（旧見積もり LP） |
+| `pages/pro/ProJobs.tsx` | App.tsx で import されていたが一度も render されず。`/pro/jobs` は `/craftsman/jobs` へリダイレクト |
+
+**残す4ファイルの移行方針（次Phase）：**
+現在のお客様導線は `/corporate`（匿名フォーム → `estimate_requests` テーブル直接保存）に移行済み。
+`/customer` ログイン体系は旧フロー。Supabase client 直接統合で以下の代替を実装する予定：
+- `CustomerDashboard` → `estimate_requests` を `user_id` or `contact_email` で取得
+- `NewEstimate` → `/corporate` フローに統合または廃止
+- `EstimateDetail` → `estimate_requests/:id` + `job_applications` を Supabase client で取得
+- `ReviewEstimate` → `job_applications` の承認処理を Supabase client で実装
+
+それまでは `check-api-routes.mjs` の `LEGACY_ROUTES` に登録済みで、デプロイチェックからは除外されています。
