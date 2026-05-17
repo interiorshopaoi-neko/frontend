@@ -189,6 +189,223 @@ async function ensureCraftsmanProfile(userId: string, userName: string, userEmai
   if (error) console.warn('[ensureCraftsmanProfile] error:', error);
 }
 
+// ─── PreCheckModal ────────────────────────────────────────────────────────────
+
+const SCOPE_CHIPS = ['壁のみ', '天井含む', '壁＋天井', 'アクセントクロス希望', 'ソフト巾木施工希望'] as const;
+type ScopeChip = typeof SCOPE_CHIPS[number];
+
+function PreCheckModal({ onClose }: { onClose: () => void }) {
+  const [dates,    setDates]    = useState(['', '', '']);
+  const [scopes,   setScopes]   = useState<ScopeChip[]>([]);
+  const [material, setMaterial] = useState('品番未定');
+  const [matNote,  setMatNote]  = useState('');
+  const [payment,  setPayment]  = useState('どちらでも可');
+  const [parking,  setParking]  = useState('不明');
+  const [furniture,setFurniture]= useState('自分で移動できる');
+  const [memo,     setMemo]     = useState('');
+  const [copied,   setCopied]   = useState(false);
+
+  function toggleScope(s: ScopeChip) {
+    setScopes(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
+  }
+
+  function buildEmail() {
+    const d = dates;
+    const scopeStr = scopes.length ? scopes.join('・') : '未定';
+    const matStr   = matNote ? `${material}（${matNote}）` : material;
+    return [
+      '件名：PRO MATCHの工事前確認について',
+      '',
+      '○○様',
+      '',
+      'PRO MATCHでご依頼いただいた工事について、施工前に以下をご確認ください。',
+      '',
+      `【日程候補】`,
+      `　第1希望：${d[0] || '未定'}`,
+      `　第2希望：${d[1] || '未定'}`,
+      `　第3希望：${d[2] || '未定'}`,
+      `【施工範囲】${scopeStr}`,
+      `【材料・品番】${matStr}`,
+      `【支払い方法】${payment}`,
+      `【駐車場】${parking}`,
+      `【家具移動】${furniture}`,
+      memo ? `【その他】${memo}` : '',
+      '',
+      'よろしくお願いいたします。',
+    ].filter((l, i, arr) => !(l === '' && arr[i - 1] === '')).join('\n');
+  }
+
+  function handleCopy() {
+    navigator.clipboard.writeText(buildEmail()).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
+      <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh]">
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100 flex-shrink-0">
+          <h2 className="text-base font-extrabold text-slate-800">📋 施工前確認シート</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
+        </div>
+        <div className="overflow-y-auto px-5 py-4 space-y-5 flex-1">
+
+          {/* 日程候補 */}
+          <div>
+            <p className="text-xs font-bold text-slate-600 mb-2">📅 日程候補（3つ）</p>
+            <div className="space-y-2">
+              {dates.map((d, i) => (
+                <input
+                  key={i}
+                  value={d}
+                  onChange={e => setDates(prev => prev.map((v, j) => j === i ? e.target.value : v))}
+                  placeholder={`第${i + 1}希望（例：6月15日 午前）`}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-300"
+                />
+              ))}
+              <p className="text-[10px] text-slate-400">未定の場合は、施工前に相談しながら決められます</p>
+            </div>
+          </div>
+
+          {/* 施工範囲 */}
+          <div>
+            <p className="text-xs font-bold text-slate-600 mb-2">🏠 施工範囲</p>
+            <div className="flex flex-wrap gap-2">
+              {SCOPE_CHIPS.map(s => (
+                <button
+                  key={s}
+                  onClick={() => toggleScope(s)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
+                    scopes.includes(s)
+                      ? 'bg-violet-600 border-violet-600 text-white'
+                      : 'bg-white border-slate-200 text-slate-600'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 材料・品番 */}
+          <div>
+            <p className="text-xs font-bold text-slate-600 mb-2">🎨 材料・品番</p>
+            <div className="flex gap-2 flex-wrap mb-2">
+              {['品番未定', 'お客様が用意', '職人に相談'].map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => setMaterial(opt)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
+                    material === opt
+                      ? 'bg-violet-600 border-violet-600 text-white'
+                      : 'bg-white border-slate-200 text-slate-600'
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+            <input
+              value={matNote}
+              onChange={e => setMatNote(e.target.value)}
+              placeholder="品番・メモ（任意）"
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-300"
+            />
+          </div>
+
+          {/* 支払い方法 */}
+          <div>
+            <p className="text-xs font-bold text-slate-600 mb-2">💴 支払い方法</p>
+            <div className="flex gap-2 flex-wrap">
+              {['現金', '振込', 'どちらでも可'].map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => setPayment(opt)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
+                    payment === opt
+                      ? 'bg-violet-600 border-violet-600 text-white'
+                      : 'bg-white border-slate-200 text-slate-600'
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 駐車場 */}
+          <div>
+            <p className="text-xs font-bold text-slate-600 mb-2">🚗 駐車場</p>
+            <div className="flex gap-2 flex-wrap">
+              {['あり', '近隣P利用', '不明'].map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => setParking(opt)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
+                    parking === opt
+                      ? 'bg-violet-600 border-violet-600 text-white'
+                      : 'bg-white border-slate-200 text-slate-600'
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 家具移動 */}
+          <div>
+            <p className="text-xs font-bold text-slate-600 mb-2">🪑 家具移動</p>
+            <div className="flex gap-2 flex-wrap">
+              {['自分で移動できる', '一部手伝ってほしい', '難しい'].map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => setFurniture(opt)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
+                    furniture === opt
+                      ? 'bg-violet-600 border-violet-600 text-white'
+                      : 'bg-white border-slate-200 text-slate-600'
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* その他メモ */}
+          <div>
+            <p className="text-xs font-bold text-slate-600 mb-2">📝 その他メモ</p>
+            <textarea
+              value={memo}
+              onChange={e => setMemo(e.target.value)}
+              rows={3}
+              placeholder="気になることや伝えたいことを自由に"
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-300 resize-none"
+            />
+          </div>
+        </div>
+
+        {/* コピーボタン */}
+        <div className="px-5 py-4 border-t border-slate-100 flex-shrink-0">
+          <button
+            onClick={handleCopy}
+            className={`w-full py-3 rounded-2xl text-sm font-extrabold transition active:scale-95 ${
+              copied
+                ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+                : 'bg-violet-600 hover:bg-violet-700 text-white'
+            }`}
+          >
+            {copied ? '✅ コピーしました！メールアプリに貼り付けてください' : '📋 確認メール文をコピー'}
+          </button>
+          <p className="text-[10px] text-slate-400 text-center mt-1.5">コピー後、メールアプリに貼り付けてお客様に送信してください</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CraftsmanDashboardPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -207,7 +424,8 @@ export default function CraftsmanDashboardPage() {
   const [modal,         setModal]         = useState<ContactModal | null>(null);
   const [paymentBanner, setPaymentBanner] = useState<'success' | 'cancel' | null>(null);
   const [isPolling,     setIsPolling]     = useState(false);
-  const [copiedEmailId, setCopiedEmailId] = useState<string | null>(null);
+  const [copiedEmailId,  setCopiedEmailId]  = useState<string | null>(null);
+  const [preCheckAppId,  setPreCheckAppId]  = useState<string | null>(null);
   const [copiedCode,    setCopiedCode]    = useState(false);
 
   const handleLogout = () => {
@@ -982,6 +1200,19 @@ export default function CraftsmanDashboardPage() {
                     );
                   })()}
 
+                  {/* 施工前確認ボタン */}
+                  {app._status === '成約済み' && (
+                    <div className="border-t border-violet-100 bg-violet-50 px-4 py-3">
+                      <button
+                        onClick={() => setPreCheckAppId(app.id)}
+                        className="w-full bg-violet-600 hover:bg-violet-700 text-white rounded-xl py-2.5 text-xs font-extrabold transition active:scale-95"
+                      >
+                        📋 施工前確認を作る
+                      </button>
+                      <p className="text-[10px] text-violet-400 text-center mt-1">日程・範囲・支払いをまとめてお客様にメール</p>
+                    </div>
+                  )}
+
                   {/* 工事完了報告ボタン */}
                   {app._status === '成約済み' && (
                     <div className="border-t border-green-100 bg-green-50 px-4 py-3">
@@ -1115,6 +1346,10 @@ export default function CraftsmanDashboardPage() {
       )}
 
       <BottomNav />
+
+      {preCheckAppId && (
+        <PreCheckModal onClose={() => setPreCheckAppId(null)} />
+      )}
     </div>
   );
 }

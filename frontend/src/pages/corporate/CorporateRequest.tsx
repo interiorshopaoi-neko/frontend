@@ -38,7 +38,7 @@ type Room = {
 };
 
 const ROOM_NAMES = ['LDK', '洋室', '寝室', '廊下', 'トイレ', '洗面所', 'その他'] as const;
-const ROOM_WORKS = ['壁紙・クロス', 'クッションフロア', '両方'] as const;
+const ROOM_WORKS = ['壁紙・クロス', '天井クロス', '壁＋天井', 'クッションフロア', '両方'] as const;
 const ROOM_SIZES = ['6畳', '8畳', '12畳', '不明'] as const;
 const ROOM_CONDS = ['汚れ', 'めくれ', '傷', 'カビ', 'ペット臭', '不明'] as const;
 
@@ -403,10 +403,11 @@ export default function CorporateRequest() {
   function goFromRoomsToNext() {
     const roomTypes = rooms.map(r => r.workType).filter(Boolean);
     if (roomTypes.length > 0 && !workType) {
-      const hasCF  = roomTypes.some(w => w === 'クッションフロア');
-      const hasWall = roomTypes.some(w => w === '壁紙・クロス' || w === '両方');
-      const hasBoth = roomTypes.some(w => w === '両方');
-      if (hasBoth || (hasCF && hasWall)) {
+      const hasCF      = roomTypes.some(w => w === 'クッションフロア');
+      const hasWall    = roomTypes.some(w => w === '壁紙・クロス' || w === '両方' || w === '壁＋天井');
+      const hasCeiling = roomTypes.some(w => w === '天井クロス' || w === '壁＋天井');
+      const hasBoth    = roomTypes.some(w => w === '両方');
+      if (hasBoth || (hasCF && (hasWall || hasCeiling))) {
         setWorkType('クロス張り替え');
       } else if (hasCF) {
         setWorkType('床工事');
