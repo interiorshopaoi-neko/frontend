@@ -10,7 +10,8 @@
     "check:routes": "node scripts/check-routes.mjs"
   },
   "dependencies": {
-    "resend": "^6.12.2"
+    "resend": "^6.12.2",
+    "stripe": "^17.0.0"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
