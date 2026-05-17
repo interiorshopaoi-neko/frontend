@@ -644,10 +644,11 @@ export default function HelpListPage() {
     setAppCounts(prev => ({ ...prev, [job.id]: (prev[job.id] ?? 0) + 1 }));
 
     // 応募通知（fire-and-forget）
-    fetch('/api/notify-helper-application', {
+    fetch('/api/notify-helper', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        type:         'application',
         request_id:   job.id,
         craftsman_id: currentUserId,
         work_type:    job.work_type,
@@ -717,10 +718,10 @@ export default function HelpListPage() {
     ));
 
     // 承認通知（fire-and-forget）
-    fetch('/api/notify-helper-approved', {
+    fetch('/api/notify-helper', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ application_id: appId }),
+      body: JSON.stringify({ type: 'approved', application_id: appId }),
     }).catch(() => {});
   }
 

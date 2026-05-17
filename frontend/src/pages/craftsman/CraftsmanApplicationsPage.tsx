@@ -474,10 +474,11 @@ export default function CraftsmanApplicationsPage() {
       );
 
       // fire-and-forget: レビュー依頼通知
-      fetch('/api/notify-review-request', {
+      fetch('/api/notify-review', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
+          type:           'request',
           request_id:     app.estimate_request_id,
           application_id: app.id,
         }),

@@ -358,11 +358,11 @@ export default function CraftsmanDashboardPage() {
     ));
 
     // 依頼者へレビュー依頼メール — fire-and-forget
-    fetch('/api/notify-review-request', {
+    fetch('/api/notify-review', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ request_id: estimateRequestId, application_id: appId }),
-    }).catch(err => console.warn('[notify-review-request] fire-and-forget error:', err));
+      body:    JSON.stringify({ type: 'request', request_id: estimateRequestId, application_id: appId }),
+    }).catch(err => console.warn('[notify-review] request fire-and-forget error:', err));
   }
 
   // payment=success / payment=cancel バナー
