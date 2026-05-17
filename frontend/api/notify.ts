@@ -31,7 +31,7 @@ export default async function handler(req: any, res: any) {
 
   try {
     const { error } = await resend.emails.send({
-      from: 'Aoi Interior <onboarding@resend.dev>',  // promatch-app.jp ドメイン認証が確認できるまでテスト用送信元を使用
+      from: 'PRO MATCH 管理 <noreply@promatch-app.jp>',
       to:   ['interior.shop.aoi@gmail.com'],
       subject: '新しい見積もり依頼が届きました',
       text: body,

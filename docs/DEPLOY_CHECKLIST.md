@@ -5,6 +5,29 @@
 
 ---
 
+## ⚡ クイックチェック（最低限これだけ）
+
+```bash
+# 1. 現在地確認
+git branch --show-current && git status && git log --oneline -1
+
+# 2. API route 確認（MISSING/FRONTEND-ONLY が出たらデプロイしない）
+node scripts/check-api-routes.mjs
+
+# 3. tsc + build
+cd frontend && npx tsc --noEmit && npm run build
+
+# 4. push
+git push origin HEAD:main
+
+# 5. 本番確認（push 後 1〜2 分待ってから）
+curl -s -o /dev/null -w "%{http_code}" -X POST https://promatch-app.jp/api/auth/login \
+  -H 'Content-Type: application/json' -d '{"email":"x@x.com","password":"wrong"}'
+# → 401 (OK) / 405 は NG
+```
+
+---
+
 ## 🔍 Step 1：現在地の確認
 
 本番デプロイの前に、自分が「どのブランチ・コミット」で作業しているかを確認します。
@@ -43,6 +66,33 @@ npx tsc --noEmit
 - WarningはOKだが、エラーが残ったままデプロイしない
 
 **なぜやるか：** TypeScript は実行前にバグを発見できる。ここで通れば、型エラーによるクラッシュを防げる。
+
+---
+
+## ✅ Step 3.5：API ルートチェック（必須）
+
+> **インシデント #7 の再発防止。**
+> `/api/auth/login` が 405 で本番ログイン不能になった事故の教訓。
+
+```bash
+# リポジトリ root から実行
+node scripts/check-api-routes.mjs
+
+# または frontend/ から
+npm run check:api-routes
+```
+
+出力の確認ポイント：
+
+| 表示 | 意味 | アクション |
+|---|---|---|
+| `✅ OK` | root api/ に対応あり | 問題なし |
+| `❌ MISSING` | 本番で 405 になる | **デプロイ禁止。root api/ にファイルを追加** |
+| `⚠️ FRONTEND-ONLY` | frontend/api/ にしかない | root api/ にコピー |
+| `⚠️ OUT-OF-SYNC` | root と frontend で内容が違う | root を最新にしているか確認 |
+| `⚪ LEGACY` | 既知の未対応 | 無視でOK（docs/CURRENT_STATUS.md 参照） |
+
+**`❌ MISSING` が 1 つでも出たらデプロイしない。**
 
 ---
 

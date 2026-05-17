@@ -110,3 +110,20 @@ Phase52 をもって、通知・RLS・本番デプロイまで到達しました
 | 助っ人承認通知（応募者） | `noreply@promatch-app.jp` | Vercel API Route |
 
 > `onboarding@resend.dev` は**絶対に本番で使わない**（Resend アカウントオーナー宛にしか届かない）
+
+---
+
+## ⚠️ Legacy API 呼び出し（Supabase 直接統合前の旧 REST API）
+
+以下のページは Supabase 直接統合前の REST API（`/api/estimates/*`）を呼んでいます。
+これらの serverless function は root `api/` に存在しないため、**本番では動作しません**（既知・放置中）。
+
+| ファイル | ルート | 呼び出し | 状態 |
+|---|---|---|---|
+| `CustomerDashboard.tsx` | `/customer` | `api.get('/estimates/my')` | ❌ 本番不動作 |
+| `NewEstimate.tsx` | `/customer/estimate/new` | `api.post('/estimates')` | ❌ 本番不動作 |
+| `EstimateDetail.tsx` | `/customer/estimate/:id` | `api.get/post/put('/estimates/:id/*')` | ❌ 本番不動作 |
+| `ReviewEstimate.tsx` | `/craftsman/estimate/:id` | `api.put('/estimates/:id/confirm')` など | ❌ 本番不動作 |
+| `CraftsmanDashboard.tsx` | (未登録) | `api.get('/estimates/craftsman')` | 🗑️ App.tsx に未登録のデッドファイル |
+
+**対処方針：** 将来 Supabase client 直接統合に移行する。それまでは `check-api-routes.mjs` の `LEGACY_ROUTES` に登録済みで、デプロイチェックからは除外されています。
