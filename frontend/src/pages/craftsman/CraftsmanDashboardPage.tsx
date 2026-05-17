@@ -197,7 +197,9 @@ type ScopeChip = typeof SCOPE_CHIPS[number];
 function PreCheckModal({ onClose }: { onClose: () => void }) {
   const [dates,    setDates]    = useState(['', '', '']);
   const [scopes,   setScopes]   = useState<ScopeChip[]>([]);
-  const [material, setMaterial] = useState('品番未定');
+  const [material, setMaterial] = useState('未定');
+  const [accent,   setAccent]   = useState('未定');
+  const [sokibari, setSokibari] = useState('未定');
   const [matNote,  setMatNote]  = useState('');
   const [payment,  setPayment]  = useState('どちらでも可');
   const [parking,  setParking]  = useState('不明');
@@ -212,7 +214,7 @@ function PreCheckModal({ onClose }: { onClose: () => void }) {
   function buildEmail() {
     const d = dates;
     const scopeStr = scopes.length ? scopes.join('・') : '未定';
-    const matStr   = matNote ? `${material}（${matNote}）` : material;
+    const matStr   = matNote ? `${material}（品番・メモ：${matNote}）` : material;
     return [
       '件名：PRO MATCHの工事前確認について',
       '',
@@ -220,16 +222,23 @@ function PreCheckModal({ onClose }: { onClose: () => void }) {
       '',
       'PRO MATCHでご依頼いただいた工事について、施工前に以下をご確認ください。',
       '',
-      `【日程候補】`,
+      '【日程候補】',
       `　第1希望：${d[0] || '未定'}`,
       `　第2希望：${d[1] || '未定'}`,
       `　第3希望：${d[2] || '未定'}`,
       `【施工範囲】${scopeStr}`,
-      `【材料・品番】${matStr}`,
+      `【クロス種類】${matStr}`,
+      `【アクセントクロス】${accent}`,
+      `【ソフト巾木】${sokibari}`,
+      matNote ? `【品番・URL・メモ】${matNote}` : '【品番・URL・メモ】未定（気になる壁紙のURLや写真でも大丈夫です）',
       `【支払い方法】${payment}`,
       `【駐車場】${parking}`,
       `【家具移動】${furniture}`,
       memo ? `【その他】${memo}` : '',
+      '',
+      '※ 品番が未定の場合は、気になる壁紙のURLや写真でも大丈夫です。',
+      '※ 1000番クロス・柄物・アクセントクロス・機能性クロス・ソフト巾木は、通常クロスより費用が上がる場合があります。',
+      '※ 正式な金額は、内容確認後にご案内します。',
       '',
       'よろしくお願いいたします。',
     ].filter((l, i, arr) => !(l === '' && arr[i - 1] === '')).join('\n');
@@ -288,11 +297,11 @@ function PreCheckModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
-          {/* 材料・品番 */}
+          {/* クロス種類 */}
           <div>
-            <p className="text-xs font-bold text-slate-600 mb-2">🎨 材料・品番</p>
+            <p className="text-xs font-bold text-slate-600 mb-2">🎨 クロス種類</p>
             <div className="flex gap-2 flex-wrap mb-2">
-              {['品番未定', 'お客様が用意', '職人に相談'].map(opt => (
+              {['量産クロス', '1000番・機能性クロス', '柄物クロス', '未定'].map(opt => (
                 <button
                   key={opt}
                   onClick={() => setMaterial(opt)}
@@ -306,12 +315,58 @@ function PreCheckModal({ onClose }: { onClose: () => void }) {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* アクセントクロス */}
+          <div>
+            <p className="text-xs font-bold text-slate-600 mb-2">✨ アクセントクロス</p>
+            <div className="flex gap-2 flex-wrap">
+              {['希望あり', '希望なし', '未定'].map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => setAccent(opt)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
+                    accent === opt
+                      ? 'bg-violet-600 border-violet-600 text-white'
+                      : 'bg-white border-slate-200 text-slate-600'
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ソフト巾木 */}
+          <div>
+            <p className="text-xs font-bold text-slate-600 mb-2">📐 ソフト巾木</p>
+            <div className="flex gap-2 flex-wrap">
+              {['ソフト巾木施工希望', '不要', '未定'].map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => setSokibari(opt)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
+                    sokibari === opt
+                      ? 'bg-violet-600 border-violet-600 text-white'
+                      : 'bg-white border-slate-200 text-slate-600'
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 品番・URLメモ */}
+          <div>
+            <p className="text-xs font-bold text-slate-600 mb-1">🔖 品番・URL・メモ</p>
             <input
               value={matNote}
               onChange={e => setMatNote(e.target.value)}
-              placeholder="品番・メモ（任意）"
+              placeholder="品番・URL・気になる壁紙のリンクなど"
               className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-300"
             />
+            <p className="text-[10px] text-slate-400 mt-1">品番が分からない場合は、気になる壁紙のURLや写真でも大丈夫です</p>
           </div>
 
           {/* 支払い方法 */}
