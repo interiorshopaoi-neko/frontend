@@ -207,12 +207,26 @@ export default function CraftsmanDashboardPage() {
   const [modal,         setModal]         = useState<ContactModal | null>(null);
   const [paymentBanner, setPaymentBanner] = useState<'success' | 'cancel' | null>(null);
   const [isPolling,     setIsPolling]     = useState(false);
+  const [copiedEmailId, setCopiedEmailId] = useState<string | null>(null);
+  const [copiedCode,    setCopiedCode]    = useState(false);
 
   const handleLogout = () => {
     logout();
     localStorage.clear();
     navigate('/login');
   };
+
+  function copyEmail(appId: string, email: string) {
+    navigator.clipboard.writeText(email).catch(() => {});
+    setCopiedEmailId(appId);
+    setTimeout(() => setCopiedEmailId(null), 2000);
+  }
+
+  function copyReferralCode(code: string) {
+    navigator.clipboard.writeText(code).catch(() => {});
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  }
 
   // ── 連絡先開示ヘルパー ──────────────────────────────────────────────────────
   function setContactState(appId: string, state: ContactState) {
@@ -666,27 +680,60 @@ export default function CraftsmanDashboardPage() {
           );
         })()}
 
-        {/* 紹介で無料枠を増やす */}
+        {/* 現場ツール導線 */}
+        <div className="mx-4 mt-3 rounded-xl bg-violet-50 border border-violet-200 px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">🧮</span>
+            <div>
+              <p className="text-xs font-extrabold text-violet-800">現場ツール</p>
+              <p className="text-[11px] text-violet-600">簡単見積・材料計算・発注長さをすぐ使えます</p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/tools')}
+            className="flex-shrink-0 text-xs bg-violet-600 text-white font-bold px-3 py-2 rounded-xl transition active:scale-95"
+          >
+            ツールを開く
+          </button>
+        </div>
+
+        {/* 紹介コード */}
         {referralCode && (() => {
           const shareUrl = `https://promatch-app.jp/pro-signup?ref=${referralCode}`;
-          const shareText = `動画で案件を見れる内装マッチング。\n\n無料で2件まで\n連絡先確認できます。\n\n紹介で無料枠も増やせます。\n\n${shareUrl}`;
+          const shareText = `内装職人向けマッチングサービスPRO MATCH。\n無料で案件に応募できます。\n\n${shareUrl}`;
           const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`;
           return (
-            <div className="mx-4 mt-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
-              <p className="text-xs font-extrabold text-blue-800 mb-1">🎁 紹介で無料枠を増やせます</p>
-              <p className="text-[11px] text-blue-600 leading-relaxed mb-3">
-                友達が登録して案件応募すると<br />無料連絡先確認が <strong>+1件</strong>
+            <div className="mx-4 mt-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 space-y-2">
+              <p className="text-xs font-extrabold text-blue-800">🔗 紹介コードをシェア</p>
+              {/* コード表示 + コピー */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-white border border-blue-200 rounded-xl px-3 py-2">
+                  <p className="text-[10px] text-blue-400 font-bold">あなたの紹介コード</p>
+                  <p className="text-sm font-extrabold text-blue-700 tracking-wider">{referralCode}</p>
+                </div>
+                <button
+                  onClick={() => copyReferralCode(referralCode)}
+                  className={`text-xs font-bold px-3 py-2 rounded-xl transition active:scale-95 ${
+                    copiedCode ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                  }`}
+                >
+                  {copiedCode ? '✅ コピー済み' : '📋 コピー'}
+                </button>
+              </div>
+              <p className="text-[10px] text-blue-500 leading-relaxed">
+                ※ 紹介ボーナス制度は準備中です。コードのシェアはできます。
               </p>
+              {/* LINE共有 */}
               <a
                 href={lineUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full rounded-xl bg-[#06C755] text-white text-sm font-bold py-2.5 hover:opacity-90 transition-opacity"
+                className="flex items-center justify-center gap-2 w-full rounded-xl bg-[#06C755] text-white text-xs font-bold py-2.5 hover:opacity-90 transition-opacity"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.281.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314" />
                 </svg>
-                LINEで紹介する
+                LINEでシェアする
               </a>
             </div>
           );
@@ -705,6 +752,25 @@ export default function CraftsmanDashboardPage() {
           <SummaryCard icon="🤝" value={counts.contracted} label="成約済み" />
           <SummaryCard icon="✅" value={counts.done}       label="工事完了" />
         </div>
+
+        {/* 案件活性チップ */}
+        {!isDemo && apps.length > 0 && (() => {
+          const now = Date.now();
+          const recentCount = apps.filter(a => now - new Date(a.created_at).getTime() < 86400000 * 2).length;
+          return (
+            <div className="px-4 mt-3 flex flex-wrap gap-2">
+              {recentCount > 0 && (
+                <span className="text-[11px] bg-blue-100 text-blue-700 font-bold px-2.5 py-1 rounded-full">🆕 直近 {recentCount}件</span>
+              )}
+              {counts.active > 0 && (
+                <span className="text-[11px] bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1 rounded-full">📤 進行中 {counts.active}件</span>
+              )}
+              {counts.contracted > 0 && (
+                <span className="text-[11px] bg-green-100 text-green-700 font-bold px-2.5 py-1 rounded-full">🤝 成約 {counts.contracted}件</span>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ステータスフィルター */}
         <div className="mt-4 px-4 overflow-x-auto">
@@ -872,15 +938,28 @@ export default function CraftsmanDashboardPage() {
                           </div>
                         )}
                         {cs.kind === 'unlocked' && (
-                          <div className="rounded-xl bg-blue-50 border border-blue-200 px-3 py-2.5">
-                            <p className="text-[10px] text-blue-500 font-bold mb-0.5">連絡先表示中 — お客様のメールアドレス</p>
-                            <a
-                              href={`mailto:${cs.email}`}
-                              className="text-sm font-extrabold text-blue-700 break-all hover:underline"
-                            >
-                              {cs.email}
-                            </a>
-                            <p className="text-[10px] text-blue-400 mt-1">このメールアドレスに連絡してください</p>
+                          <div className="rounded-xl bg-blue-50 border border-blue-200 px-3 py-2.5 space-y-2">
+                            <p className="text-[10px] text-blue-500 font-bold">連絡先表示中 — お客様のメールアドレス</p>
+                            <p className="text-sm font-extrabold text-blue-700 break-all">{cs.email}</p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => copyEmail(app.id, cs.email)}
+                                className={`flex-1 text-xs font-bold rounded-xl py-2 border transition active:scale-95 ${
+                                  copiedEmailId === app.id
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                    : 'bg-white border-blue-200 text-blue-600'
+                                }`}
+                              >
+                                {copiedEmailId === app.id ? '✅ コピー済み' : '📋 コピー'}
+                              </button>
+                              <a
+                                href={`mailto:${cs.email}?subject=${encodeURIComponent('PRO MATCHの件でご連絡しました')}&body=${encodeURIComponent('はじめまして。PRO MATCHでご依頼を確認しました。\n工事内容と日程について、メールで調整させてください。\nよろしくお願いいたします。')}`}
+                                className="flex-1 text-xs font-bold rounded-xl py-2 bg-blue-600 text-white text-center transition active:scale-95"
+                              >
+                                📧 メールを送る
+                              </a>
+                            </div>
+                            <p className="text-[10px] text-blue-400">このメールアドレスに連絡してください</p>
                           </div>
                         )}
                         {cs.kind === 'no_email' && (
