@@ -412,15 +412,7 @@ export default function CraftsmanProfile() {
           </div>
         )}
 
-        {/* 保存成功バナー */}
-        {saved && (
-          <div className="mb-4 rounded-2xl bg-green-50 border border-green-200 px-4 py-3 flex items-center gap-2 text-sm text-green-700 font-semibold">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
-            </svg>
-            プロフィールを保存しました
-          </div>
-        )}
+        {/* 保存成功バナー（ページ内・スクロール位置に依存しない固定トースト） */}
 
         {/* 公開プロフィールへのリンク */}
         {form.public_profile_enabled && (
@@ -944,6 +936,16 @@ export default function CraftsmanProfile() {
         </div>
       </div>
       <BottomNav />
+
+      {/* 保存成功トースト（画面下部固定） */}
+      {saved && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-green-600 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-lg shadow-green-900/20 pointer-events-none">
+          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+          プロフィールを保存しました
+        </div>
+      )}
     </div>
   );
 }

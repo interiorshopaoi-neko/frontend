@@ -964,7 +964,7 @@ export default function CorporateRequest() {
               className="w-full border-2 border-slate-200 rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-violet-400 transition-colors placeholder:text-slate-300"
             />
             <div className="flex flex-wrap gap-2 pt-1">
-              {['東京都', '神奈川県', '埼玉県', '千葉県'].map(example => (
+              {['東京都', '神奈川県', '埼玉県', '千葉県', '群馬県'].map(example => (
                 <button
                   key={example}
                   onClick={() => setArea(example)}

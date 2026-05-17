@@ -229,6 +229,10 @@ export default function CraftsmanDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ craftsman_id: userId, estimate_request_id: estimateRequestId }),
       });
+      if (!res.ok) {
+        setContactState(appId, { kind: 'error', message: `連絡先の取得に失敗しました (${res.status})` });
+        return;
+      }
       const data = await res.json();
       if (data.status === 'ok') {
         setContactState(appId, { kind: 'unlocked', email: data.email });
@@ -664,7 +668,7 @@ export default function CraftsmanDashboardPage() {
 
         {/* 紹介で無料枠を増やす */}
         {referralCode && (() => {
-          const shareUrl = `https://promatch-app.jp/craftsman?ref=${referralCode}`;
+          const shareUrl = `https://promatch-app.jp/pro-signup?ref=${referralCode}`;
           const shareText = `動画で案件を見れる内装マッチング。\n\n無料で2件まで\n連絡先確認できます。\n\n紹介で無料枠も増やせます。\n\n${shareUrl}`;
           const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`;
           return (
@@ -936,12 +940,13 @@ export default function CraftsmanDashboardPage() {
                   {/* アクションボタン */}
                   <div className="border-t border-slate-100 px-4 py-3 flex gap-2">
                     <button
-                      onClick={() => navigate(`/craftsman/apply/${app.estimate_request_id}`, {
-                        state: { readOnly: true }
-                      })}
+                      onClick={() => isSensitive
+                        ? handleRevealClick(app.id, app.estimate_request_id)
+                        : navigate(`/craftsman/apply/${app.estimate_request_id}`, { state: { readOnly: true } })
+                      }
                       className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-xs font-extrabold transition active:scale-95"
                     >
-                      詳細を見る
+                      {isSensitive ? '📧 連絡先を確認する' : '詳細を見る'}
                     </button>
                     <button
                       onClick={() => navigate(`/craftsman/profile/${userId}`)}
