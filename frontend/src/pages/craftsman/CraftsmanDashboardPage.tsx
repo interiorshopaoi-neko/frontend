@@ -31,6 +31,17 @@ type StatusLabel =
   | '工事完了'
   | '見送り';
 
+type ContactState =
+  | { kind: 'idle' }
+  | { kind: 'loading' }
+  | { kind: 'unlocked'; email: string }
+  | { kind: 'no_email' }
+  | { kind: 'error'; message: string };
+
+type ContactModal =
+  | { kind: 'free'; appId: string; estimateRequestId: string }
+  | { kind: 'paid'; appId: string; estimateRequestId: string };
+
 // ─── Status config ────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<
@@ -191,13 +202,133 @@ export default function CraftsmanDashboardPage() {
   // localStorage の user.id を優先し、なければ useAuth の user.id を使う
   const userId = getUserId() || (user?.id ?? '');
 
-  const [showLogout, setShowLogout] = useState(false);
+  const [showLogout,    setShowLogout]    = useState(false);
+  const [contactStates, setContactStates] = useState<Map<string, ContactState>>(new Map());
+  const [modal,         setModal]         = useState<ContactModal | null>(null);
+  const [paymentBanner, setPaymentBanner] = useState<'success' | 'cancel' | null>(null);
 
   const handleLogout = () => {
     logout();
     localStorage.clear();
     navigate('/login');
   };
+
+  // ── 連絡先開示ヘルパー ──────────────────────────────────────────────────────
+  function setContactState(appId: string, state: ContactState) {
+    setContactStates(prev => new Map(prev).set(appId, state));
+  }
+
+  async function handleRevealClick(appId: string, estimateRequestId: string) {
+    const current = contactStates.get(appId);
+    if (current?.kind === 'loading' || current?.kind === 'unlocked') return;
+    setContactState(appId, { kind: 'loading' });
+    try {
+      const res  = await fetch('/api/get-contact-email', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ craftsman_id: userId, estimate_request_id: estimateRequestId }),
+      });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        setContactState(appId, { kind: 'unlocked', email: data.email });
+      } else if (data.status === 'not_unlocked') {
+        setContactState(appId, { kind: 'idle' });
+        const total = (freeCredits?.remaining ?? 0) + (freeCredits?.bonus ?? 0);
+        setModal({ kind: total > 0 ? 'free' : 'paid', appId, estimateRequestId });
+      } else if (data.status === 'no_email') {
+        setContactState(appId, { kind: 'no_email' });
+      } else {
+        setContactState(appId, { kind: 'error', message: '連絡先の取得に失敗しました' });
+      }
+    } catch {
+      setContactState(appId, { kind: 'error', message: '通信エラーが発生しました' });
+    }
+  }
+
+  async function handleFreeConfirm() {
+    if (!modal || modal.kind !== 'free') return;
+    const { appId, estimateRequestId } = modal;
+    setModal(null);
+    setContactState(appId, { kind: 'loading' });
+    try {
+      const { data: rpcData, error } = await supabase.rpc('unlock_contact', {
+        p_craftsman_id:        userId,
+        p_estimate_request_id: estimateRequestId,
+        p_unlock_type:         'free',
+      });
+      if (error) {
+        const msg = error.message ?? '';
+        if (msg.includes('NO_FREE_UNLOCKS')) {
+          setContactState(appId, { kind: 'idle' });
+          setModal({ kind: 'paid', appId, estimateRequestId });
+          return;
+        }
+        console.error('[unlock_contact] RPC error:', msg);
+        setContactState(appId, { kind: 'error', message: '連絡先の開示に失敗しました' });
+        return;
+      }
+      // 新規開示なら残数を楽観的更新
+      if (rpcData && !rpcData.already_unlocked) {
+        setFreeCredits(prev => {
+          if (!prev) return prev;
+          if (prev.remaining > 0) return { ...prev, remaining: prev.remaining - 1 };
+          if (prev.bonus > 0)     return { ...prev, bonus: prev.bonus - 1 };
+          return prev;
+        });
+      }
+      // メール取得
+      const emailRes  = await fetch('/api/get-contact-email', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ craftsman_id: userId, estimate_request_id: estimateRequestId }),
+      });
+      const emailData = await emailRes.json();
+      if (emailData.status === 'ok') {
+        setContactState(appId, { kind: 'unlocked', email: emailData.email });
+      } else {
+        setContactState(appId, { kind: 'no_email' });
+      }
+    } catch {
+      setContactState(appId, { kind: 'error', message: '通信エラーが発生しました' });
+    }
+  }
+
+  async function handlePaidConfirm() {
+    if (!modal || modal.kind !== 'paid') return;
+    const { appId, estimateRequestId } = modal;
+    setModal(null);
+    setContactState(appId, { kind: 'loading' });
+    try {
+      const res  = await fetch('/api/create-checkout-session', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ craftsman_id: userId, estimate_request_id: estimateRequestId }),
+      });
+      const data = await res.json();
+      if (data.ok && data.already_unlocked) {
+        // Webhook が先に処理済み — メールを取得して表示
+        const emailRes  = await fetch('/api/get-contact-email', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ craftsman_id: userId, estimate_request_id: estimateRequestId }),
+        });
+        const emailData = await emailRes.json();
+        if (emailData.status === 'ok') {
+          setContactState(appId, { kind: 'unlocked', email: emailData.email });
+        } else {
+          setContactState(appId, { kind: 'no_email' });
+        }
+        return;
+      }
+      if (data.ok && data.checkout_url) {
+        window.location.href = data.checkout_url;
+        return;
+      }
+      setContactState(appId, { kind: 'error', message: '決済の開始に失敗しました' });
+    } catch {
+      setContactState(appId, { kind: 'error', message: '通信エラーが発生しました' });
+    }
+  }
 
   // 工事完了報告: SECURITY DEFINER RPC で review_requested_at を設定し、依頼者にレビュー依頼メールを送る
   // 注意: sb_publishable キー環境では .from().update() が hanging するため RPC 経由を使用
@@ -228,6 +359,13 @@ export default function CraftsmanDashboardPage() {
       body:    JSON.stringify({ request_id: estimateRequestId, application_id: appId }),
     }).catch(err => console.warn('[notify-review-request] fire-and-forget error:', err));
   }
+
+  // payment=success / payment=cancel バナー
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get('payment');
+    if (p === 'success') setPaymentBanner('success');
+    if (p === 'cancel')  setPaymentBanner('cancel');
+  }, []);
 
   // 無料枠残数 + 紹介コード取得
   useEffect(() => {
@@ -373,6 +511,24 @@ export default function CraftsmanDashboardPage() {
             <p className="text-xs text-amber-700 font-semibold">
               デモ表示中 — ログイン後に実際の応募状況が表示されます
             </p>
+          </div>
+        )}
+
+        {/* Stripe 決済結果バナー */}
+        {paymentBanner === 'success' && (
+          <div className="mx-4 mt-4 rounded-xl bg-green-50 border border-green-200 px-3 py-2.5 flex items-center gap-2">
+            <span className="text-green-600 text-sm">✅</span>
+            <p className="text-xs text-green-700 font-semibold flex-1">
+              決済が完了しました。連絡先を確認してください。
+            </p>
+            <button onClick={() => setPaymentBanner(null)} className="text-xs text-slate-400 p-1">✕</button>
+          </div>
+        )}
+        {paymentBanner === 'cancel' && (
+          <div className="mx-4 mt-4 rounded-xl bg-slate-100 border border-slate-200 px-3 py-2.5 flex items-center gap-2">
+            <span className="text-slate-500 text-sm">ℹ</span>
+            <p className="text-xs text-slate-600 flex-1">決済は完了していません。</p>
+            <button onClick={() => setPaymentBanner(null)} className="text-xs text-slate-400 p-1">✕</button>
           </div>
         )}
 
@@ -528,7 +684,7 @@ export default function CraftsmanDashboardPage() {
                         🎉 依頼者があなたを選びました！
                       </p>
                       <p className="text-green-100 text-[11px] mt-1 leading-relaxed">
-                        「詳細を見る」から依頼者のメールアドレスを確認し、連絡してください。
+                        下の「連絡先を見る」から依頼者のメールアドレスを確認し、連絡してください。
                       </p>
                       <p className="text-green-200 text-[10px] mt-0.5">
                         ※ 無料枠を1件使用して連絡先を開示します
@@ -600,6 +756,57 @@ export default function CraftsmanDashboardPage() {
                       )}
                     </div>
                   )}
+
+                  {/* 連絡先確認 — 成約済み・工事完了のみ。デモ時は非表示 */}
+                  {isSensitive && !isDemo && (() => {
+                    const cs = contactStates.get(app.id) ?? { kind: 'idle' };
+                    return (
+                      <div className="border-t border-slate-100 px-4 py-3">
+                        {cs.kind === 'idle' && (
+                          <button
+                            onClick={() => handleRevealClick(app.id, app.estimate_request_id)}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-xs font-extrabold transition active:scale-95 flex items-center justify-center gap-1.5"
+                          >
+                            📧 連絡先を見る
+                          </button>
+                        )}
+                        {cs.kind === 'loading' && (
+                          <div className="flex items-center justify-center gap-2 py-1.5">
+                            <div className="w-4 h-4 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                            <p className="text-xs text-slate-500">確認中...</p>
+                          </div>
+                        )}
+                        {cs.kind === 'unlocked' && (
+                          <div className="rounded-xl bg-blue-50 border border-blue-200 px-3 py-2.5">
+                            <p className="text-[10px] text-blue-500 font-bold mb-0.5">連絡先表示中 — お客様のメールアドレス</p>
+                            <a
+                              href={`mailto:${cs.email}`}
+                              className="text-sm font-extrabold text-blue-700 break-all hover:underline"
+                            >
+                              {cs.email}
+                            </a>
+                            <p className="text-[10px] text-blue-400 mt-1">このメールアドレスに連絡してください</p>
+                          </div>
+                        )}
+                        {cs.kind === 'no_email' && (
+                          <p className="text-xs text-amber-700 text-center py-1">
+                            連絡先メールが見つかりません。運営にお問い合わせください。
+                          </p>
+                        )}
+                        {cs.kind === 'error' && (
+                          <div className="text-center">
+                            <p className="text-xs text-red-600 mb-1">{cs.message}</p>
+                            <button
+                              onClick={() => setContactState(app.id, { kind: 'idle' })}
+                              className="text-xs text-blue-600 underline"
+                            >
+                              再試行
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* 工事完了報告ボタン */}
                   {app._status === '成約済み' && (
@@ -678,6 +885,60 @@ export default function CraftsmanDashboardPage() {
           </button>
         </div>
       </div>
+
+      {/* 連絡先開示確認モーダル */}
+      {modal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-4 pb-4 sm:pb-0">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl">
+            {modal.kind === 'free' ? (
+              <>
+                <h3 className="text-base font-extrabold text-slate-900 mb-3">連絡先を開示しますか？</h3>
+                <p className="text-sm text-slate-600 leading-relaxed mb-1">
+                  無料枠を1件使用して、お客様のメールアドレスを確認できます。
+                </p>
+                <p className="text-sm text-slate-600 leading-relaxed mb-5">
+                  開示後は、お客様と直接メールでやり取りしてください。
+                </p>
+                <div className="space-y-2">
+                  <button
+                    onClick={handleFreeConfirm}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-3 text-sm font-extrabold transition active:scale-95"
+                  >
+                    無料で開示する
+                  </button>
+                  <button
+                    onClick={() => setModal(null)}
+                    className="w-full text-slate-500 hover:text-slate-700 text-sm py-2.5 transition"
+                  >
+                    キャンセル
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-base font-extrabold text-slate-900 mb-3">無料枠を使い切っています</h3>
+                <p className="text-sm text-slate-600 leading-relaxed mb-5">
+                  決済後にお客様のメールアドレスを確認できます。
+                </p>
+                <div className="space-y-2">
+                  <button
+                    onClick={handlePaidConfirm}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-3 text-sm font-extrabold transition active:scale-95"
+                  >
+                    決済して連絡先を見る
+                  </button>
+                  <button
+                    onClick={() => setModal(null)}
+                    className="w-full text-slate-500 hover:text-slate-700 text-sm py-2.5 transition"
+                  >
+                    キャンセル
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       <BottomNav />
     </div>
