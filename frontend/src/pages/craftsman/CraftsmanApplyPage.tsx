@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { calculateServiceFee, formatFee } from '../../lib/serviceFee';
 import type { Job } from './CraftsmanJobsPage';
+import { getExtraInfo } from '../../lib/requestMeta';
 
 function labelUrgency(level?: string) {
   if (level === 'today') return '今日できる人希望';
@@ -303,6 +304,44 @@ export default function CraftsmanApplyPage() {
                   {items.map(item => (
                     <p key={item} className="text-xs text-slate-700">{item}</p>
                   ))}
+                </div>
+              </div>
+            );
+          })()}
+          {/* お客様追加情報（extraInfo） */}
+          {(() => {
+            const ei = getExtraInfo(job?.meta);
+            if (!ei) return null;
+            const hasData = ei.productNumber || ei.productUrl || ei.accentPreference || ei.softSokibariPreference || ei.note || (ei.images?.length ?? 0) > 0;
+            if (!hasData) return null;
+            return (
+              <div className="mx-5 mb-5 rounded-2xl border border-blue-100 bg-blue-50/40 overflow-hidden">
+                <div className="px-4 py-2 bg-blue-50 border-b border-blue-100">
+                  <p className="text-[11px] font-bold text-blue-600">📝 お客様からの追加情報</p>
+                </div>
+                <div className="px-4 py-3 space-y-2">
+                  {ei.productNumber && <p className="text-xs text-slate-700"><span className="font-bold text-slate-500">品番：</span>{ei.productNumber}</p>}
+                  {ei.productUrl && (
+                    <p className="text-xs text-slate-700">
+                      <span className="font-bold text-slate-500">URL：</span>
+                      <a href={ei.productUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline break-all">{ei.productUrl}</a>
+                    </p>
+                  )}
+                  {ei.accentPreference && <p className="text-xs text-slate-700"><span className="font-bold text-slate-500">アクセント：</span>{ei.accentPreference}</p>}
+                  {ei.softSokibariPreference && <p className="text-xs text-slate-700"><span className="font-bold text-slate-500">ソフト巾木：</span>{ei.softSokibariPreference}</p>}
+                  {ei.note && <p className="text-xs text-slate-700 leading-relaxed"><span className="font-bold text-slate-500">メモ：</span>{ei.note}</p>}
+                  {(ei.images?.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-500 mb-1.5">参考写真</p>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {ei.images!.map((url, i) => (
+                          <a key={i} href={url} target="_blank" rel="noreferrer">
+                            <img src={url} alt={`写真${i + 1}`} className="w-full aspect-square object-cover rounded-xl border border-slate-100" loading="lazy" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );

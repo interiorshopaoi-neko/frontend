@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { getFreshness, FRESHNESS_CLASS } from '../../lib/freshness';
 import { AdminLogin, AdminNav, AdminUnauthorized, isAdminRole } from './shared';
 import LogoutConfirmModal from '../../components/LogoutConfirmModal';
-import { getWallpaperPreference, getMaterialPreferenceChips, hasCeilingWork } from '../../lib/requestMeta';
+import { getWallpaperPreference, getMaterialPreferenceChips, hasCeilingWork, getExtraInfo } from '../../lib/requestMeta';
 
 const URL_FILTER_LABELS: Record<string, string> = {
   new:         '新しい案件',
@@ -521,6 +521,65 @@ function DetailModal({
                       {room}：{pref}
                     </span>
                   ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* お客様が後から追加した情報 */}
+          {(() => {
+            const ei = getExtraInfo(row.meta);
+            if (!ei) return null;
+            const hasData = ei.productNumber || ei.productUrl || ei.accentPreference || ei.softSokibariPreference || ei.note || (ei.images?.length ?? 0) > 0;
+            if (!hasData) return null;
+            return (
+              <div className="rounded-2xl border border-blue-100 bg-blue-50/30 overflow-hidden">
+                <div className="px-4 py-2 bg-blue-50 border-b border-blue-100">
+                  <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">お客様追加情報</p>
+                </div>
+                <div className="px-4 py-3 space-y-2">
+                  {ei.productNumber && (
+                    <div className="flex items-start gap-2">
+                      <p className="text-[10px] font-semibold text-slate-400 w-16 flex-shrink-0 pt-0.5">品番</p>
+                      <p className="text-xs text-slate-700 font-medium">{ei.productNumber}</p>
+                    </div>
+                  )}
+                  {ei.productUrl && (
+                    <div className="flex items-start gap-2">
+                      <p className="text-[10px] font-semibold text-slate-400 w-16 flex-shrink-0 pt-0.5">URL</p>
+                      <a href={ei.productUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 underline break-all line-clamp-2">{ei.productUrl}</a>
+                    </div>
+                  )}
+                  {ei.accentPreference && (
+                    <div className="flex items-start gap-2">
+                      <p className="text-[10px] font-semibold text-slate-400 w-16 flex-shrink-0 pt-0.5">アクセント</p>
+                      <p className="text-xs text-slate-700">{ei.accentPreference}</p>
+                    </div>
+                  )}
+                  {ei.softSokibariPreference && (
+                    <div className="flex items-start gap-2">
+                      <p className="text-[10px] font-semibold text-slate-400 w-16 flex-shrink-0 pt-0.5">ソフト巾木</p>
+                      <p className="text-xs text-slate-700">{ei.softSokibariPreference}</p>
+                    </div>
+                  )}
+                  {ei.note && (
+                    <div className="flex items-start gap-2">
+                      <p className="text-[10px] font-semibold text-slate-400 w-16 flex-shrink-0 pt-0.5">メモ</p>
+                      <p className="text-xs text-slate-700 leading-relaxed">{ei.note}</p>
+                    </div>
+                  )}
+                  {(ei.images?.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold text-slate-400 mb-1.5">参考写真</p>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {ei.images!.map((url, i) => (
+                          <a key={i} href={url} target="_blank" rel="noreferrer">
+                            <img src={url} alt={`写真${i + 1}`} className="w-full aspect-square object-cover rounded-lg border border-slate-100" loading="lazy" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );

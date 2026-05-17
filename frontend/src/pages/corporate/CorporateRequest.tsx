@@ -657,14 +657,14 @@ export default function CorporateRequest() {
             </button>
           )}
           <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-left">
-            <p className="text-xs font-bold text-blue-800 mb-0.5">さらに正確な見積もりにできます</p>
-            <p className="text-[11px] text-blue-600 leading-relaxed">部屋ごとの情報（広さ・状態・家具量など）を追加すると、職人がより正確な概算を出せます。</p>
+            <p className="text-xs font-bold text-blue-800 mb-0.5">📸 クロス品番・写真・希望を後から追加できます</p>
+            <p className="text-[11px] text-blue-600 leading-relaxed">品番・URL・気になる雰囲気・参考写真などを送ると、職人がより正確な概算を出せます。今すぐでなくても大丈夫です。</p>
           </div>
           <button
             onClick={() => navigate(`/request/${extraId}/extra-info`)}
             className="w-full py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-sm transition-all shadow-sm"
           >
-            部屋ごとの情報を追加する →
+            品番・写真・希望を追加する →
           </button>
           <button
             onClick={() => navigate('/')}

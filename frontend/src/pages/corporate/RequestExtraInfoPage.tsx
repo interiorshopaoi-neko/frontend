@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { compressImage } from '../../utils/imageUtils';
 
 // ── 型定義 ────────────────────────────────────────────────────────────────────
 
@@ -172,6 +173,16 @@ export default function RequestExtraInfoPage() {
   const [saving, setSaving] = useState(false);
   const [done,   setDone]   = useState(false);
 
+  // ── 新フィールド（extraInfo として meta に保存）────────────────────────────
+  const [productNumber, setProductNumber] = useState('');
+  const [productUrl,    setProductUrl]    = useState('');
+  const [accentPref,    setAccentPref]    = useState('');
+  const [sokibariPref,  setSokibariPref]  = useState('');
+  const [productNote,   setProductNote]   = useState('');
+  const [images,        setImages]        = useState<string[]>([]);
+  const [uploading,     setUploading]     = useState(false);
+  const [uploadErrors,  setUploadErrors]  = useState<string[]>([]);
+
   function updateRoom(idx: number, field: keyof RoomInfo, val: string) {
     setInfo(prev => ({
       ...prev,
@@ -205,6 +216,32 @@ export default function RequestExtraInfoPage() {
     });
   }
 
+  async function handleImageFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    const errs: string[] = [];
+    const urls: string[] = [];
+    const remaining = Math.max(0, 10 - images.length);
+    for (const file of Array.from(files).slice(0, remaining)) {
+      try {
+        const blob = await compressImage(file, 1200, 0.80).catch(() => file as Blob);
+        const ext  = blob.type === 'image/webp' ? 'webp' : 'jpg';
+        const path = `extra-images/${id ?? 'anon'}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from('estimate-videos')
+          .upload(path, blob, { contentType: blob.type });
+        if (upErr) { errs.push(file.name); continue; }
+        const { data: { publicUrl } } = supabase.storage.from('estimate-videos').getPublicUrl(path);
+        urls.push(publicUrl);
+      } catch {
+        errs.push(file.name);
+      }
+    }
+    setImages(prev => [...prev, ...urls].slice(0, 10));
+    if (errs.length > 0) setUploadErrors(errs);
+    setUploading(false);
+  }
+
   async function handleSave() {
     setSaving(true);
 
@@ -218,7 +255,14 @@ export default function RequestExtraInfoPage() {
         .eq('id', id)
         .single();
       const existingMeta = (existing?.meta as Record<string, unknown> | null) ?? {};
-      const mergedMeta = { ...existingMeta, extra_info: info };
+      const extraInfo: Record<string, unknown> = {};
+      if (productNumber.trim())  extraInfo.productNumber          = productNumber.trim();
+      if (productUrl.trim())     extraInfo.productUrl             = productUrl.trim();
+      if (accentPref)            extraInfo.accentPreference       = accentPref;
+      if (sokibariPref)          extraInfo.softSokibariPreference = sokibariPref;
+      if (productNote.trim())    extraInfo.note                   = productNote.trim();
+      if (images.length > 0)     extraInfo.images                 = images;
+      const mergedMeta = { ...existingMeta, extra_info: info, extraInfo };
 
       const { error } = await supabase
         .from('estimate_requests')
@@ -305,6 +349,134 @@ export default function RequestExtraInfoPage() {
           <p className="text-xs text-indigo-500 leading-relaxed">
             部屋数・家具量・希望時期があると、職人が見積もりを出しやすくなります。分かる範囲だけで大丈夫です。
           </p>
+        </div>
+
+        {/* ── 新フィールド：品番・写真・希望 ── */}
+
+        {/* 安心メッセージ */}
+        <div className="bg-teal-50 border border-teal-100 rounded-2xl px-5 py-4">
+          <p className="text-sm font-bold text-teal-700 mb-1">🎨 品番はまだ決まっていなくても大丈夫です</p>
+          <p className="text-xs text-teal-600 leading-relaxed">
+            気になる雰囲気・URLだけでも送れます。職人が決まった後でも追加で相談できます。
+          </p>
+        </div>
+
+        {/* 品番・URL */}
+        <Section label="クロス品番・URL（任意）">
+          <div className="space-y-3">
+            <div>
+              <p className="text-[11px] font-semibold text-slate-500 mb-1.5">品番</p>
+              <input
+                value={productNumber}
+                onChange={e => setProductNumber(e.target.value)}
+                placeholder="例：BB-8503、SP2816 など"
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-300"
+              />
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold text-slate-500 mb-1.5">気になるURL・リンク</p>
+              <input
+                value={productUrl}
+                onChange={e => setProductUrl(e.target.value)}
+                placeholder="https://... （メーカーサイト・通販ページなど）"
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-300"
+              />
+            </div>
+            <p className="text-[10px] text-slate-400 leading-relaxed">品番が分からない場合は気になる壁紙のURL・写真だけでも大丈夫です</p>
+          </div>
+        </Section>
+
+        {/* アクセントクロス・ソフト巾木 */}
+        <Section label="追加ご希望（任意）">
+          <div className="space-y-4">
+            <div>
+              <p className="text-[11px] font-semibold text-slate-500 mb-1.5">✨ アクセントクロス</p>
+              <ChipSingle
+                options={['希望あり', '希望なし', 'まだ決まっていない']}
+                value={accentPref}
+                onSelect={setAccentPref}
+              />
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold text-slate-500 mb-1.5">📐 ソフト巾木の施工</p>
+              <ChipSingle
+                options={['施工希望', '不要', 'まだ決まっていない']}
+                value={sokibariPref}
+                onSelect={setSokibariPref}
+              />
+            </div>
+          </div>
+        </Section>
+
+        {/* 写真追加 */}
+        <Section label="参考写真（任意・最大10枚）">
+          <div className="space-y-3">
+            <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl px-4 py-6 cursor-pointer transition-all ${uploading ? 'opacity-50 pointer-events-none' : 'hover:border-teal-300 hover:bg-teal-50/40'} border-slate-200`}>
+              <span className="text-2xl">{uploading ? '⏳' : '📸'}</span>
+              <p className="text-xs font-bold text-slate-600">{uploading ? 'アップロード中...' : '写真を選択する'}</p>
+              <p className="text-[10px] text-slate-400">気になる壁紙・現在の壁の状態など（複数可）</p>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                disabled={uploading || images.length >= 10}
+                onChange={e => handleImageFiles(e.target.files)}
+              />
+            </label>
+            {uploadErrors.length > 0 && (
+              <p className="text-[10px] text-amber-600">一部アップロードに失敗しました：{uploadErrors.join('、')}</p>
+            )}
+            {images.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {images.map((url, i) => (
+                  <div key={i} className="relative aspect-square rounded-xl overflow-hidden bg-slate-100">
+                    <img src={url} alt={`写真${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                    <button
+                      type="button"
+                      onClick={() => setImages(prev => prev.filter((_, j) => j !== i))}
+                      className="absolute top-1 right-1 w-5 h-5 bg-black/60 text-white rounded-full text-[10px] flex items-center justify-center"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </Section>
+
+        {/* 追加メモ */}
+        <Section label="クロス・材料についての追加メモ（任意）">
+          <textarea
+            value={productNote}
+            onChange={e => setProductNote(e.target.value)}
+            rows={3}
+            placeholder="例：北欧っぽい雰囲気にしたい、白系で清潔感を出したい、子供が汚してもOKな素材希望など"
+            className="w-full border-2 border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-teal-400 resize-none leading-relaxed"
+          />
+        </Section>
+
+        {/* クロス選び安心導線 */}
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3">
+          <p className="text-xs font-bold text-slate-600 mb-2">💡 人気の選び方</p>
+          <div className="space-y-1.5">
+            {[
+              { t: '失敗しにくい白系', d: '清潔感が出やすく、どの部屋にも合わせやすいです' },
+              { t: 'グレー系', d: '生活感を抑えた落ち着いた雰囲気に' },
+              { t: 'アクセントクロス', d: '一面だけ色を変えて印象を変えられます' },
+            ].map(({ t, d }) => (
+              <div key={t} className="bg-white rounded-xl px-3 py-2 border border-slate-100">
+                <p className="text-xs font-bold text-slate-700">{t}</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">{d}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-slate-400 mt-2">🔮 準備中：AIで施工後の雰囲気イメージを確認できる機能を開発中です</p>
+        </div>
+
+        <div className="border-t border-slate-200 pt-2">
+          <p className="text-[11px] font-bold text-slate-500 mb-3">その他の詳細情報（任意）</p>
         </div>
 
         {/* 0. 部屋数 */}

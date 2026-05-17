@@ -47,3 +47,32 @@ export function getMaterialPreferenceChips(meta: unknown): { room: string; pref:
 export function hasAccentPreference(meta: unknown): boolean {
   return getRooms(meta).some(r => r.materialPref === '柄物・アクセントクロス希望');
 }
+
+// ── extraInfo (post-submit customer additions) ────────────────────────────────
+
+export type ExtraInfoMeta = {
+  productNumber?: string;
+  productUrl?: string;
+  accentPreference?: string;
+  softSokibariPreference?: string;
+  note?: string;
+  images?: string[];
+};
+
+export function getExtraInfo(meta: unknown): ExtraInfoMeta | null {
+  const m = asMeta(meta);
+  if (!m) return null;
+  const ei = m.extraInfo;
+  if (!ei || typeof ei !== 'object' || Array.isArray(ei)) return null;
+  const e = ei as Record<string, unknown>;
+  return {
+    productNumber:           typeof e.productNumber === 'string'           ? e.productNumber           : undefined,
+    productUrl:              typeof e.productUrl    === 'string'           ? e.productUrl              : undefined,
+    accentPreference:        typeof e.accentPreference === 'string'        ? e.accentPreference        : undefined,
+    softSokibariPreference:  typeof e.softSokibariPreference === 'string'  ? e.softSokibariPreference  : undefined,
+    note:                    typeof e.note === 'string'                    ? e.note                    : undefined,
+    images:                  Array.isArray(e.images)
+                               ? (e.images as unknown[]).filter((s): s is string => typeof s === 'string')
+                               : undefined,
+  };
+}
