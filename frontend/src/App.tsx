@@ -1,12 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
-import Layout from './components/Layout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
-import CustomerDashboard from './pages/customer/CustomerDashboard';
-import NewEstimate from './pages/customer/NewEstimate';
-import EstimateDetail from './pages/customer/EstimateDetail';
-import ReviewEstimate from './pages/craftsman/ReviewEstimate';
+import CustomerComingSoonPage from './pages/customer/CustomerComingSoonPage';
+// CustomerDashboard / NewEstimate / EstimateDetail / ReviewEstimate は legacy /estimates/* API 依存のため非表示
+// 将来 Supabase 直接統合後に復活予定。ファイルは削除していない。
 import AdminDashboard from './pages/AdminDashboard';
 import DemoLauncher from './pages/DemoLauncher';
 import EstimateFlow from './pages/customer/EstimateFlow';
@@ -92,12 +90,6 @@ function AlreadyLoggedIn({
   );
 }
 
-function CraftsmanEstimateRoute({ user, logout }: { user: ReturnType<typeof useAuth>['user']; logout: () => void }) {
-  const { id } = useParams();
-  if (user?.role === 'craftsman') return <Layout user={user} onLogout={logout}><ReviewEstimate /></Layout>;
-  if (id === 'demo') return <ReviewEstimate />;
-  return <Navigate to="/login" />;
-}
 
 export default function App() {
   const { user, login, logout } = useAuth();
@@ -107,38 +99,26 @@ export default function App() {
       <Routes>
         <Route path="/login" element={
           user?.role === 'craftsman' ? <AlreadyLoggedIn user={user} onLogout={logout} /> :
-          user?.role === 'customer'  ? <Navigate to="/customer" replace /> :
+          user?.role === 'customer'  ? <Navigate to="/corporate" replace /> :
           <Login onLogin={login} />
         } />
         <Route path="/register" element={
           user?.role === 'craftsman' ? <AlreadyLoggedIn user={user} onLogout={logout} /> :
-          user?.role === 'customer'  ? <Navigate to="/customer" replace /> :
+          user?.role === 'customer'  ? <Navigate to="/corporate" replace /> :
           <Register onLogin={login} />
         } />
 
-        {/* お客様ルート */}
-        <Route path="/customer" element={
-          user?.role === 'customer'
-            ? <Layout user={user} onLogout={logout}><CustomerDashboard /></Layout>
-            : <Navigate to="/login" />
-        } />
-        <Route path="/customer/estimate/new" element={
-          user?.role === 'customer'
-            ? <Layout user={user} onLogout={logout}><NewEstimate /></Layout>
-            : <Navigate to="/login" />
-        } />
+        {/* お客様ルート — legacy /estimates/* API 依存のため準備中ページを表示 */}
+        <Route path="/customer"              element={<CustomerComingSoonPage />} />
+        <Route path="/customer/estimate/new" element={<CustomerComingSoonPage />} />
+        <Route path="/customer/estimate/:id" element={<CustomerComingSoonPage />} />
+        {/* /customer/estimate/flow はデモ専用として残す（一般導線には出さない） */}
         <Route path="/customer/estimate/flow" element={<EstimateFlow />} />
-        <Route path="/customer/estimate/:id" element={
-          user?.role === 'customer'
-            ? <Layout user={user} onLogout={logout}><EstimateDetail /></Layout>
-            : <Navigate to="/login" />
-        } />
 
         {/* 職人ルート: 旧UI (CraftsmanDashboard) は廃止。全トラフィックを新UIへ転送 */}
         <Route path="/craftsman" element={<Navigate to="/craftsman/dashboard" replace />} />
-        <Route path="/craftsman/estimate/:id" element={
-          <CraftsmanEstimateRoute user={user} logout={logout} />
-        } />
+        {/* /craftsman/estimate/:id は legacy /estimates/* API 依存のため準備中ページを表示 */}
+        <Route path="/craftsman/estimate/:id" element={<CustomerComingSoonPage />} />
 
         {/* 管理・デモページ */}
         <Route path="/admin"           element={<AdminDashboard />} />

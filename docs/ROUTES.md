@@ -11,7 +11,7 @@
 |---|---|---|
 | `/` | `HomePage.tsx` | 動画ファーストLP。依頼開始ボタン・フッターリンク |
 | `/corporate` | `corporate/CorporateRequest.tsx` | マルチステップ依頼フォーム（動画・写真・エリア・連絡先） |
-| `/customer/estimate/flow` | `customer/EstimateFlow.tsx` | 旧見積もりフロー（残存・未使用に近い） |
+| `/customer/estimate/flow` | `customer/EstimateFlow.tsx` | デモ専用（一般導線には出さない）。URL直打ちのみ到達可能 |
 | `/request/:id/review` | `customer/ReviewPage.tsx` | 工事後レビュー（星評価・確認チェック。DB保存なし・デモ） |
 | `/complete` | `CompletePage.tsx` | 依頼送信完了ページ |
 
@@ -38,11 +38,11 @@
 
 | ルート | 役割 |
 |---|---|
-| `/customer` | お客様ダッシュボード（ログイン必須）⚠️ `/estimates/my` API 本番不動作 |
-| `/customer/estimate/new` | 新規見積もり作成（ログイン必須）⚠️ `/estimates` POST 本番不動作 |
-| `/customer/estimate/:id` | 見積もり詳細（ログイン必須）⚠️ `/estimates/:id` API 本番不動作 |
+| `/customer` | `CustomerComingSoonPage` を表示 → `/corporate` へ誘導（Phase62） |
+| `/customer/estimate/new` | `CustomerComingSoonPage` を表示（Phase62） |
+| `/customer/estimate/:id` | `CustomerComingSoonPage` を表示（Phase62） |
 | `/craftsman` | `/craftsman/dashboard` へリダイレクト |
-| `/craftsman/estimate/:id` | 見積もりレビュー（ログイン必須 or demo）⚠️ `/estimates/:id/confirm` 本番不動作 |
+| `/craftsman/estimate/:id` | `CustomerComingSoonPage` を表示（Phase62）|
 | `/request/:id/applications` | 依頼への応募一覧（お客様側） |
 | `/request/:id/extra-info` | 依頼送信後の任意追加情報入力（家具・駐車・材料等。meta JSONB に保存） |
 

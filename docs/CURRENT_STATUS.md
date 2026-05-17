@@ -132,10 +132,12 @@ Phase52 をもって、通知・RLS・本番デプロイまで到達しました
 
 | ファイル | ルート | 呼び出し | 状態 |
 |---|---|---|---|
-| `CustomerDashboard.tsx` | `/customer` | `api.get('/estimates/my')` | ❌ 本番不動作（route登録済み） |
-| `NewEstimate.tsx` | `/customer/estimate/new` | `api.post('/estimates')` | ❌ 本番不動作（route登録済み） |
-| `EstimateDetail.tsx` | `/customer/estimate/:id` | `api.get/post/put('/estimates/:id/*')` | ❌ 本番不動作（route登録済み） |
-| `ReviewEstimate.tsx` | `/craftsman/estimate/:id` | `api.put('/estimates/:id/confirm')` など | ❌ 本番不動作（route登録済み） |
+| `CustomerDashboard.tsx` | `/customer` | `api.get('/estimates/my')` | ⚠️ Phase62で準備中ページに差し替え済み |
+| `NewEstimate.tsx` | `/customer/estimate/new` | `api.post('/estimates')` | ⚠️ Phase62で準備中ページに差し替え済み |
+| `EstimateDetail.tsx` | `/customer/estimate/:id` | `api.get/post/put('/estimates/:id/*')` | ⚠️ Phase62で準備中ページに差し替え済み |
+| `ReviewEstimate.tsx` | `/craftsman/estimate/:id` | `api.put('/estimates/:id/confirm')` など | ⚠️ Phase62で準備中ページに差し替え済み |
+
+**Phase62 対応：** 上記4ルートは `CustomerComingSoonPage.tsx` に差し替え。ユーザーは壊れた API 画面ではなく「準備中・見積もり依頼フォームへ」ページに誘導される。ファイル本体は削除していない（Supabase 直接統合後に復活予定）。
 
 **Phase61 で削除済み（dead file）：**
 
