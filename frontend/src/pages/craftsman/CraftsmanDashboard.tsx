@@ -1,3 +1,7 @@
+// TODO(dead-file): このファイルは App.tsx にインポートされておらず、どのルートにも登録されていない。
+// /craftsman/dashboard は CraftsmanDashboardPage.tsx が担当している。
+// /estimates/craftsman API も root api/ に serverless function がなく本番では動作しない。
+// 参照: docs/CURRENT_STATUS.md「Legacy API 呼び出し」セクション
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Hammer, Clock, CheckCircle } from 'lucide-react';

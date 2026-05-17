@@ -129,6 +129,32 @@ npx vercel --prod
 - 変更した画面を実際に開いて動作確認
 - エラーが出ていないかブラウザの DevTools で確認
 
+### ✅ Vercel Current commit の確認
+
+Vercel ダッシュボード → Deployments → **Production** の commit hash が、  
+`git log --oneline -1` の hash と一致していることを確認する。
+
+> **Preview と Production を間違えない。** Vercel は Preview URL が先に生成されるが、  
+> Production（promatch-app.jp）への反映には alias が必要。`Aliased:` の表示を必ず確認。
+
+### ✅ 405 確認（最低限）
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" -X POST https://promatch-app.jp/api/auth/login \
+  -H 'Content-Type: application/json' -d '{"email":"x@x.com","password":"wrong"}'
+# → 401 (OK) / 405 は NG
+```
+
+または：
+```bash
+npm run check:production-health
+```
+
+### ✅ Safari / 実機確認時の注意
+
+Safari はキャッシュが強いため、デプロイ後に古い画面が表示されることがある。  
+**プライベートタブ（またはシークレットモード）で確認する**と確実。
+
 ---
 
 ## 📧 Step 7：通知系を変更した場合（必須）

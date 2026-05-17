@@ -1,6 +1,6 @@
 # PRO MATCH — 現在の実装状況
 
-> 最終更新：2026年5月16日（Phase52 完了時点）
+> 最終更新：2026年5月17日（Phase60 完了時点）
 
 ---
 
@@ -54,6 +54,18 @@ Phase52 をもって、通知・RLS・本番デプロイまで到達しました
 - Supabase RLS：各テーブルに適切な policy あり
 - SECURITY DEFINER RPC：`get_craftsman_contact(text)`、`ensure_craftsman_for_auth_user(...)` など
 - anon に craftsmen 直接 SELECT を開けない設計を維持
+
+---
+
+## 🏗️ API 配置ルール（必読）
+
+| 項目 | 内容 |
+|---|---|
+| **本番 API の source of truth** | `root api/` のみ（`frontend/api/` は本番では動かない） |
+| **`frontend/api/`** | Phase60 で削除済み（WARNING.md のみ残存）。編集しても本番に反映されない |
+| **デプロイ前必須チェック** | `npm run check:deploy-safety`（tsc + API route 確認） |
+| **本番反映後確認** | `npm run check:production-health` または curl で 405 でないことを確認 |
+| **Vercel Current commit** | Vercel ダッシュボードで意図した commit が Production に反映されているか確認 |
 
 ---
 

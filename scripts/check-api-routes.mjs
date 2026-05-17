@@ -17,10 +17,12 @@
  *   インシデント #7 参照: docs/INCIDENTS.md
  */
 
-import { readFileSync, readdirSync, statSync } from 'fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'fs';
 import { join, resolve, relative } from 'path';
 
-const ROOT         = resolve(process.cwd());
+// repo root は frontend/src を持つ。frontend/ から実行されても正しく root を検出する
+const cwd = process.cwd();
+const ROOT = existsSync(join(cwd, 'frontend', 'src')) ? resolve(cwd) : resolve(cwd, '..');
 const SRC_DIR      = join(ROOT, 'frontend', 'src');
 const ROOT_API     = join(ROOT, 'api');
 const FRONTEND_API = join(ROOT, 'frontend', 'api');

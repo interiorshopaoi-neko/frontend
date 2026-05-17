@@ -1,3 +1,6 @@
+// TODO(legacy): /estimates/:id/confirm・reject は root api/ に serverless function がなく本番では動作しない。
+// Supabase client 直接統合へ移行するまでこの画面の承認・却下処理は機能しない。
+// 参照: docs/CURRENT_STATUS.md「Legacy API 呼び出し」セクション
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';

@@ -276,6 +276,38 @@ SPA の rewrite（`/(.*) → /index.html`）にフォールスルー →
 
 ---
 
+## インシデント #9：`frontend/api/` と `root api/` の二重管理による混乱
+
+> 発覚：2026年5月17日（Phase59/60 調査中）
+
+### 何が起きたか
+
+`frontend/api/` に 12 個の `.ts` ファイルが存在し、`root api/` とは別に管理されていた。
+Phase59 の調査で `notify.ts` が out-of-sync（frontend 側が古い test sender のまま）だったことが判明。
+他のファイルも「正しいのはどちらか」が不明確な状態だった。
+
+### 原因
+
+- Vercel は `root api/` のみを serverless function として認識するが、この事実が周知されていなかった
+- `frontend/api/` に新しい API を作成→動作確認→`root api/` へのコピーを忘れる、というパターンが繰り返された
+- `check-api-routes.mjs` が `frontend/` ディレクトリから実行すると `process.cwd()` がズレて誤った結果を返すバグもあった
+
+### 修正内容（Phase59/60）
+
+1. `frontend/api/*.ts` を全削除（`root api/` が唯一の source of truth）
+2. `WARNING.md` を `frontend/api/` に配置（このディレクトリは本番では動かない旨を明記）
+3. `check-api-routes.mjs` の root 検出を `vercel.json` の有無で判定するよう修正
+4. `scripts/check-production-health.mjs` を追加（405 非発生を本番で確認できるスクリプト）
+5. `npm run check:production-health` を package.json に追加
+
+### 教訓
+
+- **API は最初から `root api/` に作る。`frontend/api/` には置かない**
+- **デプロイ前: `npm run check:deploy-safety`、デプロイ後: `npm run check:production-health`**
+- **スクリプトは実行ディレクトリに依存しない作りにする（`process.cwd()` 直用は危険）**
+
+---
+
 ## 今後の対応方針（共通ルール）
 
 1. **実DB・実ログ・実レスポンス・実メール送信結果を確認してから修正を決める**

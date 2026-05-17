@@ -1,3 +1,6 @@
+// TODO(legacy): /estimates/:id 系の API は root api/ に serverless function がなく本番では動作しない。
+// Supabase client 直接統合へ移行するまでこの画面のデータ取得・写真アップロードは機能しない。
+// 参照: docs/CURRENT_STATUS.md「Legacy API 呼び出し」セクション
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Upload, ArrowLeft, Camera } from 'lucide-react';

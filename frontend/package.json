@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "check:api-routes": "node ../scripts/check-api-routes.mjs",
-    "check:deploy-safety": "npx tsc --noEmit && node ../scripts/check-api-routes.mjs"
+    "check:deploy-safety": "npx tsc --noEmit && node ../scripts/check-api-routes.mjs",
+    "check:production-health": "node ../scripts/check-production-health.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.1",
