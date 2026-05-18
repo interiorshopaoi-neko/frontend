@@ -3,8 +3,10 @@
 
 export type RoomMeta = {
   name?: string;
+  customName?: string;
   workType?: string;
   size?: string;
+  customSize?: string;
   condition?: string[];
   materialPref?: string;
 };

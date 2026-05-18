@@ -260,12 +260,12 @@ export default function CraftsmanApplyPage() {
                         return (
                           <div key={i} className="rounded-2xl bg-slate-50 px-4 py-3">
                             <p className="text-sm font-bold text-slate-800">
-                              {room.name || `部屋${i + 1}`}
+                              {room.customName || room.name || `部屋${i + 1}`}
                               {room.workType && <span className="ml-2 text-xs font-normal text-slate-500">{room.workType}</span>}
                             </p>
-                            {(room.size || conds.length > 0) && (
+                            {((room.customSize || room.size) || conds.length > 0) && (
                               <p className="text-xs text-slate-500 mt-0.5">
-                                {[room.size, ...conds].filter(Boolean).join(' · ')}
+                                {[room.customSize || room.size, ...conds].filter(Boolean).join(' · ')}
                               </p>
                             )}
                             {room.materialPref && room.materialPref !== 'まだ決まっていない' && (

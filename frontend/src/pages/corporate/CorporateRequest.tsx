@@ -36,11 +36,13 @@ type Room = {
   size: string;
   condition: string[];
   materialPref: string;
+  customName: string;
+  customSize: string;
 };
 
-const ROOM_NAMES = ['LDK', '洋室', '寝室', '廊下', 'トイレ', '洗面所', 'その他'] as const;
+const ROOM_NAMES = ['LDK', '洋室', '寝室', '廊下', '玄関', '階段', 'トイレ', '洗面所', '収納', 'クローゼット', '店舗', '事務所', 'その他'] as const;
 const ROOM_WORKS = ['壁紙・クロス', '天井クロス', '壁＋天井', 'クッションフロア', '両方'] as const;
-const ROOM_SIZES = ['6畳', '8畳', '12畳', '不明'] as const;
+const ROOM_SIZES = ['4.5畳', '6畳', '8畳', '10畳', '12畳', '12畳以上', '15畳以上', '20畳以上', '不明'] as const;
 const ROOM_CONDS = ['汚れ', 'めくれ', '傷', 'カビ', 'ペット臭', '不明'] as const;
 const ROOM_MATERIAL_PREFS = ['量産クロスでよい', '1000番・機能性クロスも検討', '柄物・アクセントクロス希望', 'まだ決まっていない'] as const;
 
@@ -274,7 +276,7 @@ function RoomCard({
       {/* 部屋名 */}
       <div>
         <p className="text-[11px] font-bold text-slate-500 mb-1.5">部屋名</p>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 mb-1.5">
           {ROOM_NAMES.map(n => (
             <button
               key={n} type="button"
@@ -289,6 +291,12 @@ function RoomCard({
             </button>
           ))}
         </div>
+        <input
+          value={room.customName}
+          onChange={e => onUpdate({ customName: e.target.value })}
+          placeholder="例：サンルーム、書斎、店舗入口、階段下収納 など"
+          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+        />
       </div>
 
       {/* 工事内容 */}
@@ -314,7 +322,7 @@ function RoomCard({
       {/* 広さ */}
       <div>
         <p className="text-[11px] font-bold text-slate-500 mb-1.5">だいたいの広さ</p>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 mb-1.5">
           {ROOM_SIZES.map(s => (
             <button
               key={s} type="button"
@@ -329,6 +337,12 @@ function RoomCard({
             </button>
           ))}
         </div>
+        <input
+          value={room.customSize}
+          onChange={e => onUpdate({ customSize: e.target.value })}
+          placeholder="例：13.5畳、約18畳、廊下5mくらい"
+          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200 bg-white"
+        />
       </div>
 
       {/* 状態 */}
@@ -401,11 +415,11 @@ export default function CorporateRequest() {
 
   // 複数部屋
   const [rooms, setRooms] = useState<Room[]>([
-    { name: 'LDK', workType: '', size: '', condition: [], materialPref: '' },
+    { name: 'LDK', workType: '', size: '', condition: [], materialPref: '', customName: '', customSize: '' },
   ]);
 
   function addRoom() {
-    setRooms(prev => [...prev, { name: '洋室', workType: '', size: '', condition: [], materialPref: '' }]);
+    setRooms(prev => [...prev, { name: '洋室', workType: '', size: '', condition: [], materialPref: '', customName: '', customSize: '' }]);
   }
   function removeRoom(idx: number) {
     setRooms(prev => prev.filter((_, i) => i !== idx));
@@ -1239,9 +1253,9 @@ export default function CorporateRequest() {
             </div>
             {rooms.map((r, i) => (
               <div key={i} className="px-5 py-3 bg-white/60">
-                <p className="text-xs font-bold text-slate-700">部屋{i + 1}：{r.name || '未選択'}</p>
+                <p className="text-xs font-bold text-slate-700">部屋{i + 1}：{r.customName || r.name || '未選択'}</p>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {[r.workType, r.size, r.condition.join('・')].filter(Boolean).join(' / ') || '詳細未入力'}
+                  {[r.workType, r.customSize || r.size, r.condition.join('・')].filter(Boolean).join(' / ') || '詳細未入力'}
                 </p>
               </div>
             ))}
