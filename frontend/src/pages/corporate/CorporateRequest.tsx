@@ -49,6 +49,10 @@ const ROOM_SIZES = ['4.5畳', '6畳', '8畳', '10畳', '12畳', '12畳以上', '
 const ROOM_CONDS = ['汚れ', 'めくれ', '傷', 'カビ', 'ペット臭', '不明'] as const;
 const ROOM_MATERIAL_PREFS = ['量産クロスでよい', '1000番・機能性クロスも検討', '柄物・アクセントクロス希望', 'まだ決まっていない'] as const;
 
+// 初期表示に見せる優先チップ（それ以外は折りたたみ内）
+const PRIMARY_ROOM_NAMES: readonly string[] = ['LDK', '洋室', '寝室', '廊下', '玄関', 'トイレ', 'その他'];
+const PRIMARY_ROOM_WORKS: readonly string[] = ['壁紙・クロス', 'クッションフロア', '壁＋天井', '両方'];
+
 const WALLPAPER_MOODS = [
   '明るい白系', '汚れが目立ちにくい', 'ホテルっぽい', '北欧・ナチュラル',
   'グレー系', '木目アクセント', 'ペット向け', '子供部屋向け', 'まだ決まっていない',
@@ -249,244 +253,304 @@ function RoomCard({
   canDelete,
   onUpdate,
   onDelete,
+  expanded,
+  onToggleExpand,
 }: {
   room: Room;
   index: number;
   canDelete: boolean;
   onUpdate: (patch: Partial<Room>) => void;
   onDelete: () => void;
+  expanded: boolean;
+  onToggleExpand: () => void;
 }) {
   function toggleCond(c: string) {
     const has = room.condition.includes(c);
     onUpdate({ condition: has ? room.condition.filter(x => x !== c) : [...room.condition, c] });
   }
 
+  // 詳細フィールドに値があれば自動で開く
+  const hasDetailValues = !!(
+    room.customName ||
+    room.size || room.customSize ||
+    room.condition.length > 0 ||
+    room.materialPref ||
+    room.roomVideoFiles.length > 0 ||
+    room.roomImageFiles.length > 0 ||
+    (room.workType && !PRIMARY_ROOM_WORKS.includes(room.workType))
+  );
+  const showDetail = expanded || hasDetailValues;
+
+  // 折りたたみバッジ用カウント
+  const detailCount = [
+    room.customName || (room.name && !PRIMARY_ROOM_NAMES.includes(room.name)) ? 'x' : '',
+    room.size || room.customSize,
+    room.condition.length > 0 ? 'x' : '',
+    room.materialPref,
+    room.roomVideoFiles.length > 0 || room.roomImageFiles.length > 0 ? 'x' : '',
+  ].filter(Boolean).length;
+
+  const extraRoomNames = (ROOM_NAMES as readonly string[]).filter(n => !PRIMARY_ROOM_NAMES.includes(n));
+  const extraRoomWorks = (ROOM_WORKS as readonly string[]).filter(w => !PRIMARY_ROOM_WORKS.includes(w));
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 space-y-3">
+      {/* ヘッダー */}
       <div className="flex items-center justify-between">
         <p className="text-xs font-extrabold text-slate-700">部屋 {index + 1}</p>
         {canDelete && (
-          <button
-            type="button"
-            onClick={onDelete}
-            className="text-xs text-red-400 hover:text-red-600 font-bold transition-colors"
-          >
+          <button type="button" onClick={onDelete}
+            className="text-xs text-red-400 hover:text-red-600 font-bold transition-colors">
             削除
           </button>
         )}
       </div>
 
-      {/* 部屋名 */}
+      {/* ── 常に表示：部屋名（優先7チップ） ── */}
       <div>
         <p className="text-[11px] font-bold text-slate-500 mb-1.5">部屋名</p>
-        <div className="flex flex-wrap gap-1.5 mb-1.5">
-          {ROOM_NAMES.map(n => (
-            <button
-              key={n} type="button"
-              onClick={() => onUpdate({ name: n })}
+        <div className="flex flex-wrap gap-1.5">
+          {PRIMARY_ROOM_NAMES.map(n => (
+            <button key={n} type="button" onClick={() => onUpdate({ name: n })}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                 room.name === n
                   ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
-              }`}
-            >
+              }`}>
               {n}
             </button>
           ))}
         </div>
-        <input
-          value={room.customName}
-          onChange={e => onUpdate({ customName: e.target.value })}
-          placeholder="例：サンルーム、書斎、店舗入口、階段下収納 など"
-          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
-        />
       </div>
 
-      {/* 工事内容 */}
+      {/* ── 常に表示：工事内容（優先4チップ） ── */}
       <div>
         <p className="text-[11px] font-bold text-slate-500 mb-1.5">工事内容</p>
         <div className="flex flex-wrap gap-1.5">
-          {ROOM_WORKS.map(w => (
-            <button
-              key={w} type="button"
-              onClick={() => onUpdate({ workType: w })}
+          {PRIMARY_ROOM_WORKS.map(w => (
+            <button key={w} type="button" onClick={() => onUpdate({ workType: w })}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                 room.workType === w
                   ? 'bg-violet-600 text-white border-violet-600'
                   : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300'
-              }`}
-            >
+              }`}>
               {w}
             </button>
           ))}
         </div>
       </div>
 
-      {/* 広さ */}
-      <div>
-        <p className="text-[11px] font-bold text-slate-500 mb-1.5">だいたいの広さ</p>
-        <div className="flex flex-wrap gap-1.5 mb-1.5">
-          {ROOM_SIZES.map(s => (
-            <button
-              key={s} type="button"
-              onClick={() => onUpdate({ size: s })}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                room.size === s
-                  ? 'bg-slate-800 text-white border-slate-800'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-        <input
-          value={room.customSize}
-          onChange={e => onUpdate({ customSize: e.target.value })}
-          placeholder="例：13.5畳、約18畳、廊下5mくらい"
-          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200 bg-white"
-        />
-      </div>
+      {/* ── 常に表示：写真・動画の案内 ── */}
+      <p className="text-[10px] text-slate-500 leading-relaxed bg-blue-50 rounded-xl px-3 py-2 border border-blue-100">
+        📷 この部屋の写真や動画は、あとから追加できます。傷・めくれ・トイレなどは写真だけでも大丈夫です。
+      </p>
 
-      {/* 状態 */}
-      <div>
-        <p className="text-[11px] font-bold text-slate-500 mb-1.5">状態（複数選択可）</p>
-        <div className="flex flex-wrap gap-1.5">
-          {ROOM_CONDS.map(c => (
-            <button
-              key={c} type="button"
-              onClick={() => toggleCond(c)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                room.condition.includes(c)
-                  ? 'bg-orange-500 text-white border-orange-500'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-orange-300'
-              }`}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* ── 折りたたみトグル ── */}
+      <button
+        type="button"
+        onClick={onToggleExpand}
+        className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-violet-600 transition-colors"
+      >
+        <span className={`inline-block transition-transform duration-200 text-[10px] ${showDetail ? 'rotate-90' : ''}`}>▶</span>
+        詳しく入力する（任意）
+        {!showDetail && detailCount > 0 && (
+          <span className="bg-violet-100 text-violet-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+            {detailCount}
+          </span>
+        )}
+      </button>
 
-      {/* 材料の希望（任意） */}
-      <div>
-        <p className="text-[11px] font-bold text-slate-500 mb-1">材料の希望 <span className="font-normal text-slate-300">（任意）</span></p>
-        <div className="flex flex-wrap gap-1.5 mb-1">
-          {ROOM_MATERIAL_PREFS.map(m => (
-            <button
-              key={m} type="button"
-              onClick={() => onUpdate({ materialPref: room.materialPref === m ? '' : m })}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                room.materialPref === m
-                  ? 'bg-teal-600 text-white border-teal-600'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
-              }`}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
-        <p className="text-[10px] text-slate-400 leading-relaxed">詳しい品番は、職人が決まった後でも追加で相談できます。柄物・アクセント・機能性クロスは追加費用がかかる場合があります。</p>
-      </div>
+      {/* ── 折りたたみ内（詳細） ── */}
+      {showDetail && (
+        <div className="space-y-3 border-t border-slate-200 pt-3">
 
-      {/* この部屋の動画・写真 */}
-      <div className="border-t border-slate-200 pt-3 space-y-3">
-        <div>
-          <p className="text-[11px] font-bold text-slate-500 mb-0.5">
-            この部屋の動画・写真
-            <span className="ml-1.5 font-normal text-slate-300">（任意）</span>
-          </p>
-          <p className="text-[10px] text-slate-400 leading-relaxed mb-2">
-            {room.customName || room.name || `部屋${index + 1}`} の様子が分かる動画や写真を追加してください。傷・めくれ・カビなどは写真だけでも大丈夫です。
-          </p>
-        </div>
-
-        {/* 動画（最大3本） */}
-        <div>
-          <div className="flex items-center gap-1.5 mb-1">
-            <p className="text-[10px] font-bold text-slate-500">動画</p>
-            <span className="text-[9px] text-slate-300">{room.roomVideoFiles.length}/3</span>
+          {/* 部屋名：追加チップ＋自由入力 */}
+          <div>
+            <p className="text-[11px] font-bold text-slate-500 mb-1.5">部屋名（その他）</p>
+            {extraRoomNames.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-1.5">
+                {extraRoomNames.map(n => (
+                  <button key={n} type="button" onClick={() => onUpdate({ name: n })}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                      room.name === n
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                    }`}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+            )}
+            <input
+              value={room.customName}
+              onChange={e => onUpdate({ customName: e.target.value })}
+              placeholder="例：サンルーム、書斎、店舗入口、階段下収納 など"
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+            />
           </div>
-          {room.roomVideoFiles.map((f, fi) => (
-            <div key={fi} className="flex items-center gap-2 bg-violet-50 border border-violet-100 rounded-xl px-3 py-1.5 mb-1">
-              <span className="text-[11px]">🎬</span>
-              <span className="text-xs text-violet-700 flex-1 truncate">{f.name}</span>
-              <button
-                type="button"
-                onClick={() => onUpdate({ roomVideoFiles: room.roomVideoFiles.filter((_, i) => i !== fi) })}
-                className="text-[10px] text-red-400 hover:text-red-600 font-bold flex-shrink-0"
-              >
-                削除
-              </button>
+
+          {/* 工事内容：追加チップ（天井クロスなど） */}
+          {extraRoomWorks.length > 0 && (
+            <div>
+              <p className="text-[11px] font-bold text-slate-500 mb-1.5">工事内容（その他）</p>
+              <div className="flex flex-wrap gap-1.5">
+                {extraRoomWorks.map(w => (
+                  <button key={w} type="button" onClick={() => onUpdate({ workType: w })}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                      room.workType === w
+                        ? 'bg-violet-600 text-white border-violet-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300'
+                    }`}>
+                    {w}
+                  </button>
+                ))}
+              </div>
             </div>
-          ))}
-          {room.roomVideoFiles.length < 3 && (
-            <label className="flex items-center gap-2 bg-white border border-dashed border-slate-200 rounded-xl px-3 py-2 cursor-pointer hover:border-violet-300 hover:bg-violet-50/30 transition-all">
-              <span className="text-sm">🎬</span>
-              <span className="text-xs text-slate-500">動画を追加（最大3本）</span>
-              <input
-                type="file"
-                accept="video/*"
-                multiple
-                className="hidden"
-                onChange={e => {
-                  const files = Array.from(e.target.files ?? []);
-                  const remaining = 3 - room.roomVideoFiles.length;
-                  const toAdd = files.slice(0, remaining);
-                  onUpdate({ roomVideoFiles: [...room.roomVideoFiles, ...toAdd] });
-                  e.target.value = '';
-                }}
-              />
-            </label>
           )}
-        </div>
 
-        {/* 写真（最大6枚） */}
-        <div>
-          <div className="flex items-center gap-1.5 mb-1">
-            <p className="text-[10px] font-bold text-slate-500">写真</p>
-            <span className="text-[9px] text-slate-300">{room.roomImageFiles.length}/6</span>
+          {/* 広さ */}
+          <div>
+            <p className="text-[11px] font-bold text-slate-500 mb-1.5">だいたいの広さ</p>
+            <div className="flex flex-wrap gap-1.5 mb-1.5">
+              {ROOM_SIZES.map(s => (
+                <button key={s} type="button" onClick={() => onUpdate({ size: s })}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                    room.size === s
+                      ? 'bg-slate-800 text-white border-slate-800'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                  }`}>
+                  {s}
+                </button>
+              ))}
+            </div>
+            <input
+              value={room.customSize}
+              onChange={e => onUpdate({ customSize: e.target.value })}
+              placeholder="例：13.5畳、約18畳、廊下5mくらい"
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200 bg-white"
+            />
           </div>
-          {room.roomImageFiles.length > 0 && (
-            <div className="grid grid-cols-3 gap-1.5 mb-1.5">
-              {room.roomImageFiles.map((f, fi) => (
-                <div key={fi} className="relative">
-                  <div className="bg-slate-100 rounded-lg aspect-square flex items-center justify-center overflow-hidden">
-                    <span className="text-[10px] text-slate-500 text-center px-1 leading-tight">{f.name.slice(0, 16)}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onUpdate({ roomImageFiles: room.roomImageFiles.filter((_, i) => i !== fi) })}
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center shadow-sm"
-                  >
-                    ×
+
+          {/* 状態 */}
+          <div>
+            <p className="text-[11px] font-bold text-slate-500 mb-1.5">状態（複数選択可）</p>
+            <div className="flex flex-wrap gap-1.5">
+              {ROOM_CONDS.map(c => (
+                <button key={c} type="button" onClick={() => toggleCond(c)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                    room.condition.includes(c)
+                      ? 'bg-orange-500 text-white border-orange-500'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-orange-300'
+                  }`}>
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 材料の希望 */}
+          <div>
+            <p className="text-[11px] font-bold text-slate-500 mb-1">材料の希望 <span className="font-normal text-slate-300">（任意）</span></p>
+            <div className="flex flex-wrap gap-1.5 mb-1">
+              {ROOM_MATERIAL_PREFS.map(m => (
+                <button key={m} type="button"
+                  onClick={() => onUpdate({ materialPref: room.materialPref === m ? '' : m })}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                    room.materialPref === m
+                      ? 'bg-teal-600 text-white border-teal-600'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
+                  }`}>
+                  {m}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-slate-400 leading-relaxed">詳しい品番は、職人が決まった後でも追加で相談できます。柄物・アクセント・機能性クロスは追加費用がかかる場合があります。</p>
+          </div>
+
+          {/* この部屋の動画・写真 */}
+          <div className="space-y-2 border-t border-slate-200 pt-3">
+            <div>
+              <p className="text-[11px] font-bold text-slate-500 mb-0.5">
+                この部屋の動画・写真
+                <span className="ml-1.5 font-normal text-slate-300">（任意）</span>
+              </p>
+              <p className="text-[10px] text-slate-400 leading-relaxed mb-2">
+                {room.customName || room.name || `部屋${index + 1}`} の様子が分かる動画や写真を追加してください。傷・めくれ・カビなどは写真だけでも大丈夫です。
+              </p>
+            </div>
+
+            {/* 動画（最大3本） */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-1">
+                <p className="text-[10px] font-bold text-slate-500">動画</p>
+                <span className="text-[9px] text-slate-300">{room.roomVideoFiles.length}/3</span>
+              </div>
+              {room.roomVideoFiles.map((f, fi) => (
+                <div key={fi} className="flex items-center gap-2 bg-violet-50 border border-violet-100 rounded-xl px-3 py-1.5 mb-1">
+                  <span className="text-[11px]">🎬</span>
+                  <span className="text-xs text-violet-700 flex-1 truncate">{f.name}</span>
+                  <button type="button"
+                    onClick={() => onUpdate({ roomVideoFiles: room.roomVideoFiles.filter((_, i) => i !== fi) })}
+                    className="text-[10px] text-red-400 hover:text-red-600 font-bold flex-shrink-0">
+                    削除
                   </button>
                 </div>
               ))}
+              {room.roomVideoFiles.length < 3 && (
+                <label className="flex items-center gap-2 bg-white border border-dashed border-slate-200 rounded-xl px-3 py-2 cursor-pointer hover:border-violet-300 hover:bg-violet-50/30 transition-all">
+                  <span className="text-sm">🎬</span>
+                  <span className="text-xs text-slate-500">動画を追加（最大3本）</span>
+                  <input type="file" accept="video/*" multiple className="hidden"
+                    onChange={e => {
+                      const files = Array.from(e.target.files ?? []);
+                      const toAdd = files.slice(0, 3 - room.roomVideoFiles.length);
+                      onUpdate({ roomVideoFiles: [...room.roomVideoFiles, ...toAdd] });
+                      e.target.value = '';
+                    }} />
+                </label>
+              )}
             </div>
-          )}
-          {room.roomImageFiles.length < 6 && (
-            <label className="flex items-center gap-2 bg-white border border-dashed border-slate-200 rounded-xl px-3 py-2 cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-all">
-              <span className="text-sm">📷</span>
-              <span className="text-xs text-slate-500">写真を追加（最大6枚）</span>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={e => {
-                  const files = Array.from(e.target.files ?? []);
-                  const remaining = 6 - room.roomImageFiles.length;
-                  const toAdd = files.slice(0, remaining);
-                  onUpdate({ roomImageFiles: [...room.roomImageFiles, ...toAdd] });
-                  e.target.value = '';
-                }}
-              />
-            </label>
-          )}
-          <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">10〜15秒の短い動画がおすすめです。部屋ごとに短く撮ると職人が確認しやすくなります。</p>
+
+            {/* 写真（最大6枚） */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-1">
+                <p className="text-[10px] font-bold text-slate-500">写真</p>
+                <span className="text-[9px] text-slate-300">{room.roomImageFiles.length}/6</span>
+              </div>
+              {room.roomImageFiles.length > 0 && (
+                <div className="grid grid-cols-3 gap-1.5 mb-1.5">
+                  {room.roomImageFiles.map((f, fi) => (
+                    <div key={fi} className="relative">
+                      <div className="bg-slate-100 rounded-lg aspect-square flex items-center justify-center overflow-hidden">
+                        <span className="text-[10px] text-slate-500 text-center px-1 leading-tight">{f.name.slice(0, 16)}</span>
+                      </div>
+                      <button type="button"
+                        onClick={() => onUpdate({ roomImageFiles: room.roomImageFiles.filter((_, i) => i !== fi) })}
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center shadow-sm">
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {room.roomImageFiles.length < 6 && (
+                <label className="flex items-center gap-2 bg-white border border-dashed border-slate-200 rounded-xl px-3 py-2 cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-all">
+                  <span className="text-sm">📷</span>
+                  <span className="text-xs text-slate-500">写真を追加（最大6枚）</span>
+                  <input type="file" accept="image/*" multiple className="hidden"
+                    onChange={e => {
+                      const files = Array.from(e.target.files ?? []);
+                      const toAdd = files.slice(0, 6 - room.roomImageFiles.length);
+                      onUpdate({ roomImageFiles: [...room.roomImageFiles, ...toAdd] });
+                      e.target.value = '';
+                    }} />
+                </label>
+              )}
+            </div>
+          </div>
+
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -519,12 +583,15 @@ export default function CorporateRequest() {
   const [rooms, setRooms] = useState<Room[]>([
     { name: 'LDK', workType: '', size: '', condition: [], materialPref: '', customName: '', customSize: '', roomVideoFiles: [], roomImageFiles: [] },
   ]);
+  const [expandedRooms, setExpandedRooms] = useState<boolean[]>([false]);
 
   function addRoom() {
     setRooms(prev => [...prev, { name: '洋室', workType: '', size: '', condition: [], materialPref: '', customName: '', customSize: '', roomVideoFiles: [], roomImageFiles: [] }]);
+    setExpandedRooms(prev => [...prev, false]);
   }
   function removeRoom(idx: number) {
     setRooms(prev => prev.filter((_, i) => i !== idx));
+    setExpandedRooms(prev => prev.filter((_, i) => i !== idx));
   }
   function updateRoom(idx: number, patch: Partial<Room>) {
     setRooms(prev => prev.map((r, i) => i === idx ? { ...r, ...patch } : r));
@@ -884,7 +951,7 @@ export default function CorporateRequest() {
       <PageShell>
         <PageHeader />
         <StepProgress step={1} />
-        <StepContent title="こう撮るだけ" sub="動画で送ると、職人に伝わりやすい。">
+        <StepContent title="まずメインのお部屋を撮影してください" sub="LDKや一番見てもらいたい部屋を10〜15秒ほど撮影してください。他の部屋の動画や写真は次の画面で追加できます。">
 
           {/* ── 前回の依頼バナー ── */}
           {lastRequestId && (
@@ -1057,8 +1124,8 @@ export default function CorporateRequest() {
               <>
                 <span className="text-4xl">📹</span>
                 <div className="text-center">
-                  <p className="text-sm font-bold text-slate-700">動画を選択する</p>
-                  <p className="text-xs text-slate-400 mt-1">壁・床・気になる箇所をゆっくり撮影してください</p>
+                  <p className="text-sm font-bold text-slate-700">メイン動画を追加する</p>
+                  <p className="text-xs text-slate-400 mt-1">LDKや一番見てもらいたい部屋を撮影してください</p>
                 </div>
                 <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">MP4 / MOV / その他動画形式</span>
                 <p className="text-[11px] text-slate-400 text-center leading-relaxed px-2">
@@ -1103,7 +1170,7 @@ export default function CorporateRequest() {
               <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <span style={{ fontSize: 12, color: 'white', marginLeft: 2 }}>▶</span>
               </div>
-              <p className="text-xs font-semibold text-blue-700 leading-relaxed">10〜15秒の短い動画がおすすめです。部屋ごとに短く撮ると職人が確認しやすくなります。狭い部屋・トイレ・傷・めくれは写真だけでも大丈夫です。</p>
+              <p className="text-xs font-semibold text-blue-700 leading-relaxed">長い動画より、部屋ごとの短い動画・写真の方が職人が確認しやすくなります。他の部屋は次の画面で追加できます。</p>
             </div>
           )}
         </StepContent>
@@ -1128,6 +1195,8 @@ export default function CorporateRequest() {
                 canDelete={idx > 0}
                 onUpdate={patch => updateRoom(idx, patch)}
                 onDelete={() => removeRoom(idx)}
+                expanded={expandedRooms[idx] ?? false}
+                onToggleExpand={() => setExpandedRooms(prev => prev.map((v, i) => i === idx ? !v : v))}
               />
             ))}
 
@@ -1401,20 +1470,50 @@ export default function CorporateRequest() {
           ))}
         </div>
 
-        {/* 部屋情報 */}
+        {/* 部屋情報まとめ（チップ形式） */}
         {hasRoomInfo && (
-          <div className="rounded-2xl border border-blue-100 bg-blue-50/40 divide-y divide-blue-100 overflow-hidden mb-4">
-            <div className="px-5 py-2.5 bg-blue-50">
-              <p className="text-xs font-bold text-blue-600">工事する部屋 ({rooms.length}部屋)</p>
+          <div className="rounded-2xl border border-blue-100 bg-blue-50/40 overflow-hidden mb-4">
+            <div className="px-5 py-2.5 bg-blue-50 flex items-center gap-2">
+              <p className="text-xs font-bold text-blue-600">希望内容まとめ（{rooms.length}部屋）</p>
+              {wallpaperPreference && (
+                <span className="text-[10px] font-bold text-teal-600 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-full">
+                  🎨 {wallpaperPreference}
+                </span>
+              )}
             </div>
-            {rooms.map((r, i) => (
-              <div key={i} className="px-5 py-3 bg-white/60">
-                <p className="text-xs font-bold text-slate-700">部屋{i + 1}：{r.customName || r.name || '未選択'}</p>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {[r.workType, r.customSize || r.size, r.condition.join('・')].filter(Boolean).join(' / ') || '詳細未入力'}
-                </p>
-              </div>
-            ))}
+            {rooms.map((r, i) => {
+              const displayName = r.customName || r.name || `部屋${i + 1}`;
+              const displaySize = r.customSize || r.size;
+              const hasMedia    = r.roomVideoFiles.length > 0 || r.roomImageFiles.length > 0;
+              const chips = [
+                r.workType,
+                displaySize,
+                ...r.condition,
+                r.materialPref && r.materialPref !== 'まだ決まっていない' ? r.materialPref : '',
+                hasMedia ? '動画・写真あり' : '',
+              ].filter(Boolean);
+              return (
+                <div key={i} className="px-4 py-3 bg-white/60 border-t border-blue-100 first:border-t-0">
+                  <p className="text-sm font-bold text-slate-700 mb-1.5">{displayName}</p>
+                  {chips.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {chips.map((chip, ci) => (
+                        <span key={ci} className="text-[10px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
+                          {chip}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400">詳細未入力</p>
+                  )}
+                </div>
+              );
+            })}
+            <div className="px-4 py-2.5 bg-teal-50/60 border-t border-blue-100">
+              <p className="text-[10px] text-teal-600 leading-relaxed">
+                品番や詳しい希望がまだ決まっていなくても大丈夫です。送信後に追加情報を送れます。
+              </p>
+            </div>
           </div>
         )}
 
