@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { calculateServiceFee, formatFee } from '../../lib/serviceFee';
 import type { Job } from './CraftsmanJobsPage';
-import { getExtraInfo } from '../../lib/requestMeta';
+import { getExtraInfo, getRoomMedia } from '../../lib/requestMeta';
 
 function labelUrgency(level?: string) {
   if (level === 'today') return '今日できる人希望';
@@ -303,6 +303,45 @@ export default function CraftsmanApplyPage() {
                 <div className="space-y-1">
                   {items.map(item => (
                     <p key={item} className="text-xs text-slate-700">{item}</p>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+          {/* 部屋別動画・写真（roomMedia） */}
+          {(() => {
+            const roomMedia = getRoomMedia(job?.meta);
+            if (roomMedia.length === 0) return null;
+            return (
+              <div className="mx-5 mb-5 rounded-2xl border border-violet-100 bg-violet-50/40 overflow-hidden">
+                <div className="px-4 py-2 bg-violet-50 border-b border-violet-100">
+                  <p className="text-[11px] font-bold text-violet-600">🎬 部屋別 動画・写真</p>
+                </div>
+                <div className="px-4 py-3 space-y-4">
+                  {roomMedia.map(rm => (
+                    <div key={rm.roomId}>
+                      <p className="text-xs font-bold text-slate-700 mb-1.5">{rm.roomName}</p>
+                      {rm.videos.length > 0 && (
+                        <div className="space-y-2 mb-2">
+                          {rm.videos.map((url, vi) => (
+                            <video key={vi} src={url} controls playsInline preload="none"
+                              className="w-full rounded-xl bg-slate-900" style={{ maxHeight: '180px' }}>
+                              動画を再生できません
+                            </video>
+                          ))}
+                        </div>
+                      )}
+                      {rm.images.length > 0 && (
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {rm.images.map((url, ii) => (
+                            <a key={ii} href={url} target="_blank" rel="noreferrer">
+                              <img src={url} alt={`${rm.roomName} 写真${ii + 1}`}
+                                className="w-full aspect-square object-cover rounded-xl border border-slate-100" loading="lazy" />
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>

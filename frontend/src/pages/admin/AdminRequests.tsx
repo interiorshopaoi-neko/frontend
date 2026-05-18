@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { getFreshness, FRESHNESS_CLASS } from '../../lib/freshness';
 import { AdminLogin, AdminNav, AdminUnauthorized, isAdminRole } from './shared';
 import LogoutConfirmModal from '../../components/LogoutConfirmModal';
-import { getWallpaperPreference, getMaterialPreferenceChips, hasCeilingWork, getExtraInfo } from '../../lib/requestMeta';
+import { getWallpaperPreference, getMaterialPreferenceChips, hasCeilingWork, getExtraInfo, getRoomMedia } from '../../lib/requestMeta';
 
 const URL_FILTER_LABELS: Record<string, string> = {
   new:         '新しい案件',
@@ -585,8 +585,50 @@ function DetailModal({
             );
           })()}
 
+          {/* 部屋別動画・写真（roomMedia） */}
+          {(() => {
+            const roomMedia = getRoomMedia(row.meta);
+            if (roomMedia.length === 0) return null;
+            return (
+              <div className="rounded-2xl border border-violet-100 bg-violet-50/30 overflow-hidden">
+                <div className="px-4 py-2 bg-violet-50 border-b border-violet-100">
+                  <p className="text-[10px] font-bold text-violet-600 uppercase tracking-widest">部屋別 動画・写真</p>
+                </div>
+                <div className="px-4 py-3 space-y-4">
+                  {roomMedia.map(rm => (
+                    <div key={rm.roomId}>
+                      <p className="text-xs font-bold text-slate-700 mb-1.5">{rm.roomName}</p>
+                      {rm.videos.length > 0 && (
+                        <div className="space-y-1.5 mb-2">
+                          {rm.videos.map((url, vi) => (
+                            <div key={vi} className="flex items-center gap-2">
+                              <video src={url} controls playsInline preload="none"
+                                className="w-full rounded-lg bg-slate-900" style={{ maxHeight: '140px' }}>
+                                動画を再生できません
+                              </video>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {rm.images.length > 0 && (
+                        <div className="grid grid-cols-4 gap-1">
+                          {rm.images.map((url, ii) => (
+                            <a key={ii} href={url} target="_blank" rel="noreferrer">
+                              <img src={url} alt={`${rm.roomName} 写真${ii + 1}`}
+                                className="w-full aspect-square object-cover rounded-lg border border-slate-100" loading="lazy" />
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">動画</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">動画（全体）</p>
             {row.video_url ? (
               <div className="space-y-2">
                 <video src={row.video_url} controls playsInline preload="none"

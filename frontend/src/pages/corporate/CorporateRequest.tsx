@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Layers, Scissors, LayoutGrid, MessageSquare, Mail } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { generateThumbnail } from '../../utils/videoUtils';
+import { compressImage } from '../../utils/imageUtils';
 
 // ── 定数 ─────────────────────────────────────────────────────────────────────
 
@@ -38,6 +39,8 @@ type Room = {
   materialPref: string;
   customName: string;
   customSize: string;
+  roomVideoFiles: File[];
+  roomImageFiles: File[];
 };
 
 const ROOM_NAMES = ['LDK', '洋室', '寝室', '廊下', '玄関', '階段', 'トイレ', '洗面所', '収納', 'クローゼット', '店舗', '事務所', 'その他'] as const;
@@ -385,6 +388,105 @@ function RoomCard({
         </div>
         <p className="text-[10px] text-slate-400 leading-relaxed">詳しい品番は、職人が決まった後でも追加で相談できます。柄物・アクセント・機能性クロスは追加費用がかかる場合があります。</p>
       </div>
+
+      {/* この部屋の動画・写真 */}
+      <div className="border-t border-slate-200 pt-3 space-y-3">
+        <div>
+          <p className="text-[11px] font-bold text-slate-500 mb-0.5">
+            この部屋の動画・写真
+            <span className="ml-1.5 font-normal text-slate-300">（任意）</span>
+          </p>
+          <p className="text-[10px] text-slate-400 leading-relaxed mb-2">
+            {room.customName || room.name || `部屋${index + 1}`} の様子が分かる動画や写真を追加してください。傷・めくれ・カビなどは写真だけでも大丈夫です。
+          </p>
+        </div>
+
+        {/* 動画（最大3本） */}
+        <div>
+          <div className="flex items-center gap-1.5 mb-1">
+            <p className="text-[10px] font-bold text-slate-500">動画</p>
+            <span className="text-[9px] text-slate-300">{room.roomVideoFiles.length}/3</span>
+          </div>
+          {room.roomVideoFiles.map((f, fi) => (
+            <div key={fi} className="flex items-center gap-2 bg-violet-50 border border-violet-100 rounded-xl px-3 py-1.5 mb-1">
+              <span className="text-[11px]">🎬</span>
+              <span className="text-xs text-violet-700 flex-1 truncate">{f.name}</span>
+              <button
+                type="button"
+                onClick={() => onUpdate({ roomVideoFiles: room.roomVideoFiles.filter((_, i) => i !== fi) })}
+                className="text-[10px] text-red-400 hover:text-red-600 font-bold flex-shrink-0"
+              >
+                削除
+              </button>
+            </div>
+          ))}
+          {room.roomVideoFiles.length < 3 && (
+            <label className="flex items-center gap-2 bg-white border border-dashed border-slate-200 rounded-xl px-3 py-2 cursor-pointer hover:border-violet-300 hover:bg-violet-50/30 transition-all">
+              <span className="text-sm">🎬</span>
+              <span className="text-xs text-slate-500">動画を追加（最大3本）</span>
+              <input
+                type="file"
+                accept="video/*"
+                multiple
+                className="hidden"
+                onChange={e => {
+                  const files = Array.from(e.target.files ?? []);
+                  const remaining = 3 - room.roomVideoFiles.length;
+                  const toAdd = files.slice(0, remaining);
+                  onUpdate({ roomVideoFiles: [...room.roomVideoFiles, ...toAdd] });
+                  e.target.value = '';
+                }}
+              />
+            </label>
+          )}
+        </div>
+
+        {/* 写真（最大6枚） */}
+        <div>
+          <div className="flex items-center gap-1.5 mb-1">
+            <p className="text-[10px] font-bold text-slate-500">写真</p>
+            <span className="text-[9px] text-slate-300">{room.roomImageFiles.length}/6</span>
+          </div>
+          {room.roomImageFiles.length > 0 && (
+            <div className="grid grid-cols-3 gap-1.5 mb-1.5">
+              {room.roomImageFiles.map((f, fi) => (
+                <div key={fi} className="relative">
+                  <div className="bg-slate-100 rounded-lg aspect-square flex items-center justify-center overflow-hidden">
+                    <span className="text-[10px] text-slate-500 text-center px-1 leading-tight">{f.name.slice(0, 16)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onUpdate({ roomImageFiles: room.roomImageFiles.filter((_, i) => i !== fi) })}
+                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center shadow-sm"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {room.roomImageFiles.length < 6 && (
+            <label className="flex items-center gap-2 bg-white border border-dashed border-slate-200 rounded-xl px-3 py-2 cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-all">
+              <span className="text-sm">📷</span>
+              <span className="text-xs text-slate-500">写真を追加（最大6枚）</span>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={e => {
+                  const files = Array.from(e.target.files ?? []);
+                  const remaining = 6 - room.roomImageFiles.length;
+                  const toAdd = files.slice(0, remaining);
+                  onUpdate({ roomImageFiles: [...room.roomImageFiles, ...toAdd] });
+                  e.target.value = '';
+                }}
+              />
+            </label>
+          )}
+          <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">10〜15秒の短い動画がおすすめです。部屋ごとに短く撮ると職人が確認しやすくなります。</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -415,11 +517,11 @@ export default function CorporateRequest() {
 
   // 複数部屋
   const [rooms, setRooms] = useState<Room[]>([
-    { name: 'LDK', workType: '', size: '', condition: [], materialPref: '', customName: '', customSize: '' },
+    { name: 'LDK', workType: '', size: '', condition: [], materialPref: '', customName: '', customSize: '', roomVideoFiles: [], roomImageFiles: [] },
   ]);
 
   function addRoom() {
-    setRooms(prev => [...prev, { name: '洋室', workType: '', size: '', condition: [], materialPref: '', customName: '', customSize: '' }]);
+    setRooms(prev => [...prev, { name: '洋室', workType: '', size: '', condition: [], materialPref: '', customName: '', customSize: '', roomVideoFiles: [], roomImageFiles: [] }]);
   }
   function removeRoom(idx: number) {
     setRooms(prev => prev.filter((_, i) => i !== idx));
@@ -504,12 +606,66 @@ export default function CorporateRequest() {
         }
       }
 
-      // 2. estimate_requests に保存（SECURITY DEFINER RPC 経由でRLSをバイパス）
+      // 2. 部屋ごとの動画・写真をアップロード
+      const uploadTs = Date.now();
+      type RoomMediaEntry = { roomId: string; roomName: string; videos: string[]; images: string[] };
+      const roomMediaList: RoomMediaEntry[] = [];
+      for (let ri = 0; ri < rooms.length; ri++) {
+        const room = rooms[ri];
+        const hasRoomMedia = room.roomVideoFiles.length > 0 || room.roomImageFiles.length > 0;
+        if (!hasRoomMedia) continue;
+        const roomId   = `room-${ri}`;
+        const roomName = room.customName || room.name || roomId;
+        const videoUrls: string[] = [];
+        const imageUrls: string[] = [];
+
+        for (const vf of room.roomVideoFiles) {
+          try {
+            const ext  = vf.name.split('.').pop() ?? 'mp4';
+            const path = `room-videos/${uploadTs}/${ri}/${Date.now()}.${ext}`;
+            const { error: ve } = await supabase.storage.from('estimate-videos').upload(path, vf);
+            if (!ve) {
+              const { data: { publicUrl } } = supabase.storage.from('estimate-videos').getPublicUrl(path);
+              videoUrls.push(publicUrl);
+            }
+          } catch (e) { console.warn(`[roomMedia] video upload failed room${ri}:`, e); }
+        }
+
+        for (const imgFile of room.roomImageFiles) {
+          try {
+            const blob = await compressImage(imgFile, 1200, 0.80);
+            const path = `room-images/${uploadTs}/${ri}/${Date.now()}.webp`;
+            const { error: ie } = await supabase.storage.from('estimate-videos').upload(path, blob, { contentType: 'image/webp' });
+            if (!ie) {
+              const { data: { publicUrl } } = supabase.storage.from('estimate-videos').getPublicUrl(path);
+              imageUrls.push(publicUrl);
+            }
+          } catch (e) { console.warn(`[roomMedia] image upload failed room${ri}:`, e); }
+        }
+
+        if (videoUrls.length > 0 || imageUrls.length > 0) {
+          roomMediaList.push({ roomId, roomName, videos: videoUrls, images: imageUrls });
+        }
+      }
+
+      // 3. estimate_requests に保存（SECURITY DEFINER RPC 経由でRLSをバイパス）
+      // File オブジェクトは meta に含めず、URLのみ保存する
+      const roomsForMeta = hasRoomInfo ? rooms.map(r => ({
+        name:         r.name,
+        customName:   r.customName,
+        workType:     r.workType,
+        size:         r.size,
+        customSize:   r.customSize,
+        condition:    r.condition,
+        materialPref: r.materialPref,
+      })) : null;
+
       const metaPayload = {
-        rooms:                hasRoomInfo ? rooms : null,
+        rooms:                roomsForMeta,
         extra_info:           null,
         wallpaper_preference: wallpaperPreference || null,
         ...(thumbnail_url ? { thumbnail_url } : {}),
+        ...(roomMediaList.length > 0 ? { roomMedia: roomMediaList } : {}),
       };
       console.log('[CorporateRequest] rpc payload meta:', JSON.stringify(metaPayload, null, 2));
 
@@ -546,7 +702,7 @@ export default function CorporateRequest() {
         } catch { /* localStorage 失敗は無視 */ }
       }
 
-      // 4. 管理者へメール通知（失敗しても送信完了扱い）
+      // 5. 管理者へメール通知（失敗しても送信完了扱い）
       try {
         await fetch('/api/notify', {
           method:  'POST',
@@ -563,7 +719,7 @@ export default function CorporateRequest() {
         console.error('[notify] メール通知エラー:', notifyErr);
       }
 
-      // 5. 依頼者へ受付完了メール（失敗しても送信完了扱い）
+      // 6. 依頼者へ受付完了メール（失敗しても送信完了扱い）
       if (contactMethod === 'メール' && contactValue.includes('@')) {
         const trimmedEmail = contactValue.trim();
         console.log('[send-customer-email] invoke 開始 →', trimmedEmail);
@@ -947,7 +1103,7 @@ export default function CorporateRequest() {
               <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <span style={{ fontSize: 12, color: 'white', marginLeft: 2 }}>▶</span>
               </div>
-              <p className="text-xs font-semibold text-blue-700 leading-relaxed">動画で送ると、職人が現場を正確に把握できます。複数部屋は1本にまとめてもOK。</p>
+              <p className="text-xs font-semibold text-blue-700 leading-relaxed">10〜15秒の短い動画がおすすめです。部屋ごとに短く撮ると職人が確認しやすくなります。狭い部屋・トイレ・傷・めくれは写真だけでも大丈夫です。</p>
             </div>
           )}
         </StepContent>

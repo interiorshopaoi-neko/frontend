@@ -50,6 +50,40 @@ export function hasAccentPreference(meta: unknown): boolean {
   return getRooms(meta).some(r => r.materialPref === '柄物・アクセントクロス希望');
 }
 
+// ── roomMedia (per-room video/image URLs) ─────────────────────────────────────
+
+export type RoomMediaMeta = {
+  roomId: string;
+  roomName: string;
+  videos: string[];
+  images: string[];
+};
+
+export function getRoomMedia(meta: unknown): RoomMediaMeta[] {
+  const m = asMeta(meta);
+  if (!m) return [];
+  const rm = m.roomMedia;
+  if (!Array.isArray(rm)) return [];
+  return (rm as unknown[])
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object' && !Array.isArray(item))
+    .map(it => ({
+      roomId:   typeof it.roomId   === 'string' ? it.roomId   : '',
+      roomName: typeof it.roomName === 'string' ? it.roomName : '',
+      videos:   Array.isArray(it.videos) ? (it.videos as unknown[]).filter((s): s is string => typeof s === 'string') : [],
+      images:   Array.isArray(it.images) ? (it.images as unknown[]).filter((s): s is string => typeof s === 'string') : [],
+    }))
+    .filter(item => item.videos.length > 0 || item.images.length > 0);
+}
+
+// Display helpers that prefer custom free-text over chip selection
+export function getRoomDisplayName(room: RoomMeta, fallback = '部屋'): string {
+  return room.customName || room.name || fallback;
+}
+
+export function getRoomDisplaySize(room: RoomMeta): string {
+  return room.customSize || room.size || '';
+}
+
 // ── extraInfo (post-submit customer additions) ────────────────────────────────
 
 export type ExtraInfoMeta = {
