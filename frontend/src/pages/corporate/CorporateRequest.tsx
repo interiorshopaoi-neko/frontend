@@ -64,6 +64,8 @@ const WALLPAPER_MOODS = [
 
 const TOTAL_STEPS = 6; // 動画/部屋/施工/エリア/詳細/メール
 
+const DRAFT_KEY = 'promatch_request_draft_v1';
+
 // ステップごとの案内文（StepProgress に表示）
 const STEP_HINTS: Record<number, string> = {
   1: 'まずは現場の様子を教えてください。動画はスキップもOKです',
@@ -682,6 +684,93 @@ export default function CorporateRequest() {
     try { return localStorage.getItem('promatch_last_request_id'); } catch { return null; }
   });
 
+  // ── 下書き保存 (localStorage) ──────────────────────────────────────────────
+  type DraftData = {
+    step: number;
+    rooms: Omit<Room, 'roomVideoFiles' | 'roomImageFiles'>[];
+    wallpaperPreference: string;
+    workType: string;
+    roomType: string;
+    roomSize: string;
+    timing: string;
+    siteCondition: string;
+    desireType: string;
+    memo: string;
+    area: string;
+    contactValue: string;
+    step3Skipped: boolean;
+  };
+
+  const [showDraftBanner, setShowDraftBanner] = useState<boolean>(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return false;
+      const d = JSON.parse(raw) as DraftData;
+      return d.step > 1 || !!(d.area || d.workType || d.memo);
+    } catch { return false; }
+  });
+
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw) as DraftData;
+      setStep(d.step ?? 1);
+      if (Array.isArray(d.rooms) && d.rooms.length > 0) {
+        setRooms(d.rooms.map(r => ({
+          ...r,
+          roomVideoFiles: [],
+          roomImageFiles: [],
+        })));
+        setExpandedRooms(d.rooms.map(() => false));
+      }
+      setWallpaperPreference(d.wallpaperPreference ?? '');
+      setWorkType(d.workType ?? '');
+      setRoomType(d.roomType ?? '');
+      setRoomSize(d.roomSize ?? '');
+      setTiming(d.timing ?? '');
+      setSiteCondition(d.siteCondition ?? '');
+      setDesireType(d.desireType ?? '');
+      setMemo(d.memo ?? '');
+      setArea(d.area ?? '');
+      setContactValue(d.contactValue ?? '');
+      setStep3Skipped(d.step3Skipped ?? false);
+    } catch { /* 壊れたデータは無視 */ }
+  }
+
+  // 500ms デバウンスで自動保存
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const draft: DraftData = {
+          step,
+          rooms: rooms.map(r => ({
+            name:         r.name,
+            workType:     r.workType,
+            size:         r.size,
+            condition:    r.condition,
+            materialPref: r.materialPref,
+            customName:   r.customName,
+            customSize:   r.customSize,
+          })),
+          wallpaperPreference,
+          workType,
+          roomType,
+          roomSize,
+          timing,
+          siteCondition,
+          desireType,
+          memo,
+          area,
+          contactValue,
+          step3Skipped,
+        };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      } catch { /* localStorage 失敗は無視 */ }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [step, rooms, wallpaperPreference, workType, roomType, roomSize, timing, siteCondition, desireType, memo, area, contactValue, step3Skipped]);
+
   // 送信状態
   const [step3Skipped,   setStep3Skipped]   = useState(false);
   const [submitState,    setSubmitState]    = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
@@ -907,6 +996,7 @@ export default function CorporateRequest() {
         }
       }
 
+      try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       setSubmitState('success');
     } catch (err) {
       console.error('[handleSubmit] 送信エラー:', err);
@@ -1052,6 +1142,33 @@ export default function CorporateRequest() {
         <PageHeader />
         <StepProgress step={1} />
         <StepContent title="まずメインのお部屋を撮影してください" sub="LDKや一番見てもらいたい部屋を10〜15秒ほど撮影してください。他の部屋の動画や写真は次の画面で追加できます。">
+
+          {/* ── 下書き復元バナー ── */}
+          {showDraftBanner && (
+            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+              <p className="text-xs font-extrabold text-amber-800 mb-1">📝 入力途中のデータが見つかりました</p>
+              <p className="text-[11px] text-amber-700 mb-3 leading-relaxed">
+                続きから再開できます。<br />
+                <span className="text-amber-600">写真や動画は再選択が必要です。</span>
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => { loadDraft(); setShowDraftBanner(false); }}
+                  className="flex-1 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-xs font-bold transition-all"
+                >
+                  続きから入力する
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ } setShowDraftBanner(false); }}
+                  className="flex-1 py-2 rounded-xl bg-white border border-amber-200 text-amber-700 text-xs font-bold hover:bg-amber-50 active:scale-95 transition-all"
+                >
+                  最初からやり直す
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* ── 前回の依頼バナー ── */}
           {lastRequestId && (
