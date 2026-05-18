@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layers, Scissors, LayoutGrid, MessageSquare, Mail } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -52,6 +52,10 @@ const ROOM_MATERIAL_PREFS = ['量産クロスでよい', '1000番・機能性ク
 // 初期表示に見せる優先チップ（それ以外は折りたたみ内）
 const PRIMARY_ROOM_NAMES: readonly string[] = ['LDK', '洋室', '寝室', '廊下', '玄関', 'トイレ', 'その他'];
 const PRIMARY_ROOM_WORKS: readonly string[] = ['壁紙・クロス', 'クッションフロア', '壁＋天井', '両方'];
+
+// アップロード上限（定数化）
+const MAX_VIDEO_BYTES_MAIN = 50 * 1024 * 1024; // 50MB — メイン動画
+const ROOM_VIDEO_MAX_BYTES = 30 * 1024 * 1024; // 30MB — 部屋別動画（短い動画想定）
 
 const WALLPAPER_MOODS = [
   '明るい白系', '汚れが目立ちにくい', 'ホテルっぽい', '北欧・ナチュラル',
@@ -163,6 +167,7 @@ function BottomNav({
   nextDisabled = false,
   showBack = true,
   loading = false,
+  loadingText = '送信中...',
 }: {
   onBack?: () => void;
   onNext: () => void;
@@ -170,6 +175,7 @@ function BottomNav({
   nextDisabled?: boolean;
   showBack?: boolean;
   loading?: boolean;
+  loadingText?: string;
 }) {
   return (
     <div className="px-6 py-5 border-t border-slate-100 bg-white mt-auto flex-shrink-0">
@@ -197,7 +203,7 @@ function BottomNav({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
               </svg>
-              送信中...
+              {loadingText}
             </span>
           ) : nextLabel}
         </button>
@@ -268,6 +274,17 @@ function RoomCard({
     const has = room.condition.includes(c);
     onUpdate({ condition: has ? room.condition.filter(x => x !== c) : [...room.condition, c] });
   }
+
+  // 写真プレビュー用 objectURL（room.roomImageFiles が変わるたびに再生成・旧URL revoke）
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  useEffect(() => {
+    const urls = room.roomImageFiles.map(f => URL.createObjectURL(f));
+    setImageUrls(urls);
+    return () => { urls.forEach(u => URL.revokeObjectURL(u)); };
+  }, [room.roomImageFiles]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 部屋別動画サイズエラー
+  const [videoSizeError, setVideoSizeError] = useState<string | null>(null);
 
   // 詳細フィールドに値があれば自動で開く
   const hasDetailValues = !!(
@@ -479,7 +496,7 @@ function RoomCard({
               </p>
             </div>
 
-            {/* 動画（最大3本） */}
+            {/* 動画（最大3本 / 30MB制限） */}
             <div>
               <div className="flex items-center gap-1.5 mb-1">
                 <p className="text-[10px] font-bold text-slate-500">動画</p>
@@ -489,29 +506,51 @@ function RoomCard({
                 <div key={fi} className="flex items-center gap-2 bg-violet-50 border border-violet-100 rounded-xl px-3 py-1.5 mb-1">
                   <span className="text-[11px]">🎬</span>
                   <span className="text-xs text-violet-700 flex-1 truncate">{f.name}</span>
+                  <span className="text-[9px] text-violet-400 flex-shrink-0">
+                    {(f.size / 1024 / 1024).toFixed(1)}MB
+                  </span>
                   <button type="button"
-                    onClick={() => onUpdate({ roomVideoFiles: room.roomVideoFiles.filter((_, i) => i !== fi) })}
+                    onClick={() => {
+                      onUpdate({ roomVideoFiles: room.roomVideoFiles.filter((_, i) => i !== fi) });
+                      setVideoSizeError(null);
+                    }}
                     className="text-[10px] text-red-400 hover:text-red-600 font-bold flex-shrink-0">
                     削除
                   </button>
                 </div>
               ))}
+              {videoSizeError && (
+                <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 mb-1">
+                  <p className="text-[11px] font-bold text-amber-800">動画が長いようです</p>
+                  <p className="text-[10px] text-amber-700 leading-relaxed">{videoSizeError}</p>
+                </div>
+              )}
               {room.roomVideoFiles.length < 3 && (
                 <label className="flex items-center gap-2 bg-white border border-dashed border-slate-200 rounded-xl px-3 py-2 cursor-pointer hover:border-violet-300 hover:bg-violet-50/30 transition-all">
                   <span className="text-sm">🎬</span>
-                  <span className="text-xs text-slate-500">動画を追加（最大3本）</span>
+                  <span className="text-xs text-slate-500">動画を追加（最大3本・30MB）</span>
                   <input type="file" accept="video/*" multiple className="hidden"
                     onChange={e => {
                       const files = Array.from(e.target.files ?? []);
+                      const oversized = files.filter(f => f.size > ROOM_VIDEO_MAX_BYTES);
+                      if (oversized.length > 0) {
+                        setVideoSizeError('10〜15秒程度の短い動画がおすすめです（30MB以下）。長い動画は短く撮り直してください。');
+                        e.target.value = '';
+                        return;
+                      }
+                      setVideoSizeError(null);
                       const toAdd = files.slice(0, 3 - room.roomVideoFiles.length);
                       onUpdate({ roomVideoFiles: [...room.roomVideoFiles, ...toAdd] });
                       e.target.value = '';
                     }} />
                 </label>
               )}
+              <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                長い動画より、部屋ごとの短い動画の方が確認しやすくなります
+              </p>
             </div>
 
-            {/* 写真（最大6枚） */}
+            {/* 写真（最大6枚・サムネイルプレビュー） */}
             <div>
               <div className="flex items-center gap-1.5 mb-1">
                 <p className="text-[10px] font-bold text-slate-500">写真</p>
@@ -520,13 +559,29 @@ function RoomCard({
               {room.roomImageFiles.length > 0 && (
                 <div className="grid grid-cols-3 gap-1.5 mb-1.5">
                   {room.roomImageFiles.map((f, fi) => (
-                    <div key={fi} className="relative">
-                      <div className="bg-slate-100 rounded-lg aspect-square flex items-center justify-center overflow-hidden">
-                        <span className="text-[10px] text-slate-500 text-center px-1 leading-tight">{f.name.slice(0, 16)}</span>
+                    <div key={fi} className="relative group">
+                      <div className="rounded-xl overflow-hidden aspect-square bg-slate-100 border border-slate-200">
+                        {imageUrls[fi] ? (
+                          <img
+                            src={imageUrls[fi]}
+                            alt={f.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <span className="text-slate-300 text-lg">📷</span>
+                          </div>
+                        )}
                       </div>
+                      <p className="text-[8px] text-slate-400 truncate px-0.5 mt-0.5 leading-tight">
+                        {(f.size / 1024).toFixed(0)}KB
+                      </p>
                       <button type="button"
-                        onClick={() => onUpdate({ roomImageFiles: room.roomImageFiles.filter((_, i) => i !== fi) })}
-                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center shadow-sm">
+                        onClick={() => {
+                          if (imageUrls[fi]) URL.revokeObjectURL(imageUrls[fi]);
+                          onUpdate({ roomImageFiles: room.roomImageFiles.filter((_, i) => i !== fi) });
+                        }}
+                        className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500/90 text-white rounded-full text-[10px] font-bold flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
                         ×
                       </button>
                     </div>
@@ -546,6 +601,9 @@ function RoomCard({
                     }} />
                 </label>
               )}
+              <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                傷・めくれ・カビ・巾木などは写真だけでも大丈夫です。あとから追加情報も送れます。
+              </p>
             </div>
           </div>
 
@@ -562,7 +620,6 @@ export default function CorporateRequest() {
   const [step, setStep] = useState(1);
 
   // フォームデータ（基本）
-  const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50 MB
   const [videoFile,       setVideoFile]       = useState<File | null>(null);
   const [videoSizeError,  setVideoSizeError]  = useState(false);
   const [workType,     setWorkType]     = useState('');
@@ -605,6 +662,7 @@ export default function CorporateRequest() {
   // 送信状態
   const [step3Skipped,   setStep3Skipped]   = useState(false);
   const [submitState,    setSubmitState]    = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  const [uploadPhase,    setUploadPhase]    = useState<string>('');
   const [devErrorDetail, setDevErrorDetail] = useState<string | null>(null);
   const [newRequestId,   setNewRequestId]   = useState<string | null>(null);
 
@@ -634,9 +692,11 @@ export default function CorporateRequest() {
   // ── Supabase 送信処理 ──────────────────────────────────────────────────────
   const handleSubmit = async () => {
     setSubmitState('sending');
+    setUploadPhase('');
     setDevErrorDetail(null);
     try {
-      // 1. 動画を Storage にアップロード
+      // 1. メイン動画を Storage にアップロード
+      setUploadPhase('メイン動画をアップロード中...');
       let video_url: string | null = null;
       let thumbnail_url: string | null = null;
       if (videoFile) {
@@ -674,6 +734,7 @@ export default function CorporateRequest() {
       }
 
       // 2. 部屋ごとの動画・写真をアップロード
+      setUploadPhase('部屋の写真・動画をアップロード中...');
       const uploadTs = Date.now();
       type RoomMediaEntry = { roomId: string; roomName: string; videos: string[]; images: string[] };
       const roomMediaList: RoomMediaEntry[] = [];
@@ -716,6 +777,7 @@ export default function CorporateRequest() {
       }
 
       // 3. estimate_requests に保存（SECURITY DEFINER RPC 経由でRLSをバイパス）
+      setUploadPhase('依頼を送信中...');
       // File オブジェクトは meta に含めず、URLのみ保存する
       const roomsForMeta = hasRoomInfo ? rooms.map(r => ({
         name:         r.name,
@@ -1139,7 +1201,7 @@ export default function CorporateRequest() {
               className="hidden"
               onChange={e => {
                 const file = e.target.files?.[0] ?? null;
-                if (file && file.size > MAX_VIDEO_BYTES) {
+                if (file && file.size > MAX_VIDEO_BYTES_MAIN) {
                   setVideoSizeError(true);
                   // input をリセットして同じファイルを再選択できるようにする
                   e.target.value = '';
@@ -1565,6 +1627,7 @@ export default function CorporateRequest() {
         onNext={handleSubmit}
         nextLabel="この内容で送信する ✓"
         loading={submitState === 'sending'}
+        loadingText={uploadPhase || '送信中...'}
       />
     </PageShell>
   );
