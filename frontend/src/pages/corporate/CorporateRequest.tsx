@@ -581,7 +581,7 @@ function RoomCard({
                           if (imageUrls[fi]) URL.revokeObjectURL(imageUrls[fi]);
                           onUpdate({ roomImageFiles: room.roomImageFiles.filter((_, i) => i !== fi) });
                         }}
-                        className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500/90 text-white rounded-full text-[10px] font-bold flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                        className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500/90 text-white rounded-full text-[10px] font-bold flex items-center justify-center shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                         ×
                       </button>
                     </div>
