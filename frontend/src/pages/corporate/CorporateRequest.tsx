@@ -64,6 +64,17 @@ const WALLPAPER_MOODS = [
 
 const TOTAL_STEPS = 6; // 動画/部屋/施工/エリア/詳細/メール
 
+// ステップごとの案内文（StepProgress に表示）
+const STEP_HINTS: Record<number, string> = {
+  1: 'まずは現場の様子を教えてください。動画はスキップもOKです',
+  2: '部屋ごとの希望を入力します。分かる範囲だけで大丈夫です',
+  3: '当てはまるものを選んでください',
+  4: '住所は不要です。エリアだけ教えてください',
+  5: 'すべて任意です。スキップしてもOKです',
+  6: 'あと少しで完了です',
+  7: 'これで送信する準備が整いました',
+};
+
 // ── CSS Keyframes ──────────────────────────────────────────────────────────────
 
 const globalStyles = `
@@ -115,16 +126,23 @@ function StepProgress({ step, displayStep, total }: { step: number; displayStep?
   const totalSteps = total ?? TOTAL_STEPS;
   const shown = displayStep ?? Math.min(step, totalSteps);
   const pct = Math.round((shown / totalSteps) * 100);
+  const hint = STEP_HINTS[shown] ?? '';
   return (
-    <div className="px-6 py-4 border-b border-slate-100 bg-white flex-shrink-0">
-      <div className="flex items-center justify-between mb-2.5">
-        <span className="text-xs font-extrabold text-violet-600 tracking-[0.15em] uppercase">
-          Step {shown}
-        </span>
-        <span className="text-xs font-semibold text-slate-400">
+    <div className="px-6 py-3 border-b border-slate-100 bg-white flex-shrink-0">
+      <div className="flex items-start justify-between mb-1">
+        <div>
+          <span className="text-xs font-extrabold text-violet-600 tracking-[0.15em] uppercase">
+            Step {shown}
+          </span>
+          {hint && (
+            <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{hint}</p>
+          )}
+        </div>
+        <span className="text-xs font-semibold text-slate-400 flex-shrink-0 mt-0.5">
           {shown} <span className="text-slate-300">/</span> {totalSteps}
         </span>
       </div>
+      <div className="mb-2" />
       <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-500 ease-out"
@@ -360,6 +378,11 @@ function RoomCard({
       {/* ── 常に表示：写真・動画の案内 ── */}
       <p className="text-[10px] text-slate-500 leading-relaxed bg-blue-50 rounded-xl px-3 py-2 border border-blue-100">
         📷 この部屋の写真や動画は、あとから追加できます。傷・めくれ・トイレなどは写真だけでも大丈夫です。
+      </p>
+
+      {/* 安心文言 */}
+      <p className="text-[10px] text-slate-400 text-center leading-relaxed">
+        品番や細かい内容は、あとから追加できます
       </p>
 
       {/* ── 折りたたみトグル ── */}
@@ -914,7 +937,8 @@ export default function CorporateRequest() {
           順次ご連絡いたします。<br />
           <span className="text-xs text-slate-400 mt-1 block">早ければ当日中に連絡が来る場合があります。</span>
         </p>
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-emerald-100 px-6 py-5 text-left max-w-xs w-full space-y-3 shadow-sm mb-4">
+        {/* 安心バッジ */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-emerald-100 px-6 py-4 text-left max-w-xs w-full space-y-2.5 shadow-sm mb-5">
           {[
             '費用が確定するまで料金は発生しません',
             '断っても一切費用はかかりません',
@@ -927,22 +951,32 @@ export default function CorporateRequest() {
           ))}
         </div>
 
-        {/* 追加情報の安心文言 */}
-        <div className="bg-teal-50 border border-teal-100 rounded-2xl px-5 py-4 text-left max-w-xs w-full mb-6">
-          <p className="text-xs font-bold text-teal-700 mb-2">🎨 品番・希望はまだ決まっていなくても大丈夫</p>
-          <div className="space-y-1.5">
+        {/* 次に起きること */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-100 px-5 py-4 text-left max-w-xs w-full mb-5 shadow-sm">
+          <p className="text-xs font-extrabold text-slate-700 mb-3">次に起きること</p>
+          <ol className="space-y-3">
             {[
-              '送信後に追加情報を職人に伝えられます',
-              '職人が決まった後、日程・材料・支払い方法などを確認できます',
-              '品番が未定でも、気になる雰囲気だけで相談できます',
-            ].map(msg => (
-              <div key={msg} className="flex items-start gap-2">
-                <span className="text-teal-500 text-[10px] mt-0.5 flex-shrink-0">●</span>
-                <span className="text-[11px] text-teal-700 leading-relaxed">{msg}</span>
-              </div>
+              { icon: '👀', text: '職人が動画・写真・内容を確認します' },
+              { icon: '📩', text: '対応可能な職人からメールで連絡があります' },
+              { icon: '💬', text: '日程・材料・品番など詳しい内容を一緒に確認します' },
+              { icon: '✅', text: '気に入った職人を選んで成約。完全無料です' },
+            ].map((item, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <span className="text-base leading-none flex-shrink-0 mt-0.5">{item.icon}</span>
+                <div>
+                  <span className="text-[10px] font-extrabold text-violet-400 mr-1">{i + 1}.</span>
+                  <span className="text-xs text-slate-600">{item.text}</span>
+                </div>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
+
+        {/* 期待感 */}
+        <p className="text-[11px] text-slate-400 max-w-xs text-center mb-5 leading-relaxed px-2">
+          動画や写真があると、職人が状況を把握しやすくなります。
+          品番・URL・参考写真は後からでも追加できます。
+        </p>
 
         {/* CTA群 */}
         <div className="max-w-xs w-full space-y-3">
@@ -955,9 +989,13 @@ export default function CorporateRequest() {
               職人の応募を確認する →
             </button>
           )}
+
+          {/* 追加情報CTA（強化） */}
           <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-left">
-            <p className="text-xs font-bold text-blue-800 mb-0.5">📸 クロス品番・写真・希望を後から追加できます</p>
-            <p className="text-[11px] text-blue-600 leading-relaxed">品番・URL・気になる雰囲気・参考写真などを送ると、職人がより正確な概算を出せます。今すぐでなくても大丈夫です。</p>
+            <p className="text-xs font-bold text-blue-800 mb-1">📸 あとから品番・写真・希望内容も追加できます</p>
+            <p className="text-[11px] text-blue-600 leading-relaxed">
+              品番・URL・気になる雰囲気・参考写真などを送ると、職人がより正確な概算を出せます。今すぐでなくても大丈夫です。
+            </p>
           </div>
           <button
             onClick={() => navigate(`/request/${extraId}/extra-info`)}
@@ -1608,7 +1646,7 @@ export default function CorporateRequest() {
         )}
 
         {/* 送信後の流れ */}
-        <div className="rounded-2xl bg-violet-50 border border-violet-100 px-4 py-4 mb-2">
+        <div className="rounded-2xl bg-violet-50 border border-violet-100 px-4 py-4 mb-3">
           <p className="text-xs font-bold text-violet-700 mb-2">📋 送信後の流れ</p>
           <ol className="space-y-1.5">
             {['対応可能な職人が動画・内容を確認します', 'メールアドレスに職人からご連絡があります（電話・LINEの開示なし）', '気に入った職人を選んで成約。お客様のご利用は完全無料です'].map((item, i) => (
@@ -1618,6 +1656,23 @@ export default function CorporateRequest() {
               </li>
             ))}
           </ol>
+        </div>
+
+        {/* 送信前の安心チェックリスト */}
+        <div className="rounded-2xl bg-emerald-50 border border-emerald-100 px-4 py-3 mb-2">
+          <div className="space-y-1.5">
+            {[
+              '品番が決まっていなくても大丈夫です',
+              '後から写真や希望を追加できます',
+              '職人決定後に日程や材料を確認できます',
+              'しつこい営業メールはありません',
+            ].map(msg => (
+              <div key={msg} className="flex items-center gap-2">
+                <span className="text-emerald-500 font-extrabold text-xs flex-shrink-0">✓</span>
+                <span className="text-xs text-emerald-700">{msg}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
       </StepContent>
