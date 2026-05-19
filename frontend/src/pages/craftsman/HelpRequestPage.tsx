@@ -84,10 +84,10 @@ function SingleChips({
         <button
           key={opt} type="button"
           onClick={() => onChange(value === opt ? '' : opt)}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition active:scale-95 ${
+          className={`px-3.5 py-2 rounded-xl text-sm font-bold border transition active:scale-95 ${
             value === opt
-              ? 'bg-blue-600 border-blue-600 text-white'
-              : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'
+              ? 'bg-orange-500 border-orange-500 text-white'
+              : 'bg-white border-slate-200 text-slate-600 hover:border-orange-300'
           }`}
         >{opt}</button>
       ))}
@@ -112,10 +112,10 @@ function MultiChips({
             onClick={() => onChange(
               selected ? values.filter(v => v !== opt) : [...values, opt]
             )}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition active:scale-95 ${
+            className={`px-3.5 py-2 rounded-xl text-sm font-bold border transition active:scale-95 ${
               selected
-                ? 'bg-blue-600 border-blue-600 text-white'
-                : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'
+                ? 'bg-orange-500 border-orange-500 text-white'
+                : 'bg-white border-slate-200 text-slate-600 hover:border-orange-300'
             }`}
           >{opt}</button>
         );
@@ -490,15 +490,16 @@ export default function HelpRequestPage() {
             <p className="text-sm font-extrabold text-slate-900">現場レーダー</p>
             <span className="text-xs bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-full">任意</span>
           </div>
+          <p className="text-xs font-semibold text-slate-500 mb-0.5">分かる範囲だけでOKです</p>
           <p className="text-xs text-slate-400 mb-5 leading-relaxed">
-            行く前に現場の雰囲気が分かると、職人が応募しやすくなります。
+            行く前に現場の雰囲気が分かると、応募されやすくなります
           </p>
 
           <div className="space-y-5">
 
             {/* 現場タイプ */}
             <div>
-              <p className="text-xs font-bold text-slate-500 mb-2">現場タイプ</p>
+              <p className="text-sm font-extrabold text-slate-700 mb-2.5">現場タイプ</p>
               <SingleChips
                 options={SITE_TYPES}
                 value={form.radar.siteType}
@@ -510,7 +511,7 @@ export default function HelpRequestPage() {
 
             {/* 現場規模 */}
             <div>
-              <p className="text-xs font-bold text-slate-500 mb-2">現場規模</p>
+              <p className="text-sm font-extrabold text-slate-700 mb-2.5">作業規模</p>
               <SingleChips
                 options={SITE_SCALES}
                 value={form.radar.siteScale}
@@ -522,7 +523,7 @@ export default function HelpRequestPage() {
 
             {/* 人数感 */}
             <div>
-              <p className="text-xs font-bold text-slate-500 mb-2">人数感</p>
+              <p className="text-sm font-extrabold text-slate-700 mb-2.5">人数感</p>
               <SingleChips
                 options={CREW_SIZES}
                 value={form.radar.crewSize}
@@ -534,7 +535,7 @@ export default function HelpRequestPage() {
 
             {/* 現場状況チェック */}
             <div>
-              <p className="text-xs font-bold text-slate-500 mb-2">現場状況（複数選択可）</p>
+              <p className="text-sm font-extrabold text-slate-700 mb-2.5">現場状況 <span className="text-xs font-semibold text-slate-400">複数選択可</span></p>
               <MultiChips
                 options={SITE_CONDITIONS}
                 values={form.radar.siteConditions}
@@ -546,7 +547,7 @@ export default function HelpRequestPage() {
 
             {/* 搬入条件 */}
             <div>
-              <p className="text-xs font-bold text-slate-500 mb-2">搬入条件</p>
+              <p className="text-sm font-extrabold text-slate-700 mb-2.5">搬入条件</p>
               <SingleChips
                 options={ACCESS_CONDITIONS}
                 value={form.radar.accessCondition}
@@ -558,7 +559,7 @@ export default function HelpRequestPage() {
 
             {/* 必要な道具 */}
             <div>
-              <p className="text-xs font-bold text-slate-500 mb-2">必要な道具（複数選択可）</p>
+              <p className="text-sm font-extrabold text-slate-700 mb-2.5">必要な道具 <span className="text-xs font-semibold text-slate-400">複数選択可</span></p>
               <MultiChips
                 options={TOOL_OPTIONS}
                 values={form.radar.requiredTools}
@@ -568,7 +569,7 @@ export default function HelpRequestPage() {
 
             {/* その他必要な道具・注意点 */}
             <div>
-              <p className="text-xs font-bold text-slate-500 mb-2">その他の道具・注意点（任意）</p>
+              <p className="text-sm font-extrabold text-slate-700 mb-2.5">その他の道具・注意点 <span className="text-xs font-semibold text-slate-400">任意</span></p>
               <textarea
                 value={form.radar.toolNotes}
                 onChange={e => setRadar('toolNotes', e.target.value)}

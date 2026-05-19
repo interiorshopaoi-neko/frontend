@@ -287,7 +287,7 @@ function HelperJobDetailModal({ job, applicantCount, myApplication, onClose, onA
                   )}
                   {radar.siteScale && (
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-400 w-16 shrink-0">現場規模</span>
+                      <span className="text-[10px] text-slate-400 w-16 shrink-0">作業規模</span>
                       <span className="text-xs font-bold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-indigo-100">{radar.siteScale}</span>
                     </div>
                   )}
