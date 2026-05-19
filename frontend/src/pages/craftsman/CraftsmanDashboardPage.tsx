@@ -50,7 +50,7 @@ const STATUS_CONFIG: Record<
 > = {
   '応募中':       { bg: 'bg-blue-100',    text: 'text-blue-700',    dot: 'bg-blue-500',    icon: '📤' },
   '金額入力済み': { bg: 'bg-indigo-100',  text: 'text-indigo-700',  dot: 'bg-indigo-500',  icon: '💰' },
-  '依頼者確認中': { bg: 'bg-amber-100',   text: 'text-amber-700',   dot: 'bg-amber-500',   icon: '🔍' },
+  '依頼者確認中': { bg: 'bg-purple-100',  text: 'text-purple-700',  dot: 'bg-purple-500',  icon: '⭐' },
   '成約済み':     { bg: 'bg-green-100',   text: 'text-green-700',   dot: 'bg-green-500',   icon: '🤝' },
   '工事完了':     { bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500', icon: '✅' },
   '見送り':       { bg: 'bg-slate-100',   text: 'text-slate-500',   dot: 'bg-slate-400',   icon: '🚫' },
@@ -1302,14 +1302,24 @@ export default function CraftsmanDashboardPage() {
                     </div>
                   )}
 
-                  {/* アクションボタン — 非成約案件のみ */}
-                  {!isSensitive && (
+                  {/* アクションボタン */}
+                  {isSensitive ? (
+                    /* 成約済み/工事完了 — 案件内容を見る導線（小さめ）*/
+                    <div className="border-t border-slate-100 px-4 py-2.5 text-center">
+                      <button
+                        onClick={() => navigate(`/craftsman/apply/${app.estimate_request_id}`, { state: { readOnly: true } })}
+                        className="text-xs font-bold text-slate-400 hover:text-blue-600 transition py-1"
+                      >
+                        📋 動画・写真・案件内容を確認する
+                      </button>
+                    </div>
+                  ) : (
                     <div className="border-t border-slate-100 px-4 py-3 flex gap-2">
                       <button
                         onClick={() => navigate(`/craftsman/apply/${app.estimate_request_id}`, { state: { readOnly: true } })}
                         className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-xs font-extrabold transition active:scale-95"
                       >
-                        詳細を見る
+                        案件内容を見る
                       </button>
                       <button
                         onClick={() => navigate(`/craftsman/profile/${userId}`)}

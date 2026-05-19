@@ -65,7 +65,9 @@ export default function CraftsmanApplyPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const jobFromState = (location.state as { job?: Job } | null)?.job ?? null;
+  const stateData = location.state as { job?: Job; readOnly?: boolean } | null;
+  const jobFromState = stateData?.job ?? null;
+  const readOnly     = stateData?.readOnly ?? false;
   const isDemo = id?.startsWith('demo-') ?? false;
 
   const [job, setJob] = useState<Job | null>(jobFromState);
@@ -192,12 +194,34 @@ export default function CraftsmanApplyPage() {
           </svg>
         </button>
         <div>
-          <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wide">ステップ 2/2</p>
-          <h1 className="text-base font-extrabold text-slate-900 leading-tight">概算金額を入力</h1>
+          {readOnly ? (
+            <>
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">案件詳細</p>
+              <h1 className="text-base font-extrabold text-slate-900 leading-tight">動画・写真・案件内容</h1>
+            </>
+          ) : (
+            <>
+              <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wide">ステップ 2/2</p>
+              <h1 className="text-base font-extrabold text-slate-900 leading-tight">概算金額を入力</h1>
+            </>
+          )}
         </div>
       </header>
 
       <div className="max-w-lg mx-auto px-4 py-5 space-y-4 pb-10">
+
+        {/* 応募済み案件の参照モード */}
+        {readOnly && (
+          <div className="rounded-2xl bg-blue-50 border border-blue-200 px-4 py-3 flex items-start gap-2.5">
+            <span className="text-base flex-shrink-0">📋</span>
+            <div>
+              <p className="text-sm font-extrabold text-blue-800">応募済みの案件です</p>
+              <p className="text-xs text-blue-600 mt-0.5 leading-relaxed">
+                動画・写真・案件内容を確認できます。応募の詳細はダッシュボードで確認してください。
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* デモ通知 */}
         {isDemo && (
@@ -413,8 +437,8 @@ export default function CraftsmanApplyPage() {
           })()}
         </section>
 
-        {/* 入力フォーム */}
-        <section className="bg-white rounded-3xl shadow-sm ring-1 ring-slate-200 p-5">
+        {/* 入力フォーム — readOnly時は非表示 */}
+        {!readOnly && <section className="bg-white rounded-3xl shadow-sm ring-1 ring-slate-200 p-5">
           <form onSubmit={handleSubmit} className="space-y-5">
 
             {/* 概算金額 */}
@@ -516,7 +540,7 @@ export default function CraftsmanApplyPage() {
               ※契約・施工は当事者間で行われます。当サービスはマッチングの場を提供するものであり、施工内容・品質・トラブルについては当事者間でご確認ください。
             </p>
           </form>
-        </section>
+        </section>}
       </div>
     </div>
   );

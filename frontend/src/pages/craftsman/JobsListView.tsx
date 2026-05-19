@@ -4,6 +4,7 @@ import { calculateServiceFee } from '../../lib/serviceFee';
 import { FEE_TABLE } from '../../constants/fees';
 import type { Job } from './CraftsmanJobsPage';
 import { calcRevenueNum } from '../../lib/revenueEstimate';
+import { hasCeilingWork } from '../../lib/requestMeta';
 import SiteRadar from '../../components/SiteRadar';
 
 // ─── Freshness helpers ───────────────────────────────────────────────────────
@@ -94,7 +95,10 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
         // 動画あり（has_video OR video_url）を最優先
         const vp = Number(b.has_video || !!b.video_url) - Number(a.has_video || !!a.video_url);
         if (vp !== 0) return vp;
-        return getPriority(b) - getPriority(a);
+        const pp = getPriority(b) - getPriority(a);
+        if (pp !== 0) return pp;
+        // 新しい順を最終 tiebreaker
+        return parseUtc(b.created_at ?? '') - parseUtc(a.created_at ?? '');
       });
   }, [jobs, filter]);
 
@@ -156,7 +160,7 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                 <article
                   key={job.id}
                   className={`bg-white rounded-3xl shadow-sm overflow-hidden ${
-                    hasVideo && isNew24h
+                    isNew24h
                       ? 'ring-2 ring-blue-400 shadow-blue-100'
                       : 'ring-1 ring-slate-200'
                   }`}
@@ -303,7 +307,7 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                         損傷: {job.damage_level === 'low' ? '軽め' : job.damage_level === 'middle' ? '普通' : '重め'}
                       </span>
                     )}
-                    {job.meta?.rooms?.some(r => r.workType === '天井クロス' || r.workType === '壁＋天井') && (
+                    {hasCeilingWork(job.meta) && (
                       <span className="bg-amber-50 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full">
                         天井あり
                       </span>
@@ -332,22 +336,31 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
 
                   {/* ── アクション ── */}
                   <div className="border-t border-slate-100 px-4 py-3 flex gap-2">
-                    <button
-                      onClick={() => navigate(`/craftsman/apply/${job.id}`, { state: { job } })}
-                      className="flex-none px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition active:scale-95"
-                    >
-                      詳しく見る
-                    </button>
-                    <button
-                      onClick={() =>
-                        isLoggedIn
-                          ? navigate(`/craftsman/apply/${job.id}`, { state: { job } })
-                          : navigate('/login', { state: { defaultRole: 'craftsman', from: `/craftsman/apply/${job.id}` } })
-                      }
-                      className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-extrabold shadow-sm shadow-blue-200 transition active:scale-[0.98]"
-                    >
-                      {isLoggedIn ? '今すぐ応募する →' : 'ログインして応募する →'}
-                    </button>
+                    {isLoggedIn ? (
+                      /* ログイン済み — 詳細 1 本に統一（応募フォームは詳細画面内）*/
+                      <button
+                        onClick={() => navigate(`/craftsman/apply/${job.id}`, { state: { job } })}
+                        className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-extrabold shadow-sm shadow-blue-200 transition active:scale-[0.98]"
+                      >
+                        詳しく見る →
+                      </button>
+                    ) : (
+                      /* 未ログイン — 詳細閲覧 + ログイン誘導 */
+                      <>
+                        <button
+                          onClick={() => navigate(`/craftsman/apply/${job.id}`, { state: { job } })}
+                          className="flex-none px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition active:scale-95"
+                        >
+                          詳しく見る
+                        </button>
+                        <button
+                          onClick={() => navigate('/login', { state: { defaultRole: 'craftsman', from: `/craftsman/apply/${job.id}` } })}
+                          className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-extrabold shadow-sm shadow-blue-200 transition active:scale-[0.98]"
+                        >
+                          ログインして応募する →
+                        </button>
+                      </>
+                    )}
                   </div>
 
                   <p className="pb-3 text-center text-[10px] text-slate-400">
