@@ -288,22 +288,6 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                         数日以内
                       </span>
                     )}
-                    {/* 動画バッジ（video_url OR has_video） */}
-                    {hasVideo && !job.video_url && (
-                      <span className="bg-blue-600 text-white text-xs font-extrabold px-2.5 py-1 rounded-full">
-                        🎬 動画あり
-                      </span>
-                    )}
-                    {(job.meta?.rooms?.length ?? 0) > 1 && (
-                      <span className="bg-violet-50 text-violet-700 text-xs font-bold px-2.5 py-1 rounded-full">
-                        🏠 {job.meta?.rooms?.length}部屋
-                      </span>
-                    )}
-                    {job.meta?.extra_info && (
-                      <span className="bg-emerald-50 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full">
-                        ✓ 追加情報あり
-                      </span>
-                    )}
                     {postedAt && (
                       <span className="text-slate-400 text-[10px] font-bold px-2 py-1 rounded-full bg-slate-50 ml-auto">
                         🕐 {postedAt}
@@ -350,16 +334,26 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                     </div>
                   </div>
 
-                  {/* ── クイック情報チップ ── */}
+                  {/* ── クイック情報チップ（判断材料を具体的に） ── */}
                   <div className="px-4 mb-3 flex flex-wrap gap-1.5">
-                    {job.room_size && (
-                      <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">
-                        {job.room_size}
+                    {hasVideo && (
+                      <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                        🎬 動画あり
                       </span>
                     )}
-                    {hasMedia && (
+                    {job.has_photos && (
+                      <span className="bg-blue-50 text-blue-600 text-xs font-bold px-2.5 py-1 rounded-full">
+                        📷 写真あり
+                      </span>
+                    )}
+                    {(job.meta?.rooms?.length ?? 0) > 0 && (
+                      <span className="bg-violet-50 text-violet-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                        🏠 {job.meta!.rooms!.length}部屋の情報あり
+                      </span>
+                    )}
+                    {job.room_size && (
                       <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">
-                        {[hasVideo && '動画', job.has_photos && '写真', job.has_floor_plan && '図面'].filter(Boolean).join(' · ')}
+                        📐 {job.room_size}
                       </span>
                     )}
                     {job.damage_level && (

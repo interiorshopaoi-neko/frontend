@@ -508,6 +508,14 @@ export default function CraftsmanApplyPage() {
               </div>
             )}
 
+            {/* 応募安心テキスト */}
+            <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-4 py-3 space-y-1">
+              <p className="text-[11px] font-bold text-emerald-700">✓ 送信について</p>
+              <p className="text-[11px] text-emerald-700 leading-relaxed">・この送信だけで成約確定にはなりません</p>
+              <p className="text-[11px] text-emerald-700 leading-relaxed">・まずは対応可能かと概算を依頼者に伝えます</p>
+              <p className="text-[11px] text-emerald-700 leading-relaxed">・正式な連絡先開示・成約は依頼者の確認後に進みます</p>
+            </div>
+
             {/* 送信ボタン */}
             <button
               type="submit"
