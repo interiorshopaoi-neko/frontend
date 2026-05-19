@@ -33,7 +33,9 @@ const TRUST_ITEMS = ['ログイン不要', '住所入力不要', '概算確認�
 
 type Room = {
   name: string;
-  workType: string;
+  workType: string;        // 後方互換のため維持（送信時に deriveWorkType で自動設定）
+  wallWorkScope: string;   // 'wall' | 'ceiling' | 'wall_ceiling' | ''
+  floorWork: boolean;      // クッションフロア ON/OFF
   size: string;
   condition: string[];
   materialPref: string;
@@ -52,6 +54,35 @@ const ROOM_MATERIAL_PREFS = ['量産クロスでよい', '1000番・機能性ク
 // 初期表示に見せる優先チップ（それ以外は折りたたみ内）
 const PRIMARY_ROOM_NAMES: readonly string[] = ['LDK', '洋室', '寝室', '廊下', '玄関', 'トイレ', 'その他'];
 const PRIMARY_ROOM_WORKS: readonly string[] = ['壁紙・クロス', 'クッションフロア', '壁＋天井', '両方'];
+
+// wallWorkScope + floorWork から workType を導出（後方互換値として保存）
+function deriveWorkType(wallWorkScope: string, floorWork: boolean): string {
+  if (wallWorkScope && floorWork) return '両方';
+  if (floorWork)                  return 'クッションフロア';
+  if (wallWorkScope === 'wall')         return '壁紙・クロス';
+  if (wallWorkScope === 'ceiling')      return '天井クロス';
+  if (wallWorkScope === 'wall_ceiling') return '壁＋天井';
+  return '';
+}
+
+// 確認画面用：Room から表示ラベル配列を返す（新旧両対応）
+function getRoomWorkDisplay(room: Room): string[] {
+  const parts: string[] = [];
+  if (room.wallWorkScope === 'wall')              parts.push('クロス：壁');
+  else if (room.wallWorkScope === 'ceiling')      parts.push('クロス：天井');
+  else if (room.wallWorkScope === 'wall_ceiling') parts.push('クロス：壁＋天井');
+  if (room.floorWork) parts.push('床：クッションフロア');
+  if (parts.length > 0) return parts;
+  // 旧形式フォールバック
+  const wt = room.workType;
+  if (wt === '壁紙・クロス')    return ['クロス：壁'];
+  if (wt === '天井クロス')       return ['クロス：天井'];
+  if (wt === '壁＋天井')         return ['クロス：壁＋天井'];
+  if (wt === 'クッションフロア') return ['床：クッションフロア'];
+  if (wt === '両方')             return ['クロス：壁＋天井', '床：クッションフロア'];
+  if (wt) return [wt];
+  return [];
+}
 
 // アップロード上限（定数化）
 const MAX_VIDEO_BYTES_MAIN = 50 * 1024 * 1024; // 50MB — メイン動画
@@ -307,15 +338,14 @@ function RoomCard({
   // 部屋別動画サイズエラー
   const [videoSizeError, setVideoSizeError] = useState<string | null>(null);
 
-  // 詳細フィールドに値があれば自動で開く
+  // 詳細フィールドに値があれば自動で開く（工事内容は常時表示に移動したので除外）
   const hasDetailValues = !!(
     room.customName ||
     room.size || room.customSize ||
     room.condition.length > 0 ||
     room.materialPref ||
     room.roomVideoFiles.length > 0 ||
-    room.roomImageFiles.length > 0 ||
-    (room.workType && !PRIMARY_ROOM_WORKS.includes(room.workType))
+    room.roomImageFiles.length > 0
   );
   const showDetail = expanded || hasDetailValues;
 
@@ -329,13 +359,15 @@ function RoomCard({
   ].filter(Boolean).length;
 
   const extraRoomNames = (ROOM_NAMES as readonly string[]).filter(n => !PRIMARY_ROOM_NAMES.includes(n));
-  const extraRoomWorks = (ROOM_WORKS as readonly string[]).filter(w => !PRIMARY_ROOM_WORKS.includes(w));
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 space-y-3">
+    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-5 space-y-4">
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
-        <p className="text-xs font-extrabold text-slate-700">部屋 {index + 1}</p>
+        <div>
+          <p className="text-sm font-extrabold text-slate-800">部屋 {index + 1}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">分かる範囲だけでOKです</p>
+        </div>
         {canDelete && (
           <button type="button" onClick={onDelete}
             className="text-xs text-red-400 hover:text-red-600 font-bold transition-colors">
@@ -344,15 +376,15 @@ function RoomCard({
         )}
       </div>
 
-      {/* ── 常に表示：部屋名（優先7チップ） ── */}
+      {/* ── どのお部屋ですか？ ── */}
       <div>
-        <p className="text-[11px] font-bold text-slate-500 mb-1.5">部屋名</p>
-        <div className="flex flex-wrap gap-1.5">
+        <p className="text-xs font-bold text-slate-600 mb-2">どのお部屋ですか？</p>
+        <div className="flex flex-wrap gap-2">
           {PRIMARY_ROOM_NAMES.map(n => (
             <button key={n} type="button" onClick={() => onUpdate({ name: n })}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+              className={`px-3.5 py-2 rounded-full text-sm font-semibold border transition-all active:scale-95 ${
                 room.name === n
-                  ? 'bg-blue-600 text-white border-blue-600'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-100'
                   : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
               }`}>
               {n}
@@ -361,31 +393,56 @@ function RoomCard({
         </div>
       </div>
 
-      {/* ── 常に表示：工事内容（優先4チップ） ── */}
-      <div>
-        <p className="text-[11px] font-bold text-slate-500 mb-1.5">工事内容</p>
-        <div className="flex flex-wrap gap-1.5">
-          {PRIMARY_ROOM_WORKS.map(w => (
-            <button key={w} type="button" onClick={() => onUpdate({ workType: w })}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                room.workType === w
-                  ? 'bg-violet-600 text-white border-violet-600'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300'
-              }`}>
-              {w}
-            </button>
-          ))}
+      {/* ── どこをきれいにしますか？（2段：クロス＋床） ── */}
+      <div className="space-y-3">
+        <p className="text-xs font-bold text-slate-600">どこをきれいにしますか？</p>
+
+        {/* クロス（壁紙） */}
+        <div>
+          <p className="text-[11px] text-slate-500 font-semibold mb-1.5">クロス（壁紙）</p>
+          <div className="flex flex-wrap gap-2">
+            {(['壁', '天井', '壁＋天井'] as const).map(label => {
+              const scope = label === '壁' ? 'wall' : label === '天井' ? 'ceiling' : 'wall_ceiling';
+              const active = room.wallWorkScope === scope;
+              return (
+                <button key={label} type="button"
+                  onClick={() => {
+                    const newScope = active ? '' : scope;
+                    onUpdate({ wallWorkScope: newScope, workType: deriveWorkType(newScope, room.floorWork) });
+                  }}
+                  className={`px-3.5 py-2 rounded-full text-sm font-semibold border transition-all active:scale-95 ${
+                    active
+                      ? 'bg-violet-600 text-white border-violet-600 shadow-sm shadow-violet-100'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300'
+                  }`}>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 床 */}
+        <div>
+          <p className="text-[11px] text-slate-500 font-semibold mb-1.5">床</p>
+          <button type="button"
+            onClick={() => {
+              const newFloor = !room.floorWork;
+              onUpdate({ floorWork: newFloor, workType: deriveWorkType(room.wallWorkScope, newFloor) });
+            }}
+            className={`px-3.5 py-2 rounded-full text-sm font-semibold border transition-all active:scale-95 ${
+              room.floorWork
+                ? 'bg-amber-500 text-white border-amber-500 shadow-sm shadow-amber-100'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-amber-300'
+            }`}>
+            クッションフロア
+          </button>
         </div>
       </div>
 
-      {/* ── 常に表示：写真・動画の案内 ── */}
-      <p className="text-[10px] text-slate-500 leading-relaxed bg-blue-50 rounded-xl px-3 py-2 border border-blue-100">
-        📷 この部屋の写真や動画は、あとから追加できます。傷・めくれ・トイレなどは写真だけでも大丈夫です。
-      </p>
-
-      {/* 安心文言 */}
-      <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-        品番や細かい内容は、あとから追加できます
+      {/* ── 写真・動画の案内（短く） ── */}
+      <p className="text-xs text-slate-500 bg-slate-50 rounded-xl px-3 py-2 border border-slate-100">
+        📷 写真・動画はあとからでもOK。傷やめくれは写真だけでも大丈夫です。
       </p>
 
       {/* ── 折りたたみトグル ── */}
@@ -395,7 +452,7 @@ function RoomCard({
         className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-violet-600 transition-colors"
       >
         <span className={`inline-block transition-transform duration-200 text-[10px] ${showDetail ? 'rotate-90' : ''}`}>▶</span>
-        詳しく入力する（任意）
+        詳しく入力する（広さ・状態・写真など）
         {!showDetail && detailCount > 0 && (
           <span className="bg-violet-100 text-violet-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
             {detailCount}
@@ -405,7 +462,7 @@ function RoomCard({
 
       {/* ── 折りたたみ内（詳細） ── */}
       {showDetail && (
-        <div className="space-y-3 border-t border-slate-200 pt-3">
+        <div className="space-y-4 border-t border-slate-100 pt-4">
 
           {/* 部屋名：追加チップ＋自由入力 */}
           <div>
@@ -428,28 +485,9 @@ function RoomCard({
               value={room.customName}
               onChange={e => onUpdate({ customName: e.target.value })}
               placeholder="例：サンルーム、書斎、店舗入口、階段下収納 など"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white"
             />
           </div>
-
-          {/* 工事内容：追加チップ（天井クロスなど） */}
-          {extraRoomWorks.length > 0 && (
-            <div>
-              <p className="text-[11px] font-bold text-slate-500 mb-1.5">工事内容（その他）</p>
-              <div className="flex flex-wrap gap-1.5">
-                {extraRoomWorks.map(w => (
-                  <button key={w} type="button" onClick={() => onUpdate({ workType: w })}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                      room.workType === w
-                        ? 'bg-violet-600 text-white border-violet-600'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300'
-                    }`}>
-                    {w}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* 広さ */}
           <div>
@@ -664,12 +702,12 @@ export default function CorporateRequest() {
 
   // 複数部屋
   const [rooms, setRooms] = useState<Room[]>([
-    { name: 'LDK', workType: '', size: '', condition: [], materialPref: '', customName: '', customSize: '', roomVideoFiles: [], roomImageFiles: [] },
+    { name: 'LDK', workType: '', wallWorkScope: '', floorWork: false, size: '', condition: [], materialPref: '', customName: '', customSize: '', roomVideoFiles: [], roomImageFiles: [] },
   ]);
   const [expandedRooms, setExpandedRooms] = useState<boolean[]>([false]);
 
   function addRoom() {
-    setRooms(prev => [...prev, { name: '洋室', workType: '', size: '', condition: [], materialPref: '', customName: '', customSize: '', roomVideoFiles: [], roomImageFiles: [] }]);
+    setRooms(prev => [...prev, { name: '洋室', workType: '', wallWorkScope: '', floorWork: false, size: '', condition: [], materialPref: '', customName: '', customSize: '', roomVideoFiles: [], roomImageFiles: [] }]);
     setExpandedRooms(prev => [...prev, false]);
   }
   function removeRoom(idx: number) {
@@ -718,11 +756,27 @@ export default function CorporateRequest() {
       const d = JSON.parse(raw) as DraftData;
       setStep(d.step ?? 1);
       if (Array.isArray(d.rooms) && d.rooms.length > 0) {
-        setRooms(d.rooms.map(r => ({
-          ...r,
-          roomVideoFiles: [],
-          roomImageFiles: [],
-        })));
+        setRooms(d.rooms.map(r => {
+          // 旧形式（wallWorkScope/floorWork なし）から新形式へ移行
+          const wallWorkScope: string = (r as any).wallWorkScope ?? (() => {
+            const wt = (r as any).workType ?? '';
+            if (wt === '壁紙・クロス') return 'wall';
+            if (wt === '天井クロス')   return 'ceiling';
+            if (wt === '壁＋天井' || wt === '両方') return 'wall_ceiling';
+            return '';
+          })();
+          const floorWork: boolean = (r as any).floorWork ?? (
+            (r as any).workType === 'クッションフロア' || (r as any).workType === '両方'
+          );
+          return {
+            ...r,
+            wallWorkScope,
+            floorWork,
+            workType: (r as any).workType ?? deriveWorkType(wallWorkScope, floorWork),
+            roomVideoFiles: [],
+            roomImageFiles: [],
+          };
+        }));
         setExpandedRooms(d.rooms.map(() => false));
       }
       setWallpaperPreference(d.wallpaperPreference ?? '');
@@ -893,13 +947,15 @@ export default function CorporateRequest() {
       setUploadPhase('依頼を送信中...');
       // File オブジェクトは meta に含めず、URLのみ保存する
       const roomsForMeta = hasRoomInfo ? rooms.map(r => ({
-        name:         r.name,
-        customName:   r.customName,
-        workType:     r.workType,
-        size:         r.size,
-        customSize:   r.customSize,
-        condition:    r.condition,
-        materialPref: r.materialPref,
+        name:          r.name,
+        customName:    r.customName,
+        workType:      r.workType,
+        wallWorkScope: r.wallWorkScope,
+        floorWork:     r.floorWork,
+        size:          r.size,
+        customSize:    r.customSize,
+        condition:     r.condition,
+        materialPref:  r.materialPref,
       })) : null;
 
       const metaPayload = {
@@ -1702,13 +1758,15 @@ export default function CorporateRequest() {
             {rooms.map((r, i) => {
               const displayName = r.customName || r.name || `部屋${i + 1}`;
               const displaySize = r.customSize || r.size;
-              const hasMedia    = r.roomVideoFiles.length > 0 || r.roomImageFiles.length > 0;
+              const hasMedia    = (Array.isArray(r.roomVideoFiles) ? r.roomVideoFiles : []).length > 0 ||
+                                  (Array.isArray(r.roomImageFiles) ? r.roomImageFiles : []).length > 0;
+              const workParts   = getRoomWorkDisplay(r);
               const chips = [
-                r.workType,
+                ...workParts,
                 displaySize,
-                ...r.condition,
+                ...(Array.isArray(r.condition) ? r.condition : []),
                 r.materialPref && r.materialPref !== 'まだ決まっていない' ? r.materialPref : '',
-                hasMedia ? '動画・写真あり' : '',
+                hasMedia ? '写真・動画あり' : '',
               ].filter(Boolean);
               return (
                 <div key={i} className="px-4 py-3 bg-white/60 border-t border-blue-100 first:border-t-0">

@@ -5,6 +5,8 @@ export type RoomMeta = {
   name?: string;
   customName?: string;
   workType?: string;
+  wallWorkScope?: string;  // 'wall' | 'ceiling' | 'wall_ceiling' | ''
+  floorWork?: boolean;     // クッションフロア ON/OFF
   size?: string;
   customSize?: string;
   condition?: string[];
@@ -73,6 +75,29 @@ export function getRoomMedia(meta: unknown): RoomMediaMeta[] {
       images:   Array.isArray(it.images) ? (it.images as unknown[]).filter((s): s is string => typeof s === 'string') : [],
     }))
     .filter(item => item.videos.length > 0 || item.images.length > 0);
+}
+
+// 部屋の工事内容を表示用文字列配列で返す（新旧形式両対応）
+// 新形式: wallWorkScope + floorWork → ["クロス：壁＋天井", "床：クッションフロア"]
+// 旧形式: workType のみ → ["クロス：壁＋天井"] など
+export function getRoomWorkSummary(room: RoomMeta): string[] {
+  const parts: string[] = [];
+  if (room.wallWorkScope !== undefined || room.floorWork !== undefined) {
+    if (room.wallWorkScope === 'wall')              parts.push('クロス：壁');
+    else if (room.wallWorkScope === 'ceiling')      parts.push('クロス：天井');
+    else if (room.wallWorkScope === 'wall_ceiling') parts.push('クロス：壁＋天井');
+    if (room.floorWork) parts.push('床：クッションフロア');
+    if (parts.length > 0 || !room.workType) return parts;
+  }
+  // 旧形式フォールバック
+  const wt = room.workType ?? '';
+  if (wt === '壁紙・クロス')      return ['クロス：壁'];
+  if (wt === '天井クロス')         return ['クロス：天井'];
+  if (wt === '壁＋天井')           return ['クロス：壁＋天井'];
+  if (wt === 'クッションフロア')   return ['床：クッションフロア'];
+  if (wt === '両方')               return ['クロス：壁＋天井', '床：クッションフロア'];
+  if (wt)                          return [wt];
+  return [];
 }
 
 // Display helpers that prefer custom free-text over chip selection
