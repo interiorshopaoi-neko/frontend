@@ -4,9 +4,12 @@ import BottomNav from '../../components/BottomNav';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-// Phase53: 現場レーダー
+// Phase53: 現場レーダー（Phase57: buildingType/workCategory/siteStatus 追加）
 type SiteRadar = {
-  siteType?:        string;
+  siteType?:        string;   // 旧フィールド（互換用）
+  buildingType?:    string;
+  workCategory?:    string;
+  siteStatus?:      string;
   siteScale?:       string;
   crewSize?:        string;
   siteConditions?:  string[];
@@ -271,7 +274,8 @@ function HelperJobDetailModal({ job, applicantCount, myApplication, onClose, onA
           {(() => {
             const radar = getSiteRadar(job.meta);
             if (!radar) return null;
-            const hasAny = radar.siteType || radar.siteScale || radar.crewSize ||
+            const hasAny = radar.buildingType || radar.workCategory || radar.siteStatus ||
+              radar.siteType || radar.siteScale || radar.crewSize ||
               (radar.siteConditions?.length ?? 0) > 0 || radar.accessCondition ||
               (radar.requiredTools?.length ?? 0) > 0 || radar.toolNotes;
             if (!hasAny) return null;
@@ -279,10 +283,22 @@ function HelperJobDetailModal({ job, applicantCount, myApplication, onClose, onA
               <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3.5 mb-4">
                 <p className="text-xs font-extrabold text-indigo-600 mb-3">📡 現場レーダー</p>
                 <div className="space-y-2.5">
-                  {radar.siteType && (
+                  {(radar.buildingType || radar.siteType) && (
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-400 w-16 shrink-0">現場タイプ</span>
-                      <span className="text-xs font-bold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-indigo-100">{radar.siteType}</span>
+                      <span className="text-[10px] text-slate-400 w-16 shrink-0">建物</span>
+                      <span className="text-xs font-bold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-indigo-100">{radar.buildingType ?? radar.siteType}</span>
+                    </div>
+                  )}
+                  {radar.workCategory && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-400 w-16 shrink-0">工事</span>
+                      <span className="text-xs font-bold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-indigo-100">{radar.workCategory}</span>
+                    </div>
+                  )}
+                  {radar.siteStatus && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-400 w-16 shrink-0">状態</span>
+                      <span className="text-xs font-bold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-indigo-100">{radar.siteStatus}</span>
                     </div>
                   )}
                   {radar.siteScale && (
@@ -299,7 +315,7 @@ function HelperJobDetailModal({ job, applicantCount, myApplication, onClose, onA
                   )}
                   {radar.siteConditions && radar.siteConditions.length > 0 && (
                     <div className="flex items-start gap-2">
-                      <span className="text-[10px] text-slate-400 w-16 shrink-0 mt-1">現場状況</span>
+                      <span className="text-[10px] text-slate-400 w-16 shrink-0 mt-1">現場ルール</span>
                       <div className="flex flex-wrap gap-1.5">
                         {radar.siteConditions.map(c => (
                           <span key={c} className="text-xs font-bold text-slate-700 bg-white px-2.5 py-1 rounded-lg border border-indigo-100">{c}</span>
@@ -908,13 +924,13 @@ export default function HelpListPage() {
                     {(() => {
                       const radar = getSiteRadar(req.meta);
                       if (!radar) return null;
+                      const PRIORITY_CONDITIONS = ['朝礼あり', '駐車場あり', '駐車場なし', 'エレベーターあり', '階段メイン', '荷物多め'];
                       const chips = [
-                        radar.siteType,
+                        radar.buildingType ?? radar.siteType,
+                        radar.workCategory,
+                        radar.siteStatus,
                         radar.siteScale,
-                        radar.crewSize,
-                        ...(radar.siteConditions?.filter(c =>
-                          ['駐車場あり', 'エレベーターあり', '糊付けスペースあり'].includes(c)
-                        ) ?? []),
+                        ...(radar.siteConditions?.filter(c => PRIORITY_CONDITIONS.includes(c)) ?? []),
                         radar.accessCondition && radar.accessCondition !== '未確認'
                           ? radar.accessCondition : null,
                       ].filter(Boolean) as string[];
@@ -923,7 +939,7 @@ export default function HelpListPage() {
                         <div className="mb-3">
                           <p className="text-[10px] text-indigo-500 font-bold mb-1.5">📡 現場レーダー</p>
                           <div className="flex flex-wrap gap-1.5">
-                            {chips.slice(0, 5).map(chip => (
+                            {chips.slice(0, 6).map(chip => (
                               <span
                                 key={chip}
                                 className="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded-lg border border-indigo-100"
@@ -931,8 +947,8 @@ export default function HelpListPage() {
                                 {chip}
                               </span>
                             ))}
-                            {chips.length > 5 && (
-                              <span className="text-[10px] text-slate-400 py-1">+{chips.length - 5}</span>
+                            {chips.length > 6 && (
+                              <span className="text-[10px] text-slate-400 py-1">+{chips.length - 6}</span>
                             )}
                           </div>
                           {radar.requiredTools && radar.requiredTools.length > 0 && (

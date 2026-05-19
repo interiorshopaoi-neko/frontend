@@ -13,26 +13,29 @@ function getUserId(): string {
 // ─── 現場レーダー型定義 ───────────────────────────────────────────────────────
 
 type SiteRadar = {
-  siteType:       string;
-  siteScale:      string;
-  crewSize:       string;
-  siteConditions: string[];
+  siteType:        string;   // 旧フィールド（互換用）
+  buildingType:    string;
+  workCategory:    string;
+  siteStatus:      string;
+  siteScale:       string;
+  crewSize:        string;
+  siteConditions:  string[];
   accessCondition: string;
-  requiredTools:  string[];
-  toolNotes:      string;
+  requiredTools:   string[];
+  toolNotes:       string;
 };
 
-const SITE_TYPES: readonly string[] = [
-  '個人宅', '空室', '原状回復', '新築', '店舗', '大型現場', 'マンション共用部', 'その他',
-];
+const BUILDING_TYPES:  readonly string[] = ['戸建て', 'アパート', 'マンション', '店舗・事務所', 'その他'];
+const WORK_CATEGORIES: readonly string[] = ['原状回復', 'リフォーム・張り替え', '新築', '補修', 'その他'];
+const SITE_STATUSES:   readonly string[] = ['空室・入居前', '在宅', '営業中', '大型現場', 'その他'];
 const SITE_SCALES: readonly string[] = ['半日くらい', '1日', '2〜3日', '1週間以上'];
 const CREW_SIZES:  readonly string[] = ['1人現場', '2〜3人', '4人以上'];
 const SITE_CONDITIONS: readonly string[] = [
-  '駐車場あり', 'エレベーターあり', '家具少なめ', '荷物多め',
-  '糊付けスペースあり', '天井高め', '残業の可能性あり', '施主在宅の可能性あり',
+  '朝礼あり', '駐車場あり', '駐車場なし', 'エレベーターあり', '階段メイン',
+  '荷物多め', '糊付けスペースあり', '天井高め', '残業の可能性あり',
 ];
 const ACCESS_CONDITIONS: readonly string[] = [
-  '乗り付け可能', '少し離れる', '台車があると安心', '階段メイン', '未確認',
+  '乗り付け可能', '少し離れる', '台車があると安心', '未確認',
 ];
 const TOOL_OPTIONS: readonly string[] = [
   '腰道具', '脚立', 'パテ道具', '糊付け機', 'レーザー',
@@ -40,7 +43,8 @@ const TOOL_OPTIONS: readonly string[] = [
 ];
 
 const DEFAULT_RADAR: SiteRadar = {
-  siteType: '', siteScale: '', crewSize: '',
+  siteType: '', buildingType: '', workCategory: '', siteStatus: '',
+  siteScale: '', crewSize: '',
   siteConditions: [], accessCondition: '', requiredTools: [], toolNotes: '',
 };
 
@@ -175,7 +179,8 @@ export default function HelpRequestPage() {
 
     // 現場レーダー: 1つでも入力があれば meta に含める
     const r = form.radar;
-    const hasRadar = r.siteType || r.siteScale || r.crewSize ||
+    const hasRadar = r.buildingType || r.workCategory || r.siteStatus ||
+      r.siteScale || r.crewSize ||
       r.siteConditions.length > 0 || r.accessCondition ||
       r.requiredTools.length > 0 || r.toolNotes;
     const meta = (hasRadar || helperImageUrls.length > 0)
@@ -490,20 +495,43 @@ export default function HelpRequestPage() {
             <p className="text-sm font-extrabold text-slate-900">現場レーダー</p>
             <span className="text-xs bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-full">任意</span>
           </div>
-          <p className="text-xs font-semibold text-slate-500 mb-0.5">分かる範囲だけでOKです</p>
           <p className="text-xs text-slate-400 mb-5 leading-relaxed">
-            行く前に現場の雰囲気が分かると、応募されやすくなります
+            分かる範囲だけでOKです。朝礼・駐車場・搬入条件が分かると、応募されやすくなります。
           </p>
 
           <div className="space-y-5">
 
-            {/* 現場タイプ */}
+            {/* 建物の種類 */}
             <div>
-              <p className="text-sm font-extrabold text-slate-700 mb-2.5">現場タイプ</p>
+              <p className="text-sm font-extrabold text-slate-700 mb-2.5">建物の種類</p>
               <SingleChips
-                options={SITE_TYPES}
-                value={form.radar.siteType}
-                onChange={v => setRadar('siteType', v)}
+                options={BUILDING_TYPES}
+                value={form.radar.buildingType}
+                onChange={v => setRadar('buildingType', v)}
+              />
+            </div>
+
+            <div className="border-t border-slate-100" />
+
+            {/* 工事の種類 */}
+            <div>
+              <p className="text-sm font-extrabold text-slate-700 mb-2.5">工事の種類</p>
+              <SingleChips
+                options={WORK_CATEGORIES}
+                value={form.radar.workCategory}
+                onChange={v => setRadar('workCategory', v)}
+              />
+            </div>
+
+            <div className="border-t border-slate-100" />
+
+            {/* 現場の状態 */}
+            <div>
+              <p className="text-sm font-extrabold text-slate-700 mb-2.5">現場の状態</p>
+              <SingleChips
+                options={SITE_STATUSES}
+                value={form.radar.siteStatus}
+                onChange={v => setRadar('siteStatus', v)}
               />
             </div>
 
@@ -533,9 +561,9 @@ export default function HelpRequestPage() {
 
             <div className="border-t border-slate-100" />
 
-            {/* 現場状況チェック */}
+            {/* 現場ルール・注意点 */}
             <div>
-              <p className="text-sm font-extrabold text-slate-700 mb-2.5">現場状況 <span className="text-xs font-semibold text-slate-400">複数選択可</span></p>
+              <p className="text-sm font-extrabold text-slate-700 mb-2.5">現場ルール・注意点 <span className="text-xs font-semibold text-slate-400">複数選択可</span></p>
               <MultiChips
                 options={SITE_CONDITIONS}
                 values={form.radar.siteConditions}

@@ -28,11 +28,17 @@ Phase54〜55 での実装を経て、次フェーズ候補として整理。今�
 
 - 助っ人募集フォームの現場レーダーは「職人が行く前に現場の雰囲気を掴む」ための補助情報
 - **入力は任意・分かる範囲でOK**：入力ハードルを下げることで投稿完了率を上げる
-- フィールド構成：現場タイプ / 作業規模 / 人数感 / 現場状況（複数） / アクセス条件 / 必要な道具（複数） / その他注意点
+- フィールド構成（Phase57 改定）：建物の種類 / 工事の種類 / 現場の状態 / 作業規模 / 人数感 / 現場ルール・注意点（複数） / 搬入条件 / 必要な道具（複数） / その他注意点
 - チップは `bg-orange-500` で選択状態を表示：通常の案件（インディゴ系）と色で区別
 - ラベルは `text-sm font-extrabold text-slate-700` で視認性を確保
 - 「現場規模」は「作業規模」に統一（依頼ページ・一覧ページ両方）
-- `help_requests.meta.siteRadar` JSONB に保存（`siteType`, `siteScale`, `crewSize`, `siteConditions[]`, `accessCondition`, `requiredTools[]`, `toolNotes`）
+- ヒントテキスト：「分かる範囲だけでOKです。朝礼・駐車場・搬入条件が分かると、応募されやすくなります。」
+- `help_requests.meta.siteRadar` JSONB に保存
+  - 新フィールド：`buildingType`, `workCategory`, `siteStatus`
+  - 既存フィールド：`siteScale`, `crewSize`, `siteConditions[]`, `accessCondition`, `requiredTools[]`, `toolNotes`
+  - 旧フィールド `siteType` は互換用として読み取りのみ（一覧側で `buildingType ?? siteType` として表示）
+- 現場ルール・注意点（`siteConditions`）の選択肢：朝礼あり / 駐車場あり / 駐車場なし / エレベーターあり / 階段メイン / 荷物多め / 糊付けスペースあり / 天井高め / 残業の可能性あり
+- 搬入条件（`accessCondition`）：乗り付け可能 / 少し離れる / 台車があると安心 / 未確認（「階段メイン」は siteConditions に移動）
 
 ---
 
