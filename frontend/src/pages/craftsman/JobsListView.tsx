@@ -74,6 +74,21 @@ function fmt(n: number) {
   return `¥${n.toLocaleString()}`;
 }
 
+// ─── Filter types ─────────────────────────────────────────────────────────────
+
+type JobFilter = 'all' | 'urgent' | 'new24h' | 'video' | 'photo' | 'cross' | 'floor' | 'ceiling';
+
+const JOB_FILTERS: { key: JobFilter; label: string }[] = [
+  { key: 'all',     label: '全て'    },
+  { key: 'urgent',  label: '🔥 急ぎ' },
+  { key: 'new24h',  label: '🆕 新着' },
+  { key: 'video',   label: '🎬 動画' },
+  { key: 'photo',   label: '📷 写真' },
+  { key: 'cross',   label: '🏠 クロス'},
+  { key: 'floor',   label: '🪵 床'   },
+  { key: 'ceiling', label: '🔺 天井' },
+];
+
 // ─── Props ───────────────────────────────────────────────────────────────────
 
 type Props = { jobs: Job[]; loading: boolean; isLoggedIn?: boolean };
@@ -82,24 +97,44 @@ type Props = { jobs: Job[]; loading: boolean; isLoggedIn?: boolean };
 
 export default function JobsListView({ jobs, loading, isLoggedIn = false }: Props) {
   const navigate   = useNavigate();
-  const [filter, setFilter] = useState<'all' | 'today' | 'video'>('all');
+  const [filter, setFilter] = useState<JobFilter>('all');
+
+  // フィルター別の件数（チップに表示）
+  const filterCounts = useMemo((): Partial<Record<JobFilter, number>> => {
+    const c: Partial<Record<JobFilter, number>> = {};
+    for (const job of jobs) {
+      if (job.urgency === 'today' || job.urgency === 'tomorrow')
+        c.urgent  = (c.urgent  ?? 0) + 1;
+      if (job.created_at && (Date.now() - parseUtc(job.created_at)) < 86400000)
+        c.new24h  = (c.new24h  ?? 0) + 1;
+      if (job.has_video || !!job.video_url)
+        c.video   = (c.video   ?? 0) + 1;
+      if (job.has_photos)
+        c.photo   = (c.photo   ?? 0) + 1;
+      if (/クロス/.test(job.work_type ?? ''))
+        c.cross   = (c.cross   ?? 0) + 1;
+      if (/床|CF|クッション/.test(job.work_type ?? ''))
+        c.floor   = (c.floor   ?? 0) + 1;
+      if (hasCeilingWork(job.meta))
+        c.ceiling = (c.ceiling ?? 0) + 1;
+    }
+    return c;
+  }, [jobs]);
 
   const sortedJobs = useMemo(() => {
     return jobs
       .filter(job => {
-        if (filter === 'today') return job.urgency === 'today' || job.urgency === 'tomorrow';
-        if (filter === 'video') return job.has_video || !!job.video_url; // video_url も考慮
+        if (filter === 'urgent')  return job.urgency === 'today' || job.urgency === 'tomorrow';
+        if (filter === 'new24h')  return job.created_at ? (Date.now() - parseUtc(job.created_at)) < 86400000 : false;
+        if (filter === 'video')   return job.has_video || !!job.video_url;
+        if (filter === 'photo')   return job.has_photos;
+        if (filter === 'cross')   return /クロス/.test(job.work_type ?? '');
+        if (filter === 'floor')   return /床|CF|クッション/.test(job.work_type ?? '');
+        if (filter === 'ceiling') return hasCeilingWork(job.meta);
         return true;
       })
-      .sort((a, b) => {
-        // 動画あり（has_video OR video_url）を最優先
-        const vp = Number(b.has_video || !!b.video_url) - Number(a.has_video || !!a.video_url);
-        if (vp !== 0) return vp;
-        const pp = getPriority(b) - getPriority(a);
-        if (pp !== 0) return pp;
-        // 新しい順を最終 tiebreaker
-        return parseUtc(b.created_at ?? '') - parseUtc(a.created_at ?? '');
-      });
+      // 基本は新着順（created_at desc）
+      .sort((a, b) => parseUtc(b.created_at ?? '') - parseUtc(a.created_at ?? ''));
   }, [jobs, filter]);
 
   return (
@@ -113,19 +148,33 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
           <p>・成約後に連絡先が開示されます</p>
         </div>
 
-        {/* フィルター */}
-        <div className="mb-4 bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 p-2.5 grid grid-cols-3 gap-2">
-          {(['all', 'today', 'video'] as const).map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`rounded-xl py-2 text-sm font-bold transition ${
-                filter === f ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
-              }`}
-            >
-              {f === 'all' ? '全て' : f === 'today' ? '今日・明日' : '動画あり'}
-            </button>
-          ))}
+        {/* フィルター（横スクロール） */}
+        <div className="mb-4 -mx-4 px-4 overflow-x-auto">
+          <div className="flex gap-2 pb-1" style={{ minWidth: 'max-content' }}>
+            {JOB_FILTERS.map(({ key, label }) => {
+              const count = key === 'all' ? jobs.length : (filterCounts[key] ?? 0);
+              return (
+                <button
+                  key={key}
+                  onClick={() => setFilter(key)}
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold border whitespace-nowrap transition active:scale-95 ${
+                    filter === key
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                  }`}
+                >
+                  {label}
+                  {count > 0 && (
+                    <span className={`rounded-full text-[10px] font-extrabold px-1.5 py-0.5 leading-none ${
+                      filter === key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* ローディング / 空 */}
@@ -155,14 +204,19 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
               // 新着かどうか（24時間以内）
               const isNew24h   = job.created_at
                 ? (Date.now() - parseUtc(job.created_at)) < 86400000 : false;
+              // 5日以上経過した案件は目立たせない
+              const isOld      = job.created_at
+                ? (Date.now() - parseUtc(job.created_at)) > 86400000 * 5 : false;
 
               return (
                 <article
                   key={job.id}
-                  className={`bg-white rounded-3xl shadow-sm overflow-hidden ${
-                    isNew24h
-                      ? 'ring-2 ring-blue-400 shadow-blue-100'
-                      : 'ring-1 ring-slate-200'
+                  className={`rounded-3xl shadow-sm overflow-hidden transition ${
+                    isOld
+                      ? 'bg-slate-50 opacity-70 ring-1 ring-slate-100'
+                      : isNew24h
+                      ? 'bg-white ring-2 ring-blue-400 shadow-blue-100'
+                      : 'bg-white ring-1 ring-slate-200'
                   }`}
                 >
 
