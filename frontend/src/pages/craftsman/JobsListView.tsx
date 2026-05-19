@@ -4,7 +4,7 @@ import { calculateServiceFee } from '../../lib/serviceFee';
 import { FEE_TABLE } from '../../constants/fees';
 import type { Job } from './CraftsmanJobsPage';
 import { calcRevenueNum } from '../../lib/revenueEstimate';
-import { hasCeilingWork } from '../../lib/requestMeta';
+import { hasCeilingWork, getRoomMedia } from '../../lib/requestMeta';
 import SiteRadar from '../../components/SiteRadar';
 
 // ─── Freshness helpers ───────────────────────────────────────────────────────
@@ -74,19 +74,31 @@ function fmt(n: number) {
   return `¥${n.toLocaleString()}`;
 }
 
+// ─── Filter helpers ───────────────────────────────────────────────────────────
+
+function isUrgent(job: Job): boolean {
+  if (job.urgency === 'today' || job.urgency === 'tomorrow' || job.urgency === 'soon') return true;
+  return /急ぎ|なるべく早く|至急/.test(job.meta?.extra_info?.timing ?? '');
+}
+
+function isInfoRich(job: Job): boolean {
+  const hasVideo    = job.has_video || !!job.video_url;
+  const roomMedia   = getRoomMedia(job.meta ?? null);
+  const hasRoomMedia = roomMedia.some(rm => rm.videos.length > 0 || rm.images.length > 0);
+  return (hasVideo && !!job.has_photos) || hasRoomMedia;
+}
+
 // ─── Filter types ─────────────────────────────────────────────────────────────
 
-type JobFilter = 'all' | 'urgent' | 'new24h' | 'video' | 'photo' | 'cross' | 'floor' | 'ceiling';
+type JobFilter = 'all' | 'new24h' | 'urgent' | 'video' | 'photo' | 'info_rich';
 
 const JOB_FILTERS: { key: JobFilter; label: string }[] = [
-  { key: 'all',     label: '全て'    },
-  { key: 'urgent',  label: '🔥 急ぎ' },
-  { key: 'new24h',  label: '🆕 新着' },
-  { key: 'video',   label: '🎬 動画' },
-  { key: 'photo',   label: '📷 写真' },
-  { key: 'cross',   label: '🏠 クロス'},
-  { key: 'floor',   label: '🪵 床'   },
-  { key: 'ceiling', label: '🔺 天井' },
+  { key: 'all',       label: '全て'       },
+  { key: 'new24h',    label: '🆕 新着'   },
+  { key: 'urgent',    label: '🔥 急ぎ'   },
+  { key: 'video',     label: '🎬 動画'   },
+  { key: 'photo',     label: '📷 写真'   },
+  { key: 'info_rich', label: '✓ 情報充実' },
 ];
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -103,20 +115,16 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
   const filterCounts = useMemo((): Partial<Record<JobFilter, number>> => {
     const c: Partial<Record<JobFilter, number>> = {};
     for (const job of jobs) {
-      if (job.urgency === 'today' || job.urgency === 'tomorrow')
-        c.urgent  = (c.urgent  ?? 0) + 1;
+      if (isUrgent(job))
+        c.urgent    = (c.urgent    ?? 0) + 1;
       if (job.created_at && (Date.now() - parseUtc(job.created_at)) < 86400000)
-        c.new24h  = (c.new24h  ?? 0) + 1;
+        c.new24h    = (c.new24h    ?? 0) + 1;
       if (job.has_video || !!job.video_url)
-        c.video   = (c.video   ?? 0) + 1;
+        c.video     = (c.video     ?? 0) + 1;
       if (job.has_photos)
-        c.photo   = (c.photo   ?? 0) + 1;
-      if (/クロス/.test(job.work_type ?? ''))
-        c.cross   = (c.cross   ?? 0) + 1;
-      if (/床|CF|クッション/.test(job.work_type ?? ''))
-        c.floor   = (c.floor   ?? 0) + 1;
-      if (hasCeilingWork(job.meta))
-        c.ceiling = (c.ceiling ?? 0) + 1;
+        c.photo     = (c.photo     ?? 0) + 1;
+      if (isInfoRich(job))
+        c.info_rich = (c.info_rich ?? 0) + 1;
     }
     return c;
   }, [jobs]);
@@ -124,13 +132,11 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
   const sortedJobs = useMemo(() => {
     return jobs
       .filter(job => {
-        if (filter === 'urgent')  return job.urgency === 'today' || job.urgency === 'tomorrow';
-        if (filter === 'new24h')  return job.created_at ? (Date.now() - parseUtc(job.created_at)) < 86400000 : false;
-        if (filter === 'video')   return job.has_video || !!job.video_url;
-        if (filter === 'photo')   return job.has_photos;
-        if (filter === 'cross')   return /クロス/.test(job.work_type ?? '');
-        if (filter === 'floor')   return /床|CF|クッション/.test(job.work_type ?? '');
-        if (filter === 'ceiling') return hasCeilingWork(job.meta);
+        if (filter === 'urgent')    return isUrgent(job);
+        if (filter === 'new24h')    return job.created_at ? (Date.now() - parseUtc(job.created_at)) < 86400000 : false;
+        if (filter === 'video')     return job.has_video || !!job.video_url;
+        if (filter === 'photo')     return job.has_photos;
+        if (filter === 'info_rich') return isInfoRich(job);
         return true;
       })
       // 基本は新着順（created_at desc）
