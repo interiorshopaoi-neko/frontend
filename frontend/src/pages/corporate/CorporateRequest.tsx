@@ -48,8 +48,8 @@ type Room = {
 const ROOM_NAMES = ['LDK', '洋室', '寝室', '廊下', '玄関', '階段', 'トイレ', '洗面所', '収納', 'クローゼット', '店舗', '事務所', 'その他'] as const;
 const ROOM_WORKS = ['壁紙・クロス', '天井クロス', '壁＋天井', 'クッションフロア', '両方'] as const;
 const ROOM_SIZES = ['4.5畳', '6畳', '8畳', '10畳', '12畳', '12畳以上', '15畳以上', '20畳以上', '不明'] as const;
-const ROOM_CONDS = ['汚れ', 'めくれ', '傷', 'カビ', 'ペット臭', '不明'] as const;
-const ROOM_MATERIAL_PREFS = ['量産クロスでよい', '1000番・機能性クロスも検討', '柄物・アクセントクロス希望', 'まだ決まっていない'] as const;
+const ROOM_CONDS = ['汚れ', 'めくれ', '傷', '穴', 'カビ', 'ペット臭', '不明'] as const;
+const ROOM_MATERIAL_PREFS = ['量産クロスでよい', '1000番・機能性クロスも検討', 'まだ決まっていない'] as const;
 
 // 初期表示に見せる優先チップ（それ以外は折りたたみ内）
 const PRIMARY_ROOM_NAMES: readonly string[] = ['LDK', '洋室', '寝室', '廊下', '玄関', 'トイレ', 'その他'];
@@ -99,7 +99,7 @@ const WALLPAPER_STYLES = [
 
 const ACCENT_OPTIONS = [
   '一面だけ色を変えたい',
-  '柄物を使ってみたい',
+  '一面だけ柄を入れたい',
   '木目・石目調も気になる',
   'トイレや洗面所だけ少し変えたい',
   'まだ分からない',
@@ -324,6 +324,7 @@ function RoomCard({
   onDelete,
   expanded,
   onToggleExpand,
+  showSizeError,
 }: {
   room: Room;
   index: number;
@@ -332,6 +333,7 @@ function RoomCard({
   onDelete: () => void;
   expanded: boolean;
   onToggleExpand: () => void;
+  showSizeError?: boolean;
 }) {
   function toggleCond(c: string) {
     const has = room.condition.includes(c);
@@ -350,10 +352,12 @@ function RoomCard({
   // 部屋別動画サイズエラー
   const [videoSizeError, setVideoSizeError] = useState<string | null>(null);
 
-  // 詳細フィールドに値があれば自動で開く（工事内容は常時表示に移動したので除外）
+  // 部屋名自由入力の表示制御
+  const [showCustomNameInput, setShowCustomNameInput] = useState(false);
+  const showNameInput = room.name === 'その他' || showCustomNameInput || !!room.customName;
+
+  // 詳細フィールドに値があれば自動で開く（広さ・部屋名は常時表示に移動したので除外）
   const hasDetailValues = !!(
-    room.customName ||
-    room.size || room.customSize ||
     room.condition.length > 0 ||
     room.materialPref ||
     room.roomVideoFiles.length > 0 ||
@@ -361,16 +365,14 @@ function RoomCard({
   );
   const showDetail = expanded || hasDetailValues;
 
-  // 折りたたみバッジ用カウント
+  // 折りたたみバッジ用カウント（広さ・部屋名は常時表示に移動したので除外）
   const detailCount = [
-    room.customName || (room.name && !PRIMARY_ROOM_NAMES.includes(room.name)) ? 'x' : '',
-    room.size || room.customSize,
     room.condition.length > 0 ? 'x' : '',
-    room.materialPref,
+    room.materialPref && room.materialPref !== 'まだ決まっていない' ? 'x' : '',
     room.roomVideoFiles.length > 0 || room.roomImageFiles.length > 0 ? 'x' : '',
   ].filter(Boolean).length;
 
-  const extraRoomNames = (ROOM_NAMES as readonly string[]).filter(n => !PRIMARY_ROOM_NAMES.includes(n));
+  const hasSizeError = !!(showSizeError && !room.size && !room.customSize.trim());
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white px-4 py-5 space-y-4">
@@ -403,6 +405,22 @@ function RoomCard({
             </button>
           ))}
         </div>
+        {showNameInput ? (
+          <input
+            value={room.customName}
+            onChange={e => onUpdate({ customName: e.target.value })}
+            placeholder="例：階段、洗面所、店舗入口、サンルームなど"
+            className="mt-2 w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowCustomNameInput(true)}
+            className="mt-1.5 text-xs text-slate-400 hover:text-blue-600 underline underline-offset-2 transition-colors"
+          >
+            部屋名を詳しく書く
+          </button>
+        )}
       </div>
 
       {/* ── どこをきれいにしますか？（2段：クロス＋床） ── */}
@@ -452,6 +470,40 @@ function RoomCard({
         </div>
       </div>
 
+      {/* ── だいたいの広さ（必須） ── */}
+      <div>
+        <p className="text-xs font-bold text-slate-600 mb-0.5">
+          だいたいの広さ
+          <span className="text-red-400 ml-0.5">*</span>
+        </p>
+        <p className="text-[11px] text-slate-400 mb-1.5">正確でなくてOK。分からない場合は「不明」でも大丈夫です</p>
+        {hasSizeError && (
+          <div className="mb-2 rounded-xl bg-red-50 border border-red-200 px-3 py-2">
+            <p className="text-xs font-bold text-red-600">だいたいの広さを選んでください。不明でも大丈夫です</p>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-1.5 mb-1.5">
+          {ROOM_SIZES.map(s => (
+            <button key={s} type="button" onClick={() => onUpdate({ size: s })}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all active:scale-95 ${
+                room.size === s
+                  ? 'bg-slate-800 text-white border-slate-800'
+                  : hasSizeError
+                    ? 'bg-white text-slate-600 border-red-300 hover:border-slate-400'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+              }`}>
+              {s}
+            </button>
+          ))}
+        </div>
+        <input
+          value={room.customSize}
+          onChange={e => onUpdate({ customSize: e.target.value })}
+          placeholder="例：13.5畳、約18畳、廊下5mくらい"
+          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200 bg-white"
+        />
+      </div>
+
       {/* ── 写真・動画の案内（短く） ── */}
       <p className="text-xs text-slate-500 bg-slate-50 rounded-xl px-3 py-2 border border-slate-100">
         📷 写真・動画はあとからでもOK。傷やめくれは写真だけでも大丈夫です。
@@ -464,7 +516,7 @@ function RoomCard({
         className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-violet-600 transition-colors"
       >
         <span className={`inline-block transition-transform duration-200 text-[10px] ${showDetail ? 'rotate-90' : ''}`}>▶</span>
-        詳しく入力する（広さ・状態・写真など）
+        詳しく入力する（状態・材料・写真など）
         {!showDetail && detailCount > 0 && (
           <span className="bg-violet-100 text-violet-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
             {detailCount}
@@ -475,54 +527,6 @@ function RoomCard({
       {/* ── 折りたたみ内（詳細） ── */}
       {showDetail && (
         <div className="space-y-4 border-t border-slate-100 pt-4">
-
-          {/* 部屋名：追加チップ＋自由入力 */}
-          <div>
-            <p className="text-[11px] font-bold text-slate-500 mb-1.5">部屋名（その他）</p>
-            {extraRoomNames.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-1.5">
-                {extraRoomNames.map(n => (
-                  <button key={n} type="button" onClick={() => onUpdate({ name: n })}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                      room.name === n
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
-                    }`}>
-                    {n}
-                  </button>
-                ))}
-              </div>
-            )}
-            <input
-              value={room.customName}
-              onChange={e => onUpdate({ customName: e.target.value })}
-              placeholder="例：サンルーム、書斎、店舗入口、階段下収納 など"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white"
-            />
-          </div>
-
-          {/* 広さ */}
-          <div>
-            <p className="text-[11px] font-bold text-slate-500 mb-1.5">だいたいの広さ</p>
-            <div className="flex flex-wrap gap-1.5 mb-1.5">
-              {ROOM_SIZES.map(s => (
-                <button key={s} type="button" onClick={() => onUpdate({ size: s })}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                    room.size === s
-                      ? 'bg-slate-800 text-white border-slate-800'
-                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
-                  }`}>
-                  {s}
-                </button>
-              ))}
-            </div>
-            <input
-              value={room.customSize}
-              onChange={e => onUpdate({ customSize: e.target.value })}
-              placeholder="例：13.5畳、約18畳、廊下5mくらい"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200 bg-white"
-            />
-          </div>
 
           {/* 状態 */}
           <div>
@@ -557,7 +561,7 @@ function RoomCard({
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-slate-400 leading-relaxed">詳しい品番は、職人が決まった後でも追加で相談できます。柄物・アクセント・機能性クロスは追加費用がかかる場合があります。</p>
+            <p className="text-[10px] text-slate-400 leading-relaxed">詳しい品番は、職人が決まった後でも追加で相談できます。1000番・機能性クロスは通常クロスより費用が上がる場合があります。</p>
           </div>
 
           {/* この部屋の動画・写真 */}
@@ -808,6 +812,9 @@ export default function CorporateRequest() {
     } catch { /* 壊れたデータは無視 */ }
   }
 
+  // 広さバリデーション（次へ押下時にのみ表示）
+  const [showSizeErrors, setShowSizeErrors] = useState(false);
+
   // 送信状態（step3Skipped は下書き保存 useEffect の dep に必要なため先に宣言）
   const [step3Skipped,   setStep3Skipped]   = useState(false);
   const [submitState,    setSubmitState]    = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
@@ -854,6 +861,16 @@ export default function CorporateRequest() {
 
   // 部屋の workType から施工内容を自動導出してStep3をスキップ
   function goFromRoomsToNext() {
+    // 広さバリデーション：部屋情報が入力されている場合は広さ必須
+    if (hasRoomInfo) {
+      const hasMissingSize = rooms.some(r => !r.size && !r.customSize.trim());
+      if (hasMissingSize) {
+        setShowSizeErrors(true);
+        return;
+      }
+    }
+    setShowSizeErrors(false);
+
     const roomTypes = rooms.map(r => r.workType).filter(Boolean);
     if (roomTypes.length > 0 && !workType) {
       const hasCF      = roomTypes.some(w => w === 'クッションフロア');
@@ -1488,6 +1505,7 @@ export default function CorporateRequest() {
                 onDelete={() => removeRoom(idx)}
                 expanded={expandedRooms[idx] ?? false}
                 onToggleExpand={() => setExpandedRooms(prev => prev.map((v, i) => i === idx ? !v : v))}
+                showSizeError={showSizeErrors && !room.size && !room.customSize.trim()}
               />
             ))}
 
@@ -1553,9 +1571,12 @@ export default function CorporateRequest() {
                   })}
                 </div>
                 {wallpaperAccentPreferences.some(p => p !== 'まだ分からない') && (
-                  <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
+                  <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 space-y-0.5">
                     <p className="text-[11px] text-amber-700 leading-relaxed">
-                      ⚠️ アクセントクロスは通常クロスより費用が上がる場合があります。正式な金額は職人が確認後にご案内します。
+                      アクセントクロス・柄物・木目/石目調などは、通常クロスより費用が上がる場合があります。
+                    </p>
+                    <p className="text-[11px] text-amber-600 leading-relaxed">
+                      正式な金額は、職人が内容を確認した後にご案内します。
                     </p>
                   </div>
                 )}
@@ -1804,7 +1825,9 @@ export default function CorporateRequest() {
                 ...workParts,
                 displaySize,
                 ...(Array.isArray(r.condition) ? r.condition : []),
-                r.materialPref && r.materialPref !== 'まだ決まっていない' ? r.materialPref : '',
+                r.materialPref && r.materialPref !== 'まだ決まっていない'
+                  ? (r.materialPref === '柄物・アクセントクロス希望' ? 'アクセント希望あり' : r.materialPref)
+                  : '',
                 hasMedia ? '写真・動画あり' : '',
               ].filter(Boolean);
               return (
