@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { getFreshness, FRESHNESS_CLASS } from '../../lib/freshness';
 import { AdminLogin, AdminNav, AdminUnauthorized, isAdminRole } from './shared';
 import LogoutConfirmModal from '../../components/LogoutConfirmModal';
-import { getWallpaperPreference, getMaterialPreferenceChips, hasCeilingWork, getExtraInfo, getRoomMedia } from '../../lib/requestMeta';
+import { getWallpaperPreference, getMaterialPreferenceChips, hasCeilingWork, getExtraInfo, getRoomMedia, getWallpaperAccentPreferences, getRoomWorkSummary } from '../../lib/requestMeta';
 
 const URL_FILTER_LABELS: Record<string, string> = {
   new:         '新しい案件',
@@ -496,10 +496,11 @@ function DetailModal({
 
           {/* クロス希望・材料情報（meta から） */}
           {(() => {
-            const wallPref = getWallpaperPreference(row.meta);
-            const matChips = getMaterialPreferenceChips(row.meta);
-            const ceiling  = hasCeilingWork(row.meta);
-            if (!wallPref && matChips.length === 0 && !ceiling) return null;
+            const wallPref   = getWallpaperPreference(row.meta);
+            const matChips   = getMaterialPreferenceChips(row.meta);
+            const ceiling    = hasCeilingWork(row.meta);
+            const accentPrefs = getWallpaperAccentPreferences(row.meta).filter(p => p !== 'まだ分からない');
+            if (!wallPref && matChips.length === 0 && !ceiling && accentPrefs.length === 0) return null;
             return (
               <div className="rounded-2xl border border-teal-100 bg-teal-50/30 overflow-hidden">
                 <div className="px-4 py-2 bg-teal-50 border-b border-teal-100">
@@ -516,9 +517,14 @@ function DetailModal({
                       🎨 雰囲気：{wallPref}
                     </span>
                   )}
+                  {accentPrefs.map(p => (
+                    <span key={p} className="bg-purple-50 border border-purple-100 text-purple-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                      ✨ {p}
+                    </span>
+                  ))}
                   {matChips.map(({ room, pref }) => (
                     <span key={room} className="bg-violet-50 border border-violet-100 text-violet-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
-                      {room}：{pref}
+                      {room}：{pref === '柄物・アクセントクロス希望' ? 'アクセント希望あり' : pref}
                     </span>
                   ))}
                 </div>

@@ -43,8 +43,11 @@ export function getRooms(meta: unknown): RoomMeta[] {
 }
 
 export function hasCeilingWork(meta: unknown): boolean {
-  return getRooms(meta).some(
-    r => r.workType === '天井クロス' || r.workType === '壁＋天井',
+  return getRooms(meta).some(r =>
+    r.wallWorkScope === 'ceiling' ||
+    r.wallWorkScope === 'wall_ceiling' ||
+    r.workType === '天井クロス' ||
+    r.workType === '壁＋天井',
   );
 }
 
@@ -103,7 +106,7 @@ export function getRoomWorkSummary(room: RoomMeta): string[] {
   if (wt === '天井クロス')         return ['クロス：天井'];
   if (wt === '壁＋天井')           return ['クロス：壁＋天井'];
   if (wt === 'クッションフロア')   return ['床：クッションフロア'];
-  if (wt === '両方')               return ['クロス：壁＋天井', '床：クッションフロア'];
+  if (wt === '両方')               return ['クロス：壁', '床：クッションフロア'];  // 旧「両方」= 壁クロス＋CF（天井なし）
   if (wt)                          return [wt];
   return [];
 }

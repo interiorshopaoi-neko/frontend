@@ -58,6 +58,19 @@ Phase56 で現場レーダー UI（チップ・難易度badge・情報充実度�
 - **状態に「穴」を追加**：クロス補修依頼で多い。「傷」と区別して職人が素早く判断できる
 - **雰囲気カード（WALLPAPER_STYLES）は理想の空間イメージ**：アクセントとは別枠で選ぶ
 
+### meta / 下書き保存の設計原則
+
+- **wallWorkScope / floorWork が真の工事範囲**：`workType` は旧形式互換用としてのみ保持
+  - `wallWorkScope`: `'wall' | 'ceiling' | 'wall_ceiling' | ''`
+  - `floorWork`: `boolean`（クッションフロア ON/OFF）
+  - 旧 `workType='両方'` は「壁クロス＋クッションフロア」の意味（天井なし）
+- **localStorage draft には File/objectURL を保存しない**：復元時は `roomVideoFiles: [], roomImageFiles: []` で初期化
+- **管理・職人側では requestMeta.ts の helper 経由で読む**：`getRoomWorkSummary()` が新旧両形式を処理
+  - `hasCeilingWork()`: wallWorkScope / workType の両方をチェック
+  - `getRoomWorkSummary()`: 「両方」は「クロス：壁 + 床：クッションフロア」に分解して表示
+  - `getWallpaperAccentPreferences()`: `wallpaper_accent_preferences` を安全に取得
+- **直接 `room.workType` を表示しない**：「両方」などの内部値が露出する
+
 ---
 
 ## 考え方の前提

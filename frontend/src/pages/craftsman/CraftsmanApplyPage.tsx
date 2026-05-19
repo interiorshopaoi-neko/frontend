@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { calculateServiceFee, formatFee } from '../../lib/serviceFee';
 import type { Job } from './CraftsmanJobsPage';
-import { getExtraInfo, getRoomMedia } from '../../lib/requestMeta';
+import { getExtraInfo, getRoomMedia, getRoomWorkSummary, getWallpaperAccentPreferences } from '../../lib/requestMeta';
 import SiteRadar from '../../components/SiteRadar';
 
 function labelUrgency(level?: string) {
@@ -238,12 +238,16 @@ export default function CraftsmanApplyPage() {
           {(() => {
             const rooms = job?.meta?.rooms ?? [];
             const wallPref = job?.meta?.wallpaper_preference;
-            const hasCeiling = rooms.some(r => r.workType === '天井クロス' || r.workType === '壁＋天井');
+            const accentPrefs = getWallpaperAccentPreferences(job?.meta);
+            const hasCeiling = rooms.some(r =>
+              r.wallWorkScope === 'ceiling' || r.wallWorkScope === 'wall_ceiling' ||
+              r.workType === '天井クロス' || r.workType === '壁＋天井'
+            );
             if (rooms.length === 0 && !wallPref) return null;
             return (
               <div className="mx-5 mb-3">
                 {/* ヘッダーチップ行 */}
-                {(wallPref || hasCeiling) && (
+                {(wallPref || hasCeiling || accentPrefs.length > 0) && (
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {wallPref && (
                       <span className="bg-teal-50 text-teal-700 text-[11px] font-bold px-2.5 py-1 rounded-full border border-teal-100">
@@ -255,6 +259,11 @@ export default function CraftsmanApplyPage() {
                         天井あり
                       </span>
                     )}
+                    {accentPrefs.filter(p => p !== 'まだ分からない').map(p => (
+                      <span key={p} className="bg-purple-50 text-purple-700 text-[11px] font-bold px-2.5 py-1 rounded-full border border-purple-100">
+                        ✨ {p}
+                      </span>
+                    ))}
                   </div>
                 )}
                 {rooms.length > 0 && (
@@ -265,12 +274,21 @@ export default function CraftsmanApplyPage() {
                     <div className="space-y-2">
                       {rooms.map((room, i) => {
                         const conds = room.condition ?? [];
+                        const workParts = getRoomWorkSummary(room);
                         return (
                           <div key={i} className="rounded-2xl bg-slate-50 px-4 py-3">
                             <p className="text-sm font-bold text-slate-800">
                               {room.customName || room.name || `部屋${i + 1}`}
-                              {room.workType && <span className="ml-2 text-xs font-normal text-slate-500">{room.workType}</span>}
                             </p>
+                            {workParts.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {workParts.map(w => (
+                                  <span key={w} className="text-[10px] font-semibold text-violet-700 bg-violet-50 border border-violet-100 px-2 py-0.5 rounded-full">
+                                    {w}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                             {((room.customSize || room.size) || conds.length > 0) && (
                               <p className="text-xs text-slate-500 mt-0.5">
                                 {[room.customSize || room.size, ...conds].filter(Boolean).join(' · ')}
@@ -278,7 +296,7 @@ export default function CraftsmanApplyPage() {
                             )}
                             {room.materialPref && room.materialPref !== 'まだ決まっていない' && (
                               <span className="inline-block mt-1.5 bg-teal-50 text-teal-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-teal-100">
-                                材料希望：{room.materialPref}
+                                材料希望：{room.materialPref === '柄物・アクセントクロス希望' ? 'アクセント希望あり' : room.materialPref}
                               </span>
                             )}
                           </div>

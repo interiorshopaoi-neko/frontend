@@ -780,7 +780,8 @@ export default function CorporateRequest() {
             const wt = (r as any).workType ?? '';
             if (wt === '壁紙・クロス') return 'wall';
             if (wt === '天井クロス')   return 'ceiling';
-            if (wt === '壁＋天井' || wt === '両方') return 'wall_ceiling';
+            if (wt === '壁＋天井')     return 'wall_ceiling';
+            if (wt === '両方')         return 'wall';   // 旧「両方」= 壁クロス＋CF（天井なし）
             return '';
           })();
           const floorWork: boolean = (r as any).floorWork ?? (
@@ -823,19 +824,23 @@ export default function CorporateRequest() {
   const [newRequestId,   setNewRequestId]   = useState<string | null>(null);
 
   // 500ms デバウンスで自動保存（step3Skipped 宣言より後に置くこと — TDZ 防止）
+  // showDraftBanner が true の間はマウント直後の空state で既存下書きを上書きしない
   useEffect(() => {
+    if (showDraftBanner) return;
     const timer = setTimeout(() => {
       try {
         const draft: DraftData = {
           step,
           rooms: rooms.map(r => ({
-            name:         r.name,
-            workType:     r.workType,
-            size:         r.size,
-            condition:    r.condition,
-            materialPref: r.materialPref,
-            customName:   r.customName,
-            customSize:   r.customSize,
+            name:          r.name,
+            workType:      r.workType,
+            wallWorkScope: r.wallWorkScope,
+            floorWork:     r.floorWork,
+            size:          r.size,
+            condition:     r.condition,
+            materialPref:  r.materialPref,
+            customName:    r.customName,
+            customSize:    r.customSize,
           })),
           wallpaperPreference,
           wallpaperAccentPreferences,
@@ -854,7 +859,7 @@ export default function CorporateRequest() {
       } catch { /* localStorage 失敗は無視 */ }
     }, 500);
     return () => clearTimeout(timer);
-  }, [step, rooms, wallpaperPreference, wallpaperAccentPreferences, workType, roomType, roomSize, timing, siteCondition, desireType, memo, area, contactValue, step3Skipped]);
+  }, [step, rooms, wallpaperPreference, wallpaperAccentPreferences, workType, roomType, roomSize, timing, siteCondition, desireType, memo, area, contactValue, step3Skipped, showDraftBanner]);
 
   const hasDetail = !!(timing || desireType || memo);
   const hasRoomInfo = rooms.some(r => r.workType || r.size);

@@ -2,7 +2,7 @@
 // チップ・難易度badge・情報充実度インジケーターを提供する
 
 import type { Job } from '../pages/craftsman/CraftsmanJobsPage';
-import { getRoomMedia } from '../lib/requestMeta';
+import { getRoomMedia, getWallpaperAccentPreferences } from '../lib/requestMeta';
 
 type Chip = { text: string; cls: string };
 
@@ -17,14 +17,17 @@ export function computeRadarChips(job: Job): Chip[] {
   if (hasVideo) chips.push({ text: '🎬 動画あり', cls: 'bg-blue-100 text-blue-700' });
   if (job.has_photos || hasRoomImages) chips.push({ text: '📷 写真あり', cls: 'bg-blue-50 text-blue-600' });
 
-  // 施工量
-  const hasCeiling = rooms.some(r => r.workType === '天井クロス' || r.workType === '壁＋天井');
+  // 施工量（新旧両形式対応）
+  const hasCeiling = rooms.some(r =>
+    r.wallWorkScope === 'ceiling' || r.wallWorkScope === 'wall_ceiling' ||
+    r.workType === '天井クロス' || r.workType === '壁＋天井'
+  );
   if (hasCeiling) chips.push({ text: '天井あり', cls: 'bg-amber-100 text-amber-700' });
 
-  // 材料・仕上げ
-  const hasAccent = rooms.some(r =>
-    r.materialPref?.includes('アクセント') || r.materialPref?.includes('柄物')
-  );
+  // 材料・仕上げ（アクセント希望は新旧両方チェック）
+  const accentPrefs = getWallpaperAccentPreferences(job.meta);
+  const hasAccent = accentPrefs.some(p => p !== 'まだ分からない') ||
+    rooms.some(r => r.materialPref?.includes('アクセント') || r.materialPref?.includes('柄物'));
   if (hasAccent) chips.push({ text: 'アクセント希望', cls: 'bg-purple-50 text-purple-700' });
   const hasUndecided = rooms.some(r => r.materialPref === 'まだ決まっていない');
   if (hasUndecided) chips.push({ text: '材料未定', cls: 'bg-slate-100 text-slate-500' });
@@ -52,8 +55,13 @@ export function computeRadarChips(job: Job): Chip[] {
 function computeDifficulty(job: Job): { label: string; cls: string } {
   const rooms = job.meta?.rooms ?? [];
   let score = 0;
-  if (rooms.some(r => r.workType === '天井クロス' || r.workType === '壁＋天井')) score++;
-  if (rooms.some(r => r.materialPref?.includes('アクセント') || r.materialPref?.includes('柄物'))) score++;
+  if (rooms.some(r =>
+    r.wallWorkScope === 'ceiling' || r.wallWorkScope === 'wall_ceiling' ||
+    r.workType === '天井クロス' || r.workType === '壁＋天井'
+  )) score++;
+  const accentPrefs = getWallpaperAccentPreferences(job.meta);
+  if (accentPrefs.some(p => p !== 'まだ分からない') ||
+      rooms.some(r => r.materialPref?.includes('アクセント') || r.materialPref?.includes('柄物'))) score++;
   if (rooms.length >= 3) score++;
   if (score === 0) return { label: '低',       cls: 'bg-emerald-50 text-emerald-600 border-emerald-100' };
   if (score === 1) return { label: '普通',     cls: 'bg-slate-50 text-slate-500 border-slate-200' };
