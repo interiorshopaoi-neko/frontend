@@ -298,7 +298,8 @@ function RoomCard({
   // 写真プレビュー用 objectURL（room.roomImageFiles が変わるたびに再生成・旧URL revoke）
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   useEffect(() => {
-    const urls = room.roomImageFiles.map(f => URL.createObjectURL(f));
+    const files = Array.isArray(room.roomImageFiles) ? room.roomImageFiles : [];
+    const urls = files.map(f => URL.createObjectURL(f));
     setImageUrls(urls);
     return () => { urls.forEach(u => URL.revokeObjectURL(u)); };
   }, [room.roomImageFiles]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -738,7 +739,14 @@ export default function CorporateRequest() {
     } catch { /* 壊れたデータは無視 */ }
   }
 
-  // 500ms デバウンスで自動保存
+  // 送信状態（step3Skipped は下書き保存 useEffect の dep に必要なため先に宣言）
+  const [step3Skipped,   setStep3Skipped]   = useState(false);
+  const [submitState,    setSubmitState]    = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  const [uploadPhase,    setUploadPhase]    = useState<string>('');
+  const [devErrorDetail, setDevErrorDetail] = useState<string | null>(null);
+  const [newRequestId,   setNewRequestId]   = useState<string | null>(null);
+
+  // 500ms デバウンスで自動保存（step3Skipped 宣言より後に置くこと — TDZ 防止）
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
@@ -770,13 +778,6 @@ export default function CorporateRequest() {
     }, 500);
     return () => clearTimeout(timer);
   }, [step, rooms, wallpaperPreference, workType, roomType, roomSize, timing, siteCondition, desireType, memo, area, contactValue, step3Skipped]);
-
-  // 送信状態
-  const [step3Skipped,   setStep3Skipped]   = useState(false);
-  const [submitState,    setSubmitState]    = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
-  const [uploadPhase,    setUploadPhase]    = useState<string>('');
-  const [devErrorDetail, setDevErrorDetail] = useState<string | null>(null);
-  const [newRequestId,   setNewRequestId]   = useState<string | null>(null);
 
   const hasDetail = !!(timing || desireType || memo);
   const hasRoomInfo = rooms.some(r => r.workType || r.size);
