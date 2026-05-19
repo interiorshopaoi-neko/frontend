@@ -25,6 +25,14 @@ export function getWallpaperPreference(meta: unknown): string | null {
   return typeof v === 'string' && v ? v : null;
 }
 
+export function getWallpaperAccentPreferences(meta: unknown): string[] {
+  const m = asMeta(meta);
+  if (!m) return [];
+  const v = m.wallpaper_accent_preferences;
+  if (!Array.isArray(v)) return [];
+  return v.filter((s): s is string => typeof s === 'string');
+}
+
 export function getRooms(meta: unknown): RoomMeta[] {
   const m = asMeta(meta);
   if (!m) return [];

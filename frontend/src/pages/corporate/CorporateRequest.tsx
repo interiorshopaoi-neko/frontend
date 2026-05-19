@@ -88,9 +88,21 @@ function getRoomWorkDisplay(room: Room): string[] {
 const MAX_VIDEO_BYTES_MAIN = 50 * 1024 * 1024; // 50MB — メイン動画
 const ROOM_VIDEO_MAX_BYTES = 30 * 1024 * 1024; // 30MB — 部屋別動画（短い動画想定）
 
-const WALLPAPER_MOODS = [
-  '明るい白系', '汚れが目立ちにくい', 'ホテルっぽい', '北欧・ナチュラル',
-  'グレー系', '木目アクセント', 'ペット向け', '子供部屋向け', 'まだ決まっていない',
+const WALLPAPER_STYLES = [
+  { value: '明るい・清潔感',        desc: '白系を中心に、お部屋を明るく見せやすい人気スタイル' },
+  { value: '高級感・ホテル風',       desc: 'グレー・ベージュ系などで、すっきり上品に見せたい方向け' },
+  { value: 'ナチュラル',             desc: '木目や自然な色合いで、やさしく落ち着いた印象に' },
+  { value: '花柄・かわいい系',       desc: 'やさしく華やかな雰囲気にしたい方向け' },
+  { value: '子供部屋・キャラクター', desc: '好きな柄やキャラクターで、楽しいお部屋づくり' },
+  { value: 'まだ決まっていない',     desc: '職人と相談しながら決められます' },
+] as const;
+
+const ACCENT_OPTIONS = [
+  '一面だけ色を変えたい',
+  '柄物を使ってみたい',
+  '木目・石目調も気になる',
+  'トイレや洗面所だけ少し変えたい',
+  'まだ分からない',
 ] as const;
 
 const TOTAL_STEPS = 6; // 動画/部屋/施工/エリア/詳細/メール
@@ -699,6 +711,7 @@ export default function CorporateRequest() {
   const [desireType,    setDesireType]    = useState('');
   const [memo,          setMemo]          = useState('');
   const [wallpaperPreference, setWallpaperPreference] = useState('');
+  const [wallpaperAccentPreferences, setWallpaperAccentPreferences] = useState<string[]>([]);
 
   // 複数部屋
   const [rooms, setRooms] = useState<Room[]>([
@@ -728,6 +741,7 @@ export default function CorporateRequest() {
     step: number;
     rooms: Omit<Room, 'roomVideoFiles' | 'roomImageFiles'>[];
     wallpaperPreference: string;
+    wallpaperAccentPreferences: string[];
     workType: string;
     roomType: string;
     roomSize: string;
@@ -780,6 +794,7 @@ export default function CorporateRequest() {
         setExpandedRooms(d.rooms.map(() => false));
       }
       setWallpaperPreference(d.wallpaperPreference ?? '');
+      setWallpaperAccentPreferences(d.wallpaperAccentPreferences ?? []);
       setWorkType(d.workType ?? '');
       setRoomType(d.roomType ?? '');
       setRoomSize(d.roomSize ?? '');
@@ -816,6 +831,7 @@ export default function CorporateRequest() {
             customSize:   r.customSize,
           })),
           wallpaperPreference,
+          wallpaperAccentPreferences,
           workType,
           roomType,
           roomSize,
@@ -831,7 +847,7 @@ export default function CorporateRequest() {
       } catch { /* localStorage 失敗は無視 */ }
     }, 500);
     return () => clearTimeout(timer);
-  }, [step, rooms, wallpaperPreference, workType, roomType, roomSize, timing, siteCondition, desireType, memo, area, contactValue, step3Skipped]);
+  }, [step, rooms, wallpaperPreference, wallpaperAccentPreferences, workType, roomType, roomSize, timing, siteCondition, desireType, memo, area, contactValue, step3Skipped]);
 
   const hasDetail = !!(timing || desireType || memo);
   const hasRoomInfo = rooms.some(r => r.workType || r.size);
@@ -959,9 +975,10 @@ export default function CorporateRequest() {
       })) : null;
 
       const metaPayload = {
-        rooms:                roomsForMeta,
-        extra_info:           null,
-        wallpaper_preference: wallpaperPreference || null,
+        rooms:                        roomsForMeta,
+        extra_info:                   null,
+        wallpaper_preference:         wallpaperPreference || null,
+        ...(wallpaperAccentPreferences.length > 0 ? { wallpaper_accent_preferences: wallpaperAccentPreferences } : {}),
         ...(thumbnail_url ? { thumbnail_url } : {}),
         ...(roomMediaList.length > 0 ? { roomMedia: roomMediaList } : {}),
       };
@@ -1483,52 +1500,65 @@ export default function CorporateRequest() {
               ＋ 部屋を追加
             </button>
 
-            {/* ── クロス選びサポート ── */}
-            <div className="rounded-2xl border border-teal-100 bg-teal-50/60 p-4 space-y-3">
+            {/* ── クロス雰囲気選択 ── */}
+            <div className="rounded-2xl border border-teal-100 bg-teal-50/60 p-4 space-y-4">
               <div>
-                <p className="text-xs font-extrabold text-teal-700 mb-0.5">🎨 クロス選びに迷ったら</p>
-                <p className="text-[11px] text-teal-600 leading-relaxed">品番が決まっていなくても大丈夫です。まずは近い雰囲気だけ選んでください。詳しい品番や材料の相談は、職人が決まった後でも追加で送れます。</p>
+                <p className="text-xs font-extrabold text-teal-700 mb-0.5">🎨 クロスの雰囲気を選んでください</p>
+                <p className="text-[11px] text-teal-600 leading-relaxed">品番が決まっていなくても大丈夫です。職人が決まった後で詳しく相談できます。</p>
               </div>
 
-              {/* 雰囲気チップ */}
-              <div className="flex flex-wrap gap-1.5">
-                {WALLPAPER_MOODS.map(mood => (
-                  <button
-                    key={mood} type="button"
-                    onClick={() => setWallpaperPreference(prev => prev === mood ? '' : mood)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                      wallpaperPreference === mood
-                        ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-white text-teal-700 border-teal-200 hover:border-teal-400'
-                    }`}
-                  >
-                    {mood}
-                  </button>
-                ))}
+              {/* スタイル大カード（単一選択） */}
+              <div className="grid grid-cols-2 gap-2">
+                {WALLPAPER_STYLES.map(({ value, desc }) => {
+                  const active = wallpaperPreference === value;
+                  return (
+                    <button
+                      key={value} type="button"
+                      onClick={() => setWallpaperPreference(prev => prev === value ? '' : value)}
+                      className={`text-left rounded-xl border-2 px-3 py-3 transition-all active:scale-95 ${
+                        active
+                          ? 'border-teal-500 bg-teal-50 shadow-sm shadow-teal-100'
+                          : 'border-slate-200 bg-white hover:border-teal-300'
+                      }`}
+                    >
+                      <p className={`text-xs font-extrabold leading-snug ${active ? 'text-teal-700' : 'text-slate-700'}`}>{value}</p>
+                      <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">{desc}</p>
+                      {active && <span className="inline-block mt-1.5 text-[10px] font-bold text-teal-600 bg-teal-100 px-1.5 py-0.5 rounded-full">選択中</span>}
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* 人気クロス候補カード */}
-              <div>
-                <p className="text-[11px] font-bold text-teal-600 mb-2">💡 人気の選び方</p>
-                <div className="space-y-2">
-                  {[
-                    { title: '失敗しにくい白系', desc: '明るく清潔感が出やすく、どの部屋にも合わせやすいです。' },
-                    { title: '汚れが目立ちにくいグレー系', desc: '生活感を抑えやすく、落ち着いた雰囲気になります。' },
-                    { title: 'アクセントクロス', desc: '一面だけ色や柄を変えて、部屋の印象を変えられます。' },
-                    { title: 'ペット・子供部屋向け', desc: '汚れや傷が気になる部屋では、機能性クロスも相談できます。' },
-                  ].map(card => (
-                    <div key={card.title} className="bg-white/80 rounded-xl border border-teal-100 px-3 py-2.5">
-                      <p className="text-xs font-bold text-slate-700">{card.title}</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5 leading-relaxed">{card.desc}</p>
-                    </div>
-                  ))}
+              {/* アクセントクロス（複数選択） */}
+              <div className="border-t border-teal-100 pt-3 space-y-2">
+                <p className="text-xs font-extrabold text-teal-700">✨ アクセントクロスについて（複数選択可）</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {ACCENT_OPTIONS.map(opt => {
+                    const active = wallpaperAccentPreferences.includes(opt);
+                    return (
+                      <button
+                        key={opt} type="button"
+                        onClick={() => setWallpaperAccentPreferences(prev =>
+                          prev.includes(opt) ? prev.filter(x => x !== opt) : [...prev, opt]
+                        )}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all active:scale-95 ${
+                          active
+                            ? 'bg-amber-500 text-white border-amber-500 shadow-sm shadow-amber-100'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-amber-300'
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    );
+                  })}
                 </div>
-                <p className="text-[10px] text-amber-600 mt-2 leading-relaxed">※ 1000番クロス・柄物・アクセントクロス・機能性クロスは、通常クロスより費用が上がる場合があります。正式な金額は職人が確認後にご案内します。</p>
-              </div>
-
-              {/* AI準備中 */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
-                <p className="text-[10px] text-slate-500 leading-relaxed">🔮 <span className="font-bold">準備中</span>：お部屋の写真があると、将来的にAIで施工後の雰囲気を確認できるようにする予定です。今は写真・URL・品番メモをもとに職人と相談できます。</p>
+                {wallpaperAccentPreferences.some(p => p !== 'まだ分からない') && (
+                  <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
+                    <p className="text-[11px] text-amber-700 leading-relaxed">
+                      ⚠️ アクセントクロスは通常クロスより費用が上がる場合があります。正式な金額は職人が確認後にご案内します。
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1747,12 +1777,21 @@ export default function CorporateRequest() {
         {/* 部屋情報まとめ（チップ形式） */}
         {hasRoomInfo && (
           <div className="rounded-2xl border border-blue-100 bg-blue-50/40 overflow-hidden mb-4">
-            <div className="px-5 py-2.5 bg-blue-50 flex items-center gap-2">
+            <div className="px-5 py-2.5 bg-blue-50 space-y-1.5">
               <p className="text-xs font-bold text-blue-600">希望内容まとめ（{rooms.length}部屋）</p>
-              {wallpaperPreference && (
-                <span className="text-[10px] font-bold text-teal-600 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-full">
-                  🎨 {wallpaperPreference}
-                </span>
+              {(wallpaperPreference || wallpaperAccentPreferences.length > 0) && (
+                <div className="flex flex-wrap gap-1">
+                  {wallpaperPreference && (
+                    <span className="text-[10px] font-bold text-teal-600 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-full">
+                      🎨 {wallpaperPreference}
+                    </span>
+                  )}
+                  {wallpaperAccentPreferences.map(p => (
+                    <span key={p} className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">
+                      ✨ {p}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
             {rooms.map((r, i) => {
