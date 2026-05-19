@@ -827,6 +827,19 @@ export default function CraftsmanDashboardPage() {
     ? sortedWithStatus
     : sortedWithStatus.filter(a => a._status === filter);
 
+  // Phase 1: 成約直後バナー（デモ時は非表示 / 直近48h以内 or contracted_atなし）
+  const recentlyContracted = !isDemo ? (() => {
+    const cutoff = Date.now() - 86400000 * 2;
+    return (
+      withStatus.find(a =>
+        a._status === '成約済み' &&
+        a.contracted_at != null &&
+        new Date(a.contracted_at.endsWith('Z') ? a.contracted_at : a.contracted_at + 'Z').getTime() > cutoff
+      ) ??
+      withStatus.find(a => a._status === '成約済み' && !a.contracted_at)
+    ) ?? null;
+  })() : null;
+
   const counts = {
     active:    withStatus.filter(a => a._status === '応募中' || a._status === '金額入力済み' || a._status === '依頼者確認中').length,
     contracted: withStatus.filter(a => a._status === '成約済み').length,
@@ -915,6 +928,35 @@ export default function CraftsmanDashboardPage() {
           </div>
         )}
 
+        {/* 成約直後バナー */}
+        {recentlyContracted && (
+          <div className="mx-4 mt-4 rounded-xl bg-emerald-600 px-4 py-3.5 space-y-2.5">
+            <div className="flex items-start gap-2.5">
+              <span className="text-xl leading-none flex-shrink-0">🎉</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-extrabold text-sm leading-snug">新しく成約しました！</p>
+                <p className="text-emerald-100 text-[11px] mt-0.5 leading-relaxed">
+                  まずは案件内容を確認し、依頼者にメールで日程調整してください
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => navigate(`/craftsman/apply/${recentlyContracted.estimate_request_id}`, { state: { readOnly: true } })}
+                className="flex-1 bg-white text-emerald-700 text-xs font-extrabold py-2 rounded-xl transition active:scale-95"
+              >
+                案件内容を見る
+              </button>
+              <button
+                onClick={() => handleRevealClick(recentlyContracted.id, recentlyContracted.estimate_request_id)}
+                className="flex-1 bg-emerald-500 border border-emerald-400 text-white text-xs font-extrabold py-2 rounded-xl transition active:scale-95"
+              >
+                連絡先を見る
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 無料枠残数バナー */}
         {freeCredits !== null && (() => {
           const total = freeCredits.remaining + freeCredits.bonus;
@@ -954,24 +996,7 @@ export default function CraftsmanDashboardPage() {
           );
         })()}
 
-        {/* 現場ツール導線 */}
-        <div className="mx-4 mt-3 rounded-xl bg-violet-50 border border-violet-200 px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="text-xl">🧮</span>
-            <div>
-              <p className="text-xs font-extrabold text-violet-800">現場ツール</p>
-              <p className="text-[11px] text-violet-600">簡単見積・材料計算・発注長さをすぐ使えます</p>
-            </div>
-          </div>
-          <button
-            onClick={() => navigate('/tools')}
-            className="flex-shrink-0 text-xs bg-violet-600 text-white font-bold px-3 py-2 rounded-xl transition active:scale-95"
-          >
-            ツールを開く
-          </button>
-        </div>
-
-        {/* 紹介コード（折りたたみ） */}
+        {/* 紹介コード（折りたたみ） — 無料枠の直下に配置して「無料枠を増やす方法」として案内 */}
         {referralCode && (() => {
           const shareUrl = `https://promatch-app.jp/pro-signup?ref=${referralCode}`;
           const shareText = `内装職人向けマッチングサービスPRO MATCH。\n無料で案件に応募できます。\n\n${shareUrl}`;
@@ -1025,6 +1050,23 @@ export default function CraftsmanDashboardPage() {
             </div>
           );
         })()}
+
+        {/* 現場ツール導線（Phase 5: コンパクト化） */}
+        <div className="mx-4 mt-3 rounded-xl bg-violet-50 border border-violet-200 px-4 py-2.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="text-lg">🧮</span>
+            <div>
+              <p className="text-xs font-extrabold text-violet-800">現場ツール</p>
+              <p className="text-[11px] text-violet-500">簡単見積・材料計算・発注長さ</p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/tools')}
+            className="flex-shrink-0 text-xs bg-violet-600 text-white font-bold px-3 py-1.5 rounded-xl transition active:scale-95"
+          >
+            ツールを開く
+          </button>
+        </div>
 
         {/* 手数料ルールnotice */}
         <div className="mx-4 mt-4 rounded-xl bg-slate-100 px-3 py-2.5 space-y-0.5">
@@ -1191,11 +1233,27 @@ export default function CraftsmanDashboardPage() {
                     )}
                   </div>
 
+                  {/* 🎥 現場内容を確認する — 成約済みのみ、最優先CTA (Phase 2) */}
+                  {app._status === '成約済み' && (
+                    <div className="border-t border-indigo-100 bg-indigo-50 px-4 py-3">
+                      <button
+                        onClick={() => navigate(`/craftsman/apply/${app.estimate_request_id}`, { state: { readOnly: true } })}
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-2.5 text-xs font-extrabold transition active:scale-95 flex items-center justify-center gap-1.5"
+                      >
+                        🎥 現場内容を確認する
+                      </button>
+                      <p className="text-[10px] text-indigo-400 text-center mt-1">動画・写真・部屋情報・材料希望を見る</p>
+                    </div>
+                  )}
+
                   {/* 成約情報バナー */}
                   {isSensitive && (
                     <div className="border-t border-slate-100 bg-green-50 px-4 py-3">
                       {app._status === '工事完了' ? (
-                        <p className="text-[11px] text-green-700 font-bold">✅ 工事完了 — 実績として記録されました</p>
+                        <div>
+                          <p className="text-[11px] text-green-700 font-bold">✅ 工事完了 — 実績として記録されました</p>
+                          <p className="text-[10px] text-green-600 mt-0.5">お客様のレビューを待っています。内容は下から確認できます。</p>
+                        </div>
                       ) : (
                         <>
                           <p className="text-[11px] text-green-700 font-bold mb-1.5">🤝 成約済み</p>
@@ -1204,6 +1262,19 @@ export default function CraftsmanDashboardPage() {
                             <li className="text-[11px] text-slate-500 leading-relaxed">🔒 電話番号・LINEは表示されません</li>
                             <li className="text-[11px] text-slate-500 leading-relaxed">⭐ 工事完了後にレビュー依頼へ進めます</li>
                           </ul>
+                          {/* 次の流れ (Phase 3) */}
+                          <div className="mt-2 pt-2 border-t border-green-200">
+                            <p className="text-[10px] font-bold text-green-700 mb-1.5">📋 次の流れ</p>
+                            <div className="flex items-center gap-1 flex-wrap text-[10px] text-green-800">
+                              <span className="bg-green-100 px-2 py-0.5 rounded-full font-bold">① 現場確認</span>
+                              <span className="text-green-400 font-bold">→</span>
+                              <span className="bg-green-100 px-2 py-0.5 rounded-full font-bold">② メール調整</span>
+                              <span className="text-green-400 font-bold">→</span>
+                              <span className="bg-green-100 px-2 py-0.5 rounded-full font-bold">③ 施工前確認</span>
+                              <span className="text-green-400 font-bold">→</span>
+                              <span className="bg-green-100 px-2 py-0.5 rounded-full font-bold">④ 完了報告</span>
+                            </div>
+                          </div>
                         </>
                       )}
                     </div>
@@ -1322,15 +1393,17 @@ export default function CraftsmanDashboardPage() {
 
                   {/* アクションボタン */}
                   {isSensitive ? (
-                    /* 成約済み/工事完了 — 案件内容を見る導線（小さめ）*/
-                    <div className="border-t border-slate-100 px-4 py-2.5 text-center">
-                      <button
-                        onClick={() => navigate(`/craftsman/apply/${app.estimate_request_id}`, { state: { readOnly: true } })}
-                        className="text-xs font-bold text-slate-400 hover:text-blue-600 transition py-1"
-                      >
-                        📋 動画・写真・案件内容を確認する
-                      </button>
-                    </div>
+                    /* 工事完了のみ小さいリンクを残す（成約済みはPhase2の🎥ボタンで代替） */
+                    app._status === '工事完了' ? (
+                      <div className="border-t border-slate-100 px-4 py-2.5 text-center">
+                        <button
+                          onClick={() => navigate(`/craftsman/apply/${app.estimate_request_id}`, { state: { readOnly: true } })}
+                          className="text-xs font-bold text-slate-400 hover:text-blue-600 transition py-1"
+                        >
+                          📋 案件内容を見る
+                        </button>
+                      </div>
+                    ) : null
                   ) : (
                     <div className="border-t border-slate-100 px-4 py-3 flex gap-2">
                       <button
