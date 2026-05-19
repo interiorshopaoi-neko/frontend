@@ -4,6 +4,7 @@ import { calculateServiceFee } from '../../lib/serviceFee';
 import { FEE_TABLE } from '../../constants/fees';
 import type { Job } from './CraftsmanJobsPage';
 import { calcRevenueNum } from '../../lib/revenueEstimate';
+import SiteRadar from '../../components/SiteRadar';
 
 // ─── Freshness helpers ───────────────────────────────────────────────────────
 
@@ -312,6 +313,11 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                         🎨 {job.meta.wallpaper_preference}
                       </span>
                     )}
+                  </div>
+
+                  {/* ── 現場レーダー ── */}
+                  <div className="px-4 mb-3">
+                    <SiteRadar job={job} />
                   </div>
 
                   {/* ── メモ（折り畳み） ── */}
