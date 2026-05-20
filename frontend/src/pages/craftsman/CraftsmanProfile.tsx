@@ -21,6 +21,7 @@ type ProfileForm = {
   email: string;
   service_area: string;
   radius_km: number;
+  supported_prefectures: string[];
   work_types: string[];
   specialty: string;
   available_weekdays: string[];
@@ -41,6 +42,7 @@ const DEFAULT_FORM: ProfileForm = {
   email: '',
   service_area: '',
   radius_km: 20,
+  supported_prefectures: [],
   work_types: [],
   specialty: '',
   available_weekdays: [],
@@ -60,6 +62,10 @@ const DEFAULT_FORM: ProfileForm = {
 const WORK_TYPE_OPTIONS  = ['クロス', '床', 'CF', '補修', 'その他'] as const;
 const RADIUS_OPTIONS     = [10, 20, 30, 50] as const;
 const WEEKDAYS           = ['月', '火', '水', '木', '金', '土', '日'] as const;
+const PREFECTURE_OPTIONS = [
+  '群馬県', '栃木県', '埼玉県', '茨城県', '東京都',
+  '神奈川県', '千葉県', '長野県', '新潟県',
+] as const;
 const TIME_OPTIONS       = ['午前', '午後', '夜間可', '終日', '応相談'] as const;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -163,6 +169,7 @@ export default function CraftsmanProfile() {
           email:                data.email               ?? '',
           service_area:         data.service_area        ?? '',
           radius_km:            data.radius_km           ?? 20,
+          supported_prefectures: (data as any).supported_prefectures ?? [],
           work_types:           data.work_types          ?? [],
           specialty:            data.specialty           ?? '',
           available_weekdays:   data.available_weekdays  ?? [],
@@ -206,6 +213,7 @@ export default function CraftsmanProfile() {
         p_full_name:              form.full_name,
         p_service_area:           form.service_area,
         p_radius_km:              form.radius_km,
+        p_supported_prefectures:  form.supported_prefectures,
         p_work_types:             form.work_types,
         p_specialty:              form.specialty,
         p_available_weekdays:     form.available_weekdays,
@@ -276,6 +284,7 @@ export default function CraftsmanProfile() {
         p_full_name:              form.full_name,
         p_service_area:           form.service_area,
         p_radius_km:              form.radius_km,
+        p_supported_prefectures:  form.supported_prefectures,
         p_work_types:             form.work_types,
         p_specialty:              form.specialty,
         p_available_weekdays:     form.available_weekdays,
@@ -498,7 +507,31 @@ export default function CraftsmanProfile() {
 
           <div className="border-t border-slate-100 my-4" />
 
-          <Field label="拠点エリア（市区町村）">
+          <Field label="対応都道府県（複数選択可）">
+            <div className="flex flex-wrap gap-2">
+              {PREFECTURE_OPTIONS.map(pref => {
+                const active = form.supported_prefectures.includes(pref);
+                return (
+                  <button
+                    key={pref}
+                    onClick={() => set('supported_prefectures', toggle(form.supported_prefectures, pref))}
+                    className={`px-3 py-1.5 rounded-full text-sm font-bold border transition ${
+                      active
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                    }`}
+                  >
+                    {pref}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-[11px] text-slate-400">
+              選択した都道府県の案件が通知対象になります
+            </p>
+          </Field>
+
+          <Field label="拠点エリア（市区町村・任意）">
             <input
               type="text"
               value={form.service_area}
@@ -507,26 +540,8 @@ export default function CraftsmanProfile() {
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
             <p className="mt-1.5 text-[11px] text-slate-400">
-              ここを中心に、設定した半径内の案件をご案内します
+              より詳細な拠点情報として保存されます（公開プロフィールに表示）
             </p>
-          </Field>
-
-          <Field label="対応半径">
-            <div className="flex gap-2">
-              {RADIUS_OPTIONS.map(km => (
-                <button
-                  key={km}
-                  onClick={() => set('radius_km', km)}
-                  className={`flex-1 rounded-xl py-2.5 text-sm font-extrabold border transition ${
-                    form.radius_km === km
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                      : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
-                  }`}
-                >
-                  {km}km
-                </button>
-              ))}
-            </div>
           </Field>
 
           <div className="border-t border-slate-100 my-4" />

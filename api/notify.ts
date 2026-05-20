@@ -36,7 +36,7 @@ async function selectRecommendedCraftsmen(area: string, workType: string): Promi
 
   const url =
     `${SUPABASE_URL}/rest/v1/craftsmen` +
-    `?select=user_id,email,full_name,shop_name,service_area,work_types` +
+    `?select=user_id,email,full_name,shop_name,service_area,supported_prefectures,work_types` +
     `&notification_enabled=eq.true` +
     `&email=not.is.null` +
     `&email=neq.` +
@@ -55,22 +55,37 @@ async function selectRecommendedCraftsmen(area: string, workType: string): Promi
   }
 
   const craftsmen = await r.json() as Array<{
-    user_id:      string;
-    email:        string | null;
-    full_name:    string | null;
-    shop_name:    string | null;
-    service_area: string | null;
-    work_types:   string[] | null;
+    user_id:               string;
+    email:                 string | null;
+    full_name:             string | null;
+    shop_name:             string | null;
+    service_area:          string | null;
+    supported_prefectures: string[] | null;
+    work_types:            string[] | null;
   }>;
+
+  // 案件エリアから都道府県を抽出（例: "群馬県伊勢崎市" → "群馬県"）
+  const reqPrefMatch = area.match(/^(.+?[都道府県])/);
+  const reqPref = reqPrefMatch ? reqPrefMatch[1] : '';
 
   const selected: SelectedCraftsman[] = [];
   let skippedCount = 0;
 
   for (const c of craftsmen) {
-    const cArea  = c.service_area ?? '';
-    const cTypes = c.work_types   ?? [];
+    const cPrefs = c.supported_prefectures ?? [];
+    const cArea  = c.service_area          ?? '';
+    const cTypes = c.work_types            ?? [];
 
-    const areaOk = cArea.length > 0 && (area.includes(cArea) || cArea.includes(area));
+    let areaOk: boolean;
+    let areaReason: string;
+    if (cPrefs.length > 0) {
+      areaOk     = reqPref.length > 0 && cPrefs.includes(reqPref);
+      areaReason = `${reqPref}対応`;
+    } else {
+      areaOk     = cArea.length > 0 && (area.includes(cArea) || cArea.includes(area));
+      areaReason = `${cArea}エリア`;
+    }
+
     const typeOk = cTypes.length > 0 && cTypes.some(t => workType.includes(t) || t.includes(workType));
 
     if (areaOk && typeOk && c.email) {
@@ -79,7 +94,7 @@ async function selectRecommendedCraftsmen(area: string, workType: string): Promi
         id:     c.user_id,
         email:  c.email,
         name:   c.shop_name || c.full_name || '(名称未設定)',
-        reason: [`${cArea}エリア`, ...matched.map(t => `${t}対応`)].join(' / '),
+        reason: [areaReason, ...matched.map(t => `${t}対応`)].join(' / '),
       });
     } else {
       skippedCount++;

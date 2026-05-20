@@ -58,6 +58,7 @@ type NotifiableCraftsman = {
   full_name: string | null;
   email: string;
   service_area: string | null;
+  supported_prefectures: string[] | null;
   work_types: string[] | null;
 };
 
@@ -699,16 +700,27 @@ function ModalItem({ label, value }: { label: string; value: string | null }) {
 // CraftsmanNotifyPanel
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** エリア・工事種別の簡易マッチング */
+/** 案件エリアから都道府県を抽出（例: "群馬県伊勢崎市" → "群馬県"） */
+function extractPrefecture(area: string): string {
+  const m = area.match(/^(.+?[都道府県])/);
+  return m ? m[1] : '';
+}
+
+/** エリア・工事種別マッチング（supported_prefectures 優先、フォールバックで service_area） */
 function isRecommendedCraftsman(req: EstimateRequest, c: NotifiableCraftsman): boolean {
   const reqArea     = req.area ?? '';
   const reqWorkType = req.work_type ?? '';
+  const cPrefs      = c.supported_prefectures ?? [];
   const cArea       = c.service_area ?? '';
   const cTypes      = c.work_types ?? [];
 
-  const areaMatch =
-    cArea.length > 0 &&
-    (reqArea.includes(cArea) || cArea.includes(reqArea));
+  let areaMatch: boolean;
+  if (cPrefs.length > 0) {
+    const reqPref = extractPrefecture(reqArea);
+    areaMatch = reqPref.length > 0 && cPrefs.includes(reqPref);
+  } else {
+    areaMatch = cArea.length > 0 && (reqArea.includes(cArea) || cArea.includes(reqArea));
+  }
 
   const typeMatch =
     cTypes.length > 0 &&
@@ -721,11 +733,15 @@ function isRecommendedCraftsman(req: EstimateRequest, c: NotifiableCraftsman): b
 function getRecommendReasons(req: EstimateRequest, c: NotifiableCraftsman): string[] {
   const reqArea     = req.area ?? '';
   const reqWorkType = req.work_type ?? '';
+  const cPrefs      = c.supported_prefectures ?? [];
   const cArea       = c.service_area ?? '';
   const cTypes      = c.work_types ?? [];
   const reasons: string[] = [];
 
-  if (cArea.length > 0 && (reqArea.includes(cArea) || cArea.includes(reqArea))) {
+  if (cPrefs.length > 0) {
+    const reqPref = extractPrefecture(reqArea);
+    if (reqPref && cPrefs.includes(reqPref)) reasons.push(`${reqPref}対応`);
+  } else if (cArea.length > 0 && (reqArea.includes(cArea) || cArea.includes(reqArea))) {
     reasons.push(`${cArea}エリア`);
   }
   cTypes
@@ -739,14 +755,25 @@ function getRecommendReasons(req: EstimateRequest, c: NotifiableCraftsman): stri
 function getExcludeReasons(req: EstimateRequest, c: NotifiableCraftsman): string[] {
   const reqArea     = req.area ?? '';
   const reqWorkType = req.work_type ?? '';
+  const cPrefs      = c.supported_prefectures ?? [];
   const cArea       = c.service_area ?? '';
   const cTypes      = c.work_types ?? [];
   const reasons: string[] = [];
 
-  const areaMatch = cArea.length > 0 && (reqArea.includes(cArea) || cArea.includes(reqArea));
-  const typeMatch = cTypes.length > 0 && cTypes.some(t => reqWorkType.includes(t) || t.includes(reqWorkType));
+  let areaMatch: boolean;
+  if (cPrefs.length > 0) {
+    const reqPref = extractPrefecture(reqArea);
+    areaMatch = reqPref.length > 0 && cPrefs.includes(reqPref);
+    if (!areaMatch) {
+      const reqPref2 = reqPref || reqArea;
+      reasons.push(`エリア未一致（${reqPref2}）`);
+    }
+  } else {
+    areaMatch = cArea.length > 0 && (reqArea.includes(cArea) || cArea.includes(reqArea));
+    if (!areaMatch) reasons.push(cArea.length === 0 ? 'エリア未設定' : `エリア未一致（${cArea}）`);
+  }
 
-  if (!areaMatch) reasons.push(cArea.length === 0 ? 'エリア未設定' : `エリア未一致（${cArea}）`);
+  const typeMatch = cTypes.length > 0 && cTypes.some(t => reqWorkType.includes(t) || t.includes(reqWorkType));
   if (!typeMatch) reasons.push(cTypes.length === 0 ? '工種未設定' : '工種未一致');
 
   return reasons;
@@ -902,9 +929,11 @@ function CraftsmanNotifyPanel({
             </div>
           )}
           <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
-            {c.service_area && (
+            {(c.supported_prefectures && c.supported_prefectures.length > 0) ? (
+              <span className="text-[11px] text-slate-400">📍 {c.supported_prefectures.join('・')}</span>
+            ) : c.service_area ? (
               <span className="text-[11px] text-slate-400">📍 {c.service_area}</span>
-            )}
+            ) : null}
             {c.work_types && c.work_types.length > 0 && (
               <span className="text-[11px] text-slate-400">{c.work_types.join('・')}</span>
             )}
@@ -1061,7 +1090,7 @@ function RequestsList({ session }: { session: Session }) {
     (async () => {
       const { data } = await supabase
         .from('craftsmen')
-        .select('user_id, shop_name, full_name, email, service_area, work_types')
+        .select('user_id, shop_name, full_name, email, service_area, supported_prefectures, work_types')
         .eq('notification_enabled', true)
         .not('email', 'is', null)
         .neq('email', '');

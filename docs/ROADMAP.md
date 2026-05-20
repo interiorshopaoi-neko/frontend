@@ -1,6 +1,6 @@
 # PRO MATCH — ロードマップ
 
-> 最終更新：2026年5月19日（Phase55 完了時点）
+> 最終更新：2026年5月20日（Phase65 完了時点）
 > 優先度：S > A > B > C
 
 ---
@@ -204,12 +204,21 @@ CRAFTSMAN_AUTO_NOTIFY_LIMIT=3    # 最初は少数から
 
 **設計方針：**
 - Dry Run ログで `selectedCraftsmenCount` と `skippedCount` を確認 → 精度が良ければ `CRAFTSMAN_AUTO_NOTIFY_ENABLED=true` に切り替え
-- テキスト部分一致（service_area / work_types）の曖昧さは存在する → Dry Run で数件確認後に ON にする
+- テキスト部分一致（service_area）から都道府県配列（supported_prefectures）に移行済み → より正確なマッチング
 - 全員通知は避ける → マッチ精度が上がるほど応募率が上がる
 - 詳細住所はマッチング前に開示しすぎない（セキュリティ配慮）
 - 自動化しても「0件のときは運営に警告」を維持
 - 将来は「最近返信率が高い職人」「過去応募履歴あり」なども加味できる（AI スコアリング対象）
 - 職人ごとの通知頻度制御（同じ職人に1日何通まで）は `notification_logs` テーブル実装後に検討
+
+- Phase65 で追加：**`supported_prefectures` 都道府県配列マッチング**
+  - `craftsmen` テーブルに `supported_prefectures text[] DEFAULT '{}'` カラム追加（migration: `20260520_add_supported_prefectures.sql`）
+  - `upsert_craftsman_profile` / `get_my_craftsman_profile` RPC に `supported_prefectures` を追加
+  - `CraftsmanProfile.tsx`：都道府県マルチセレクトチップ UI を追加（群馬・栃木・埼玉・茨城・東京・神奈川・千葉・長野・新潟）
+  - `service_area` テキストフィールドは「拠点エリア（市区町村・任意）」として残存（公開プロフィール表示用）
+  - マッチング優先順位：`supported_prefectures` が1件以上あれば都道府県一致判定、空なら `service_area` 部分一致（後方互換）
+  - `api/notify.ts`・`AdminRequests.tsx` 両方で同じロジック（`extractPrefecture` で都道府県抽出）
+  - `DryRunPanel` / `CraftsmanNotifyPanel`：エリア表示を `supported_prefectures` 優先に更新
 
 **精度改善の前提条件（Step2 以降に必要）：**
 - craftsmen テーブルに `lat` / `lng` カラムを追加（`service_area` テキストから変換）
