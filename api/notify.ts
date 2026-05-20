@@ -6,9 +6,9 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // CRAFTSMAN_AUTO_NOTIFY_ENABLED=true のときだけ実送信。未設定/false → Dry Run のみ。
 // CRAFTSMAN_AUTO_NOTIFY_LIMIT: 最大送信人数（デフォルト5、安全制限）
 
-const SUPABASE_URL      = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? '';
-const SUPABASE_SVC_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY ?? '';
+const SUPABASE_URL      = (process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? '').trim();
+const SUPABASE_SVC_KEY  = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
+// Edge Function 呼び出しには service role key のみ使う（anon key は gateway で INVALID_JWT_FORMAT になる）
 
 const AUTO_NOTIFY_ENABLED = process.env.CRAFTSMAN_AUTO_NOTIFY_ENABLED === 'true';
 const RAW_LIMIT           = parseInt(process.env.CRAFTSMAN_AUTO_NOTIFY_LIMIT ?? '', 10);
@@ -205,7 +205,11 @@ async function runCraftsmanNotify(
     });
 
     const edgeFnUrl = `${SUPABASE_URL}/functions/v1/send-craftsman-notification`;
-    const authKey   = SUPABASE_ANON_KEY || SUPABASE_SVC_KEY;
+
+    if (!SUPABASE_SVC_KEY) {
+      console.warn('[craftsman-notify] SUPABASE_SERVICE_ROLE_KEY が未設定 — Edge Function 呼び出しをスキップ');
+      return;
+    }
 
     for (const c of targets) {
       try {
@@ -213,8 +217,8 @@ async function runCraftsmanNotify(
           method:  'POST',
           headers: {
             'Content-Type':  'application/json',
-            'Authorization': `Bearer ${authKey}`,
-            'apikey':        authKey,
+            'Authorization': `Bearer ${SUPABASE_SVC_KEY}`,
+            'apikey':        SUPABASE_SVC_KEY,
           },
           body: JSON.stringify({
             to:             c.email,
