@@ -162,28 +162,47 @@ Phase56 で現場レーダー UI（チップ・難易度badge・情報充実度�
   - 一括ボタン下に「エリア・工種が一致した職人にのみ送信されます」を表示
   - → 管理者が通知対象を直感的に把握できる状態が整った
 - Phase62 で追加：**Dry Run ログ + 自動通知候補数表示**
-  - `api/notify.ts` に非ブロッキング `runDryRun()` を追加
-  - 案件投稿ごとにサーバーログへ `[dry-run] recommended craftsmen { selectedCraftsmenCount, skippedCount, selectedCraftsmen[{id, name, reason}] }` を出力
+  - `api/notify.ts` に非ブロッキング dry-run を追加
   - 実際の送信は増やさない。service_role key で craftsmen を取得、area × work_type でマッチング
   - AdminRequests のパネルボタンを「自動通知候補 N人」「候補0人」に更新（Dry Run であることを明示）
-  - セクション見出しに `Dry Run` バッジを追加
   - → 本番ログで精度を観察しながら、自動通知へ安全に移行できる
+- Phase63 で追加：**ガード付き自動通知（環境変数 ON/OFF）**
+  - `CRAFTSMAN_AUTO_NOTIFY_ENABLED=true` のときのみ実送信。未設定/false → Dry Run のみ
+  - `CRAFTSMAN_AUTO_NOTIFY_LIMIT`（デフォルト5）で最大送信人数を制限
+  - `selectRecommendedCraftsmen()` / `runCraftsmanNotify()` に関数を整理（役割を分離）
+  - 実送信は `supabase/functions/send-craftsman-notification` Edge Function をサーバーから呼び出す
+  - 1人失敗しても他に続行。失敗内容は `console.warn` でログ。API レスポンスは失敗にしない
+  - メールアドレス全文はログに出さない（ドメイン部分のみ）
+  - **重複送信対策は未実装**（DB に送信履歴テーブルなし）→ 将来 `notification_logs` テーブルで対応
+
+**自動通知の ON/OFF 手順：**
+```
+# Dry Run（デフォルト・変更不要）
+# CRAFTSMAN_AUTO_NOTIFY_ENABLED は設定しない
+
+# 実送信 ON にする場合（本番環境の環境変数に追加）
+CRAFTSMAN_AUTO_NOTIFY_ENABLED=true
+CRAFTSMAN_AUTO_NOTIFY_LIMIT=3    # 最初は少数から
+```
 
 **自動通知への移行ステップ：**
 
 | ステップ | 内容 | 必要な DB 整備 | 状態 |
 |---|---|---|---|
-| Dry Run | ログだけ。実際の送信なし | なし | ✅ Phase62 で完了 |
-| Step 1 | 案件投稿時に自動で推奨職人へ送信 | なし（現 service_area + work_types で可） | 次の課題 |
-| Step 2 | 距離計算で近い職人を優先通知 | craftsmen.lat/lng + estimate_requests.lat/lng | 将来 |
-| Step 3 | 急募は即時、通常は日次まとめ通知 | cron または Supabase Scheduled Functions | 将来 |
+| Dry Run | ログだけ。実際の送信なし | なし | ✅ Phase62 完了 |
+| ガード付き自動通知 | 環境変数 ON のときだけ実送信 | なし | ✅ Phase63 完了 |
+| 完全重複防止 | notification_logs テーブルで送信履歴管理 | `notification_logs` テーブル必要 | 将来 |
+| 距離優先通知 | lat/lng で近い職人を優先 | craftsmen.lat/lng + estimate_requests.lat/lng | 将来 |
+| まとめ通知 | 急募は即時、通常は日次まとめ | cron または Supabase Scheduled Functions | 将来 |
 
 **設計方針：**
-- 現状のテキスト部分一致（service_area / work_types）は曖昧さがある → Dry Run ログで精度を確認してから Step 1 へ進む
+- Dry Run ログで `selectedCraftsmenCount` と `skippedCount` を確認 → 精度が良ければ `CRAFTSMAN_AUTO_NOTIFY_ENABLED=true` に切り替え
+- テキスト部分一致（service_area / work_types）の曖昧さは存在する → Dry Run で数件確認後に ON にする
 - 全員通知は避ける → マッチ精度が上がるほど応募率が上がる
 - 詳細住所はマッチング前に開示しすぎない（セキュリティ配慮）
-- 自動化する場合も「0件のときは運営に警告」を必ず維持
+- 自動化しても「0件のときは運営に警告」を維持
 - 将来は「最近返信率が高い職人」「過去応募履歴あり」なども加味できる（AI スコアリング対象）
+- 職人ごとの通知頻度制御（同じ職人に1日何通まで）は `notification_logs` テーブル実装後に検討
 
 **精度改善の前提条件（Step2 以降に必要）：**
 - craftsmen テーブルに `lat` / `lng` カラムを追加（`service_area` テキストから変換）
