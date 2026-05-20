@@ -54,6 +54,9 @@ export default function Register({ onLogin }: Props) {
     try {
       const { data } = await api.post('/auth/register', { name, email, password, role });
       if (data.requiresConfirmation) {
+        // メール認証リンクを踏んだ後に正しいロールへ誘導するためのヒントを保存。
+        // 別端末で開いた場合は localStorage がないため、AuthConfirmed 側でフォールバック済み。
+        try { localStorage.setItem('pendingRole', role); } catch {}
         alert(data.message ?? '確認メールを送信しました。メールをご確認ください。');
         setLoading(false);
         return;

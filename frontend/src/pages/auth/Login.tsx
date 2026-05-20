@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import type { User, Role } from '../../types';
 import api from '../../utils/api';
 import { supabase } from '../../lib/supabase';
@@ -45,9 +45,12 @@ export default function Login({ onLogin }: Props) {
   const location    = useLocation();
   const defaultRole = (location.state as any)?.defaultRole as Role | undefined;
   const from        = (location.state as any)?.from as string | undefined;
+  const [searchParams] = useSearchParams();
+  const queryRole   = searchParams.get('role') as Role | null;
+  const confirmed   = searchParams.get('confirmed') === '1';
 
   const [role,     setRole]     = useState<'customer' | 'craftsman'>(
-    defaultRole === 'craftsman' ? 'craftsman' : 'customer',
+    queryRole === 'craftsman' || defaultRole === 'craftsman' ? 'craftsman' : 'customer',
   );
   const [email,        setEmail]        = useState('');
   const [password,     setPassword]     = useState('');
@@ -189,6 +192,19 @@ export default function Login({ onLogin }: Props) {
 
       {/* ─── Bottom: フォームカード ─── */}
       <div className="flex-1 bg-white rounded-t-[2rem] shadow-[0_-8px_40px_rgba(0,0,0,0.25)] px-6 pt-8 pb-10">
+        {confirmed && (
+          <div className="mb-5 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 flex items-start gap-2.5">
+            <span className="text-emerald-500 text-base mt-0.5">✓</span>
+            <div>
+              <p className="text-sm font-bold text-emerald-800">メール認証が完了しました</p>
+              <p className="text-xs text-emerald-600 mt-0.5">
+                {role === 'craftsman'
+                  ? '職人アカウントでログインしてください。'
+                  : 'ログインしてサービスを始めましょう。'}
+              </p>
+            </div>
+          </div>
+        )}
         <h2 className="text-xl font-extrabold text-slate-900 mb-6">ログイン</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">

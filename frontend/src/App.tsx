@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
@@ -91,22 +91,39 @@ function AlreadyLoggedIn({
 }
 
 
+// /login と /register の customer リダイレクトを担うラッパー。
+// ?role=craftsman が付いているときは古い customer セッションを無視してフォームを表示する。
+function LoginRoute({ user, logout, login }: {
+  user: ReturnType<typeof useAuth>['user'];
+  logout: ReturnType<typeof useAuth>['logout'];
+  login: ReturnType<typeof useAuth>['login'];
+}) {
+  const [searchParams] = useSearchParams();
+  const rolePara = searchParams.get('role');
+  if (user?.role === 'craftsman') return <AlreadyLoggedIn user={user} onLogout={logout} />;
+  // ?role=craftsman が付いている場合は customer セッションが残っていても /corporate へ飛ばさない
+  if (user?.role === 'customer' && rolePara !== 'craftsman') return <Navigate to="/corporate" replace />;
+  return <Login onLogin={login} />;
+}
+
+function RegisterRoute({ user, logout, login }: {
+  user: ReturnType<typeof useAuth>['user'];
+  logout: ReturnType<typeof useAuth>['logout'];
+  login: ReturnType<typeof useAuth>['login'];
+}) {
+  if (user?.role === 'craftsman') return <AlreadyLoggedIn user={user} onLogout={logout} />;
+  if (user?.role === 'customer')  return <Navigate to="/corporate" replace />;
+  return <Register onLogin={login} />;
+}
+
 export default function App() {
   const { user, login, logout } = useAuth();
 
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={
-          user?.role === 'craftsman' ? <AlreadyLoggedIn user={user} onLogout={logout} /> :
-          user?.role === 'customer'  ? <Navigate to="/corporate" replace /> :
-          <Login onLogin={login} />
-        } />
-        <Route path="/register" element={
-          user?.role === 'craftsman' ? <AlreadyLoggedIn user={user} onLogout={logout} /> :
-          user?.role === 'customer'  ? <Navigate to="/corporate" replace /> :
-          <Register onLogin={login} />
-        } />
+        <Route path="/login"    element={<LoginRoute    user={user} logout={logout} login={login} />} />
+        <Route path="/register" element={<RegisterRoute user={user} logout={logout} login={login} />} />
 
         {/* お客様ルート — legacy /estimates/* API 依存のため準備中ページを表示 */}
         <Route path="/customer"              element={<CustomerComingSoonPage />} />

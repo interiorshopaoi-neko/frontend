@@ -329,7 +329,27 @@ PRO MATCH 職人側 UX の基本思想。新機能追加・改修時はこの方
 
 ---
 
-### 2. 実運用事故の検知強化
+### 2. メール認証後の導線補助（pendingRole パターン）
+
+**目的：** 職人新規登録→メール認証→ログインの流れで、古い customer セッションが残っていると `/corporate` に誤誘導される問題を防ぐ。
+
+**背景：**
+- 職人登録時はメール確認が必要なため `onLogin()` が呼ばれず localStorage にトークンが書かれない
+- 以前 customer としてログインしていた場合、`user.role === 'customer'` のセッションが残存する
+- `/login` の route guard が customer を `/corporate` へリダイレクトするため、職人が認証リンクを踏んだ直後に誤ったページへ飛んでいた
+
+**実装した対策：**
+- `Register.tsx`：`requiresConfirmation: true` 時に `localStorage.setItem('pendingRole', role)` を保存
+- `AuthConfirmed.tsx`：カウントダウン後に `pendingRole` を読み出し、古い customer セッション（`user` / `token`）を削除したうえで `/login?role=craftsman&confirmed=1` へリダイレクト
+- `Login.tsx`：`?role` クエリでタブを初期化、`?confirmed=1` で完了バナーを表示
+- `App.tsx`：`LoginRoute` ラッパーが `?role=craftsman` を検知し customer→/corporate リダイレクトを除外
+
+**制約：**
+- 別端末（スマホ）で認証リンクを開いた場合は `pendingRole` が存在しないため、ログインページで手動ロール選択が必要。これは許容範囲とした。
+
+---
+
+### 3. 実運用事故の検知強化
 
 **目的：** メールが届かない・通知が失敗するケースを早期発見する。
 

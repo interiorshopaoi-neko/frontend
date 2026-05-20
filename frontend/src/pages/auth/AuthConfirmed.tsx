@@ -37,9 +37,22 @@ export default function AuthConfirmed() {
     return () => clearInterval(t);
   }, [ready]);
 
-  // カウントダウンが 0 以下になったら /login へ自動遷移
+  // カウントダウンが 0 以下になったら /login へ自動遷移。
+  // pendingRole がある場合は古いセッションをクリアし、role クエリ付きで誘導する。
+  // 別端末でリンクを開いた場合は pendingRole が存在しないため通常の /login へ。
   useEffect(() => {
-    if (countdown <= 0) navigate('/login');
+    if (countdown > 0) return;
+    try {
+      const pendingRole = localStorage.getItem('pendingRole');
+      if (pendingRole) {
+        localStorage.removeItem('pendingRole');
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        navigate(`/login?role=${encodeURIComponent(pendingRole)}&confirmed=1`);
+        return;
+      }
+    } catch {}
+    navigate('/login');
   }, [countdown, navigate]);
 
   return (
