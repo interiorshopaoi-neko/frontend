@@ -160,7 +160,8 @@ const WORKFLOW_STEPS: { key: ContractedStep; label: string; num: string }[] = [
 
 const STEP_ORDER: ContractedStep[] = ['check_site', 'schedule', 'precheck', 'complete'];
 
-function getContractedStep(contactState: ContactState): ContractedStep {
+function getContractedStep(contactState: ContactState, appId?: string): ContractedStep {
+  if (appId && localStorage.getItem(`precheck_sent_${appId}`)) return 'precheck';
   if (contactState.kind === 'unlocked') return 'schedule';
   return 'check_site';
 }
@@ -212,7 +213,7 @@ async function ensureCraftsmanProfile(userId: string, userName: string, userEmai
 const SCOPE_CHIPS = ['壁のみ', '天井含む', '壁＋天井', 'アクセントクロス希望', 'ソフト巾木施工希望'] as const;
 type ScopeChip = typeof SCOPE_CHIPS[number];
 
-function PreCheckModal({ onClose }: { onClose: () => void }) {
+function PreCheckModal({ onClose, appId }: { onClose: () => void; appId: string }) {
   const [dates,    setDates]    = useState(['', '', '']);
   const [scopes,   setScopes]   = useState<ScopeChip[]>([]);
   const [material, setMaterial] = useState('未定');
@@ -264,6 +265,7 @@ function PreCheckModal({ onClose }: { onClose: () => void }) {
 
   function handleCopy() {
     navigator.clipboard.writeText(buildEmail()).then(() => {
+      localStorage.setItem(`precheck_sent_${appId}`, '1');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -1285,7 +1287,7 @@ export default function CraftsmanDashboardPage() {
                           {/* 次の流れ（現在ステップをハイライト） */}
                           {(() => {
                             const cs       = contactStates.get(app.id) ?? { kind: 'idle' as const };
-                            const curStep  = getContractedStep(cs);
+                            const curStep  = getContractedStep(cs, app.id);
                             const curIdx   = STEP_ORDER.indexOf(curStep);
                             return (
                               <div className="mt-2 pt-2 border-t border-green-200">
@@ -1546,7 +1548,7 @@ export default function CraftsmanDashboardPage() {
       <BottomNav />
 
       {preCheckAppId && (
-        <PreCheckModal onClose={() => setPreCheckAppId(null)} />
+        <PreCheckModal onClose={() => setPreCheckAppId(null)} appId={preCheckAppId} />
       )}
     </div>
   );

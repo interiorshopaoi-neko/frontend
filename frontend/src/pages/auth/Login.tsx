@@ -67,7 +67,7 @@ export default function Login({ onLogin }: Props) {
     try {
       const { data } = await api.post('/auth/login', { email, password });
       onLogin(data.token, data.user);
-      navigate(from ?? (data.user.role === 'customer' ? '/customer' : '/craftsman/dashboard'));
+      navigate(from ?? (data.user.role === 'customer' ? '/customer' : '/craftsman/jobs'));
     } catch (err: any) {
       const reason = err.response?.data?.reason as string | undefined;
       const userMessage: Record<string, string> = {

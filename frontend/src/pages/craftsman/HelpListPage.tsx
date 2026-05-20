@@ -572,6 +572,10 @@ export default function HelpListPage() {
   const [manageApps,   setManageApps]   = useState<MyJobApplication[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
+  type FilterChip = 'すべて' | '急募' | '今日' | '明日' | '写真あり' | '空室' | '在宅' | '道具持参';
+  const FILTER_CHIPS: FilterChip[] = ['すべて', '急募', '今日', '明日', '写真あり', '空室', '在宅', '道具持参'];
+  const [activeFilter, setActiveFilter] = useState<FilterChip>('すべて');
+
   useEffect(() => {
     loadData();
   }, []);
@@ -776,6 +780,28 @@ export default function HelpListPage() {
     ));
   }
 
+  function matchFilter(req: HelpRequest, chip: FilterChip): boolean {
+    if (chip === 'すべて') return true;
+    const days   = daysUntil(req.work_date);
+    const radar  = getSiteRadar(req.meta);
+    const imgs   = getHelperImages(req.meta);
+    if (chip === '急募')   return days <= 2;
+    if (chip === '今日')   return days === 0;
+    if (chip === '明日')   return days === 1;
+    if (chip === '写真あり') return imgs.length > 0;
+    if (chip === '空室')   return radar?.siteType === '空室';
+    if (chip === '在宅')   return radar?.siteType === '在宅';
+    if (chip === '道具持参') return (radar?.requiredTools?.length ?? 0) > 0;
+    return true;
+  }
+
+  const filteredRequests = requests.filter(req => matchFilter(req, activeFilter));
+
+  function chipCount(chip: FilterChip): number {
+    if (chip === 'すべて') return requests.length;
+    return requests.filter(req => matchFilter(req, chip)).length;
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="sticky top-0 z-20 bg-white border-b border-slate-200">
@@ -807,6 +833,33 @@ export default function HelpListPage() {
           </div>
         )}
 
+        {/* フィルターチップ */}
+        {!loading && requests.length > 0 && (
+          <div className="mb-4 -mx-4 px-4 flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            {FILTER_CHIPS.map(chip => {
+              const count  = chipCount(chip);
+              const active = activeFilter === chip;
+              return (
+                <button
+                  key={chip}
+                  onClick={() => setActiveFilter(chip)}
+                  className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                    active
+                      ? 'bg-orange-500 border-orange-500 text-white shadow-sm'
+                      : count === 0
+                        ? 'bg-slate-50 border-slate-200 text-slate-300 cursor-default'
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-orange-300'
+                  }`}
+                  disabled={count === 0 && chip !== 'すべて'}
+                >
+                  {chip}
+                  <span className={`text-[10px] ${active ? 'text-orange-100' : 'text-slate-400'}`}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {loading ? (
           <div className="rounded-2xl bg-white p-8 text-center text-slate-500 shadow-sm border border-slate-200">
             読み込み中...
@@ -822,9 +875,17 @@ export default function HelpListPage() {
               最初に募集する
             </a>
           </div>
+        ) : filteredRequests.length === 0 ? (
+          <div className="rounded-2xl bg-white p-8 text-center shadow-sm border border-slate-200">
+            <p className="text-2xl mb-2">🔍</p>
+            <p className="text-sm font-bold text-slate-700">「{activeFilter}」に該当する募集はありません</p>
+            <button onClick={() => setActiveFilter('すべて')} className="mt-3 text-xs text-orange-500 font-bold underline">
+              すべて表示
+            </button>
+          </div>
         ) : (
           <div className="space-y-4">
-            {requests.map(req => {
+            {filteredRequests.map(req => {
               const isMyPost   = currentUserId !== '' && req.craftsman_id === currentUserId;
               const myApp      = myApps[req.id] ?? null;
               const appCount   = appCounts[req.id] ?? 0;

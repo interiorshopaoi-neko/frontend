@@ -167,11 +167,25 @@ Phase56 で現場レーダー UI（チップ・難易度badge・情報充実度�
 
 **今回は通知 API は変更しない。**
 
+**精度改善の前提条件（実装前に必要な DB 整備）：**
+- craftsmen テーブルに `work_types[]` / `service_areas[]` / `lat` / `lng` カラムを追加
+- estimate_requests テーブルに `lat` / `lng` カラムを追加（緯度経度マッチングのため）
+- 追加前は Step 1（エリア＋工種一致）から始め、Step 2（距離計算）は後回し
+
+**HelpListPage フィルターとの連携：**
+- 助っ人募集の絞り込みチップ（すべて/急募/今日/明日/写真あり/空室/在宅/道具持参）は Phase3 で実装済み
+- 通常案件（estimate_requests）の通知精度改善とは独立した設計
+
 ### 動画/写真ライフサイクル（将来設計）
-- 工事完了後 30 日が経過したら元動画を削除候補（Supabase Storage コスト対策）
+- 元動画は工事完了後 30 日が経過したら削除候補（Supabase Storage コスト対策）
 - サムネイル URL・テキスト情報は長期保持
 - 削除前に運営確認または cron 設計が必要（誤削除防止）
 - Supabase Storage → Cloudflare R2 移行も将来検討
+
+**助っ人募集（helper_requests）の写真ライフサイクル：**
+- 現状：helper_requests.meta.helperImages[] に Supabase Storage URL を直接保持
+- 工事完了（status=completed）後 30 日で削除対象とする（通常案件と同じルール）
+- 応募者（helper_applications）が完了後も参照する可能性があるため、削除前に applications の status を確認してから実施
 
 ---
 
