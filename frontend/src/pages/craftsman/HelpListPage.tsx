@@ -90,10 +90,15 @@ function daysUntil(dateStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / 86400000);
 }
 
+/** expires_at の超過、または expires_at が未設定で作業日が過去 → 期限切れ */
+function isExpiredByTime(req: HelpRequest): boolean {
+  if (req.expires_at) return new Date(req.expires_at) < new Date();
+  return daysUntil(req.work_date) < 0;
+}
+
 function isRequestClosed(req: HelpRequest): boolean {
   if (req.status === 'closed' || req.status === 'completed') return true;
-  if (req.expires_at && new Date(req.expires_at) < new Date()) return true;
-  return false;
+  return isExpiredByTime(req);
 }
 
 // ─── Demo data ────────────────────────────────────────────────────────────────
@@ -937,14 +942,17 @@ export default function HelpListPage() {
         ) : (
           <div className="space-y-4">
             {filteredRequests.map(req => {
-              const isMyPost   = currentUserId !== '' && req.craftsman_id === currentUserId;
-              const myApp      = myApps[req.id] ?? null;
-              const appCount   = appCounts[req.id] ?? 0;
-              const days       = daysUntil(req.work_date);
-              const isToday    = days === 0;
-              const isSoon     = days <= 2 && !isToday;
-              const isLastSlot = req.people_needed === 1;
-              const isClosed   = isRequestClosed(req);
+              const isMyPost    = currentUserId !== '' && req.craftsman_id === currentUserId;
+              const myApp       = myApps[req.id] ?? null;
+              const appCount    = appCounts[req.id] ?? 0;
+              const days        = daysUntil(req.work_date);
+              const isToday     = days === 0;
+              const isSoon      = days <= 2 && !isToday;
+              const isLastSlot  = req.people_needed === 1;
+              const isCompleted = req.status === 'completed';
+              const isManualClosed = req.status === 'closed';
+              const isExpired   = !isCompleted && !isManualClosed && isExpiredByTime(req);
+              const isClosed    = isCompleted || isManualClosed || isExpired;
               const isActioning = actioningId === req.id;
 
               return (
@@ -986,9 +994,19 @@ export default function HelpListPage() {
                     {/* バッジ行 */}
                     {(isClosed || isToday || isLastSlot || isSoon || appCount > 0) && (
                       <div className="flex flex-wrap gap-1.5 mb-3">
-                        {isClosed && (
+                        {isCompleted && (
+                          <span className="bg-emerald-600 text-white text-xs font-extrabold px-2.5 py-1 rounded-full">
+                            ✅ 作業完了
+                          </span>
+                        )}
+                        {isManualClosed && !isCompleted && (
                           <span className="bg-slate-500 text-white text-xs font-extrabold px-2.5 py-1 rounded-full">
                             🔒 募集終了
+                          </span>
+                        )}
+                        {isExpired && (
+                          <span className="bg-amber-500 text-white text-xs font-extrabold px-2.5 py-1 rounded-full">
+                            ⏰ 期限切れ
                           </span>
                         )}
                         {!isClosed && isToday && (
@@ -1082,7 +1100,7 @@ export default function HelpListPage() {
                     {/* CTAボタン */}
                     {isClosed ? (
                       <div className="w-full rounded-2xl py-3 text-sm font-extrabold text-center bg-slate-100 text-slate-400 select-none">
-                        {req.status === 'completed' ? '✅ 作業完了' : '🔒 募集終了'}
+                        {isCompleted ? '✅ 作業完了' : isExpired ? '⏰ 期限切れ' : '🔒 募集終了'}
                       </div>
                     ) : isMyPost ? (
                       <button

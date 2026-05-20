@@ -74,7 +74,7 @@ const EXPIRES_TIME_OPTIONS = ['08:00', '12:00', '17:00', '20:00'] as const;
 const DEFAULT: Form = {
   work_date: '', area: '', work_type: '',
   people_needed: 1, daily_rate: 15000,
-  comment: '', start_time: '', end_time: '',
+  comment: '', start_time: '08:00', end_time: '17:00',
   has_parking: false, required_tools: '', notes: '',
   radar: DEFAULT_RADAR,
   expires_date: TODAY,
