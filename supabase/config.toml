@@ -6,5 +6,9 @@
 [functions.send-customer-email]
 verify_jwt = false
 
-# send-craftsman-notification は /admin（ログイン済み管理者）から呼ぶため
-# デフォルト verify_jwt = true のまま（明示しない）
+# send-craftsman-notification は /admin（ログイン済み管理者）+ api/notify.ts（サーバー側）から呼ぶ。
+# api/notify.ts は新形式 Supabase キー（sb_secret_*）を使うため JWT 形式でなく gateway で 401 になる。
+# Edge Function 内に JWT を使う処理はないため verify_jwt=false で安全に運用できる。
+# セキュリティは api/notify.ts のサーバー側で担保。
+[functions.send-craftsman-notification]
+verify_jwt = false
