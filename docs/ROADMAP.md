@@ -174,6 +174,13 @@ Phase56 で現場レーダー UI（チップ・難易度badge・情報充実度�
   - 1人失敗しても他に続行。失敗内容は `console.warn` でログ。API レスポンスは失敗にしない
   - メールアドレス全文はログに出さない（ドメイン部分のみ）
   - **重複送信対策は未実装**（DB に送信履歴テーブルなし）→ 将来 `notification_logs` テーブルで対応
+- Phase64 で修正：**Vercel Serverless の `void` 問題を修正**
+  - Vercel Serverless では `res.status(200).json()` 後の `void` 非同期処理は実行が保証されない
+  - `void runCraftsmanNotify()` → `await runCraftsmanNotify()` に変更し、レスポンスより前に実行
+  - 実行順: 運営通知メール → `await runCraftsmanNotify()` → `res.status(200).json({ ok: true })`
+  - `runCraftsmanNotify` に最上位 `try/catch` を追加 → 職人通知失敗で案件投稿を失敗にしない
+  - 診断ログを追加: `[craftsman-notify] start` / `env-check` / `before-select` / `after-select` / `done`
+  - **本番 ON 前に必ず Dry Run ログ（`[craftsman-notify] after-select`）で対象精度を確認すること**
 
 **自動通知の ON/OFF 手順：**
 ```
