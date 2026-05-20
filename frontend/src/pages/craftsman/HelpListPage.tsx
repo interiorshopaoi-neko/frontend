@@ -34,6 +34,8 @@ type HelpRequest = {
   notes: string | null;
   meta: Record<string, unknown> | null;
   created_at: string;
+  status: string | null;
+  expires_at: string | null;
 };
 
 type HelpApplication = {
@@ -88,6 +90,12 @@ function daysUntil(dateStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / 86400000);
 }
 
+function isRequestClosed(req: HelpRequest): boolean {
+  if (req.status === 'closed' || req.status === 'completed') return true;
+  if (req.expires_at && new Date(req.expires_at) < new Date()) return true;
+  return false;
+}
+
 // ─── Demo data ────────────────────────────────────────────────────────────────
 
 const DEMO: HelpRequest[] = [
@@ -117,6 +125,8 @@ const DEMO: HelpRequest[] = [
       },
     },
     created_at: new Date().toISOString(),
+    status: 'recruiting',
+    expires_at: null,
   },
   {
     id: 'demo-2',
@@ -134,6 +144,8 @@ const DEMO: HelpRequest[] = [
     notes: null,
     meta: null,  // 古いデータを模倣（meta なしでもエラーにならないことを確認）
     created_at: new Date().toISOString(),
+    status: 'recruiting',
+    expires_at: null,
   },
 ];
 
@@ -572,6 +584,9 @@ export default function HelpListPage() {
   const [manageApps,   setManageApps]   = useState<MyJobApplication[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
+  // 募集オーナーアクション（終了/完了/削除）
+  const [actioningId,  setActioningId]  = useState<string | null>(null);
+
   type FilterChip = 'すべて' | '急募' | '今日' | '明日' | '写真あり' | '空室' | '在宅' | '道具持参';
   const FILTER_CHIPS: FilterChip[] = ['すべて', '急募', '今日', '明日', '写真あり', '空室', '在宅', '道具持参'];
   const [activeFilter, setActiveFilter] = useState<FilterChip>('すべて');
@@ -780,6 +795,42 @@ export default function HelpListPage() {
     ));
   }
 
+  async function handleCloseRequest(reqId: string) {
+    if (!confirm('この募集を終了しますか？')) return;
+    setActioningId(reqId);
+    const { error } = await supabase
+      .from('help_requests')
+      .update({ status: 'closed' })
+      .eq('id', reqId);
+    setActioningId(null);
+    if (error) { alert('更新に失敗しました'); return; }
+    setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: 'closed' } : r));
+  }
+
+  async function handleCompleteRequest(reqId: string) {
+    if (!confirm('この募集を完了済みにしますか？')) return;
+    setActioningId(reqId);
+    const { error } = await supabase
+      .from('help_requests')
+      .update({ status: 'completed' })
+      .eq('id', reqId);
+    setActioningId(null);
+    if (error) { alert('更新に失敗しました'); return; }
+    setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: 'completed' } : r));
+  }
+
+  async function handleDeleteRequest(reqId: string) {
+    if (!confirm('この募集を削除しますか？\n応募データも削除されます。')) return;
+    setActioningId(reqId);
+    const { error } = await supabase
+      .from('help_requests')
+      .delete()
+      .eq('id', reqId);
+    setActioningId(null);
+    if (error) { alert('削除に失敗しました'); return; }
+    setRequests(prev => prev.filter(r => r.id !== reqId));
+  }
+
   function matchFilter(req: HelpRequest, chip: FilterChip): boolean {
     if (chip === 'すべて') return true;
     const days   = daysUntil(req.work_date);
@@ -893,11 +944,13 @@ export default function HelpListPage() {
               const isToday    = days === 0;
               const isSoon     = days <= 2 && !isToday;
               const isLastSlot = req.people_needed === 1;
+              const isClosed   = isRequestClosed(req);
+              const isActioning = actioningId === req.id;
 
               return (
-                <article key={req.id} className={`bg-white rounded-3xl shadow-sm overflow-hidden ${
+                <article key={req.id} className={`bg-white rounded-3xl shadow-sm overflow-hidden transition-opacity ${
                   isMyPost ? 'border-2 border-orange-300' : 'border border-slate-200'
-                }`}>
+                } ${isClosed ? 'opacity-50 grayscale' : ''}`}>
                   {/* 自分の募集バナー */}
                   {isMyPost && (
                     <div className="bg-gradient-to-r from-orange-400 to-amber-400 px-4 py-2.5">
@@ -931,19 +984,24 @@ export default function HelpListPage() {
 
                   <div className="p-4">
                     {/* バッジ行 */}
-                    {(isToday || isLastSlot || isSoon || appCount > 0) && (
+                    {(isClosed || isToday || isLastSlot || isSoon || appCount > 0) && (
                       <div className="flex flex-wrap gap-1.5 mb-3">
-                        {isToday && (
+                        {isClosed && (
+                          <span className="bg-slate-500 text-white text-xs font-extrabold px-2.5 py-1 rounded-full">
+                            🔒 募集終了
+                          </span>
+                        )}
+                        {!isClosed && isToday && (
                           <span className="bg-red-500 text-white text-xs font-extrabold px-2.5 py-1 rounded-full animate-pulse">
                             🔥 今日の募集
                           </span>
                         )}
-                        {isLastSlot && (
+                        {!isClosed && isLastSlot && (
                           <span className="bg-red-500 text-white text-xs font-extrabold px-2.5 py-1 rounded-full animate-pulse">
                             🔥 残り1枠
                           </span>
                         )}
-                        {isSoon && (
+                        {!isClosed && isSoon && (
                           <span className="bg-orange-500 text-white text-xs font-extrabold px-2.5 py-1 rounded-full">
                             ⚡ 早い人優先
                           </span>
@@ -1022,7 +1080,11 @@ export default function HelpListPage() {
                     })()}
 
                     {/* CTAボタン */}
-                    {isMyPost ? (
+                    {isClosed ? (
+                      <div className="w-full rounded-2xl py-3 text-sm font-extrabold text-center bg-slate-100 text-slate-400 select-none">
+                        {req.status === 'completed' ? '✅ 作業完了' : '🔒 募集終了'}
+                      </div>
+                    ) : isMyPost ? (
                       <button
                         onClick={() => openManageModal(req)}
                         className="w-full rounded-2xl py-3 text-sm font-extrabold shadow-sm bg-orange-100 text-orange-700 hover:bg-orange-200 transition active:scale-[0.99]"
@@ -1047,6 +1109,34 @@ export default function HelpListPage() {
                         詳細を見る
                       </button>
                     )}
+
+                    {/* オーナーアクション（本人のみ・終了していない場合） */}
+                    {isMyPost && !isClosed && (
+                      <div className="flex gap-1.5 mt-2">
+                        <button
+                          onClick={() => handleCloseRequest(req.id)}
+                          disabled={isActioning}
+                          className="flex-1 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50 transition active:scale-95"
+                        >
+                          {isActioning ? '...' : '募集終了'}
+                        </button>
+                        <button
+                          onClick={() => handleCompleteRequest(req.id)}
+                          disabled={isActioning}
+                          className="flex-1 py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 transition active:scale-95"
+                        >
+                          {isActioning ? '...' : '完了'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRequest(req.id)}
+                          disabled={isActioning}
+                          className="flex-1 py-2 rounded-xl text-xs font-bold bg-red-50 text-red-500 hover:bg-red-100 disabled:opacity-50 transition active:scale-95"
+                        >
+                          {isActioning ? '...' : '削除'}
+                        </button>
+                      </div>
+                    )}
+
                     <p className="mt-1.5 text-center text-xs text-slate-400">現在は無料で利用できます</p>
                     <p className="mt-1 text-center">
                       <a href="/support?type=report" className="text-[10px] text-slate-300 hover:text-red-400 transition-colors underline">問題を報告</a>

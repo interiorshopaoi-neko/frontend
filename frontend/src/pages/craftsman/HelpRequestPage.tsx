@@ -63,7 +63,13 @@ type Form = {
   required_tools: string;
   notes:          string;
   radar:          SiteRadar;
+  expires_date:   string;
+  expires_time:   string;
 };
+
+const TODAY = new Date().toISOString().slice(0, 10);
+
+const EXPIRES_TIME_OPTIONS = ['08:00', '12:00', '17:00', '20:00'] as const;
 
 const DEFAULT: Form = {
   work_date: '', area: '', work_type: '',
@@ -71,6 +77,8 @@ const DEFAULT: Form = {
   comment: '', start_time: '', end_time: '',
   has_parking: false, required_tools: '', notes: '',
   radar: DEFAULT_RADAR,
+  expires_date: TODAY,
+  expires_time: '17:00',
 };
 
 // ─── 選択チップコンポーネント ────────────────────────────────────────────────
@@ -190,6 +198,10 @@ export default function HelpRequestPage() {
         }
       : null;
 
+    const expires_at = form.expires_date
+      ? new Date(`${form.expires_date}T${form.expires_time}:00`).toISOString()
+      : null;
+
     const { error: err } = await supabase.from('help_requests').insert({
       work_date:      form.work_date,
       area:           form.area,
@@ -204,6 +216,8 @@ export default function HelpRequestPage() {
       required_tools: form.required_tools || null,
       notes:          form.notes || null,
       meta,
+      status:         'recruiting',
+      expires_at,
     });
 
     setSaving(false);
@@ -286,6 +300,38 @@ export default function HelpRequestPage() {
               onChange={e => set('work_date', e.target.value)}
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
+          </div>
+
+          <div className="border-t border-slate-100" />
+
+          {/* 募集終了日時 */}
+          <div>
+            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">募集終了日時</p>
+            <input
+              type="date"
+              value={form.expires_date}
+              onChange={e => set('expires_date', e.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 mb-2"
+            />
+            <div className="flex gap-2">
+              {EXPIRES_TIME_OPTIONS.map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => set('expires_time', t)}
+                  className={`flex-1 py-2 rounded-xl text-sm font-bold border transition active:scale-95 ${
+                    form.expires_time === t
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[11px] text-slate-400">
+              この日時を過ぎると一覧で「募集終了」表示になります
+            </p>
           </div>
 
           <div className="border-t border-slate-100" />
