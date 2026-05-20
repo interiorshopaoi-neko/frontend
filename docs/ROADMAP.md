@@ -146,31 +146,33 @@ Phase56 で現場レーダー UI（チップ・難易度badge・情報充実度�
 - 並び順は純 created_at desc（動画あり優先でソートしない）
 - 5日以上経過案件は `opacity-70` で弱く表示
 
-### 新規案件通知設計（Phase59 以降）
+### 新規案件通知設計（Phase60 実装済み → 将来課題）
 
-**現状：**
-- 全職人に一斉メール通知（距離・工種フィルターなし）
+**現状（実装済み）：**
+- 新規案件投稿時 → `/api/notify` → 運営メール（interior.shop.aoi@gmail.com）のみ
+- 職人への通知は**管理画面（AdminRequests.tsx）から手動**で送信
+- `isRecommendedCraftsman()` 関数が `service_area` × `work_types` のテキストマッチで推奨判定済み
+- 推奨職人は「⭐ おすすめ職人」セクションに表示（通常職人と分離）
+- Phase60 で追加：**「推奨職人 N人に一括通知」ボタン** → 推奨のみに絞って順次送信
+  - コンソールに `selectedCraftsmenCount / skippedReason` をログ出力
+  - 推奨0件の場合は UI でワーニング表示（運営は already notify.ts で通知済み）
 
 **将来ロードマップ：**
 
-| ステップ | 内容 |
-|---|---|
-| Step 1 | 職人の対応エリア＋工種一致で通知対象を絞る |
-| Step 2 | 距離計算（緯度経度）で近い職人を優先通知 |
-| Step 3 | 急募案件だけ即時通知、通常案件はまとめ通知（通知疲れ防止） |
+| ステップ | 内容 | 必要な DB 整備 |
+|---|---|---|
+| Step 1 | 自動一括通知（案件投稿時に推奨職人へ自動送信） | なし（現 craftsmen.service_area + work_types で可） |
+| Step 2 | 距離計算で近い職人を優先通知 | craftsmen.lat/lng + estimate_requests.lat/lng が必要 |
+| Step 3 | 急募は即時、通常は日次まとめ通知 | cron または Supabase Scheduled Functions |
 
 **設計方針：**
 - 全員通知は避ける → マッチ精度が上がるほど応募率が上がる
 - 詳細住所はマッチング前に開示しすぎない（セキュリティ配慮）
-- 急募（urgency=today/tomorrow）は即時通知を優先
-- 通常案件は 1 日 1 回まとめ通知も検討（将来）
+- 自動化する場合も「0件のときは運営に警告」を必ず維持
 
-**今回は通知 API は変更しない。**
-
-**精度改善の前提条件（実装前に必要な DB 整備）：**
-- craftsmen テーブルに `work_types[]` / `service_areas[]` / `lat` / `lng` カラムを追加
-- estimate_requests テーブルに `lat` / `lng` カラムを追加（緯度経度マッチングのため）
-- 追加前は Step 1（エリア＋工種一致）から始め、Step 2（距離計算）は後回し
+**精度改善の前提条件（Step2 以降に必要）：**
+- craftsmen テーブルに `lat` / `lng` カラムを追加（`service_area` テキストから変換）
+- estimate_requests テーブルに `lat` / `lng` カラムを追加
 
 **HelpListPage フィルターとの連携：**
 - 助っ人募集の絞り込みチップ（すべて/急募/今日/明日/写真あり/空室/在宅/道具持参）は Phase3 で実装済み

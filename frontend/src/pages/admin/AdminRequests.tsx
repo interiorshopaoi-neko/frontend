@@ -724,6 +724,7 @@ function CraftsmanNotifyPanel({
   sendingKey,
   sentMap,
   onSend,
+  onBulkSend,
 }: {
   reqId: string;
   req: EstimateRequest;
@@ -731,8 +732,10 @@ function CraftsmanNotifyPanel({
   sendingKey: string | null;
   sentMap: Record<string, string>;
   onSend: (c: NotifiableCraftsman) => void;
+  onBulkSend: (list: NotifiableCraftsman[]) => Promise<void>;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open,        setOpen]        = useState(false);
+  const [bulkSending, setBulkSending] = useState(false);
   const count = craftsmen.length;
 
   const recommended = craftsmen.filter(c => isRecommendedCraftsman(req, c));
@@ -806,6 +809,25 @@ function CraftsmanNotifyPanel({
       </button>
       {open && (
         <div className="mt-2 space-y-3">
+          {/* 一括通知ボタン（推奨のみ） */}
+          {recommended.length > 0 ? (
+            <button
+              onClick={async () => {
+                setBulkSending(true);
+                await onBulkSend(recommended);
+                setBulkSending(false);
+              }}
+              disabled={bulkSending || !!sendingKey}
+              className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              {bulkSending ? '送信中...' : `⭐ 推奨職人 ${recommended.length}人に一括通知`}
+            </button>
+          ) : (
+            <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              ⚠️ エリア「{req.area}」×工種「{req.work_type}」に一致する推奨職人がいません。個別に通知してください。
+            </p>
+          )}
+
           {/* A. おすすめ職人 */}
           {recommended.length > 0 && (
             <div>
@@ -983,6 +1005,59 @@ function RequestsList({ session }: { session: Session }) {
       setSendingNotifyKey(null);
     }
   }, [sendingNotifyKey, showToast]);
+
+  const handleBulkSendToRecommended = useCallback(async (
+    reqId: string,
+    req: EstimateRequest,
+    recommended: NotifiableCraftsman[],
+  ) => {
+    const total    = notifiableCraftsmen.length;
+    const selCount = recommended.length;
+
+    console.log(`[notify] bulk start — selectedCraftsmenCount=${selCount}/${total} area="${req.area}" work_type="${req.work_type}"`);
+
+    if (selCount === 0) {
+      const skippedReason = `エリア「${req.area}」×工種「${req.work_type}」に一致する職人なし`;
+      console.warn(`[notify] selectedCraftsmenCount=0 skippedReason="${skippedReason}"`);
+      return;
+    }
+
+    let successCount = 0;
+    for (const c of recommended) {
+      const key = `${reqId}-${c.user_id}`;
+      if (notifySentMap[key]) continue; // skip already sent
+      try {
+        const { error } = await supabase.functions.invoke('send-craftsman-notification', {
+          body: {
+            to:        c.email,
+            work_type: req.work_type  ?? '内装工事',
+            area:      req.area       ?? '未設定',
+            room_type: req.room_type  ?? undefined,
+            room_size: req.room_size  ?? undefined,
+            rooms:     req.rooms      ?? undefined,
+            size_note: req.size_note  ?? undefined,
+            timing:    req.timing     ?? undefined,
+            has_video: !!req.video_url,
+            has_photos:     false,
+            has_floor_plan: false,
+          },
+        });
+        if (!error) {
+          const sentTime = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+          setNotifySentMap(prev => ({ ...prev, [key]: sentTime }));
+          successCount++;
+          console.log(`[notify] sent (${successCount}/${selCount}) → ${c.shop_name || c.email}`);
+        } else {
+          console.error(`[notify] failed for ${c.email}:`, error);
+        }
+      } catch (e) {
+        console.error(`[notify] exception for ${c.email}:`, e);
+      }
+    }
+
+    console.log(`[notify] bulk done — sent=${successCount} selectedCraftsmenCount=${selCount}`);
+    showToast(`${successCount}人の推奨職人に通知しました`);
+  }, [notifiableCraftsmen, notifySentMap, showToast]);
 
   // useMemo でスコアリング・フィルタ・並び替えを一括処理
   const enrichedRows = useMemo(() => rows.map(enrich), [rows]);
@@ -1479,6 +1554,7 @@ function RequestsList({ session }: { session: Session }) {
                       sendingKey={sendingNotifyKey}
                       sentMap={notifySentMap}
                       onSend={c => handleSendToOneCraftsman(r.id, r, c)}
+                      onBulkSend={list => handleBulkSendToRecommended(r.id, r, list)}
                     />
                   </div>
                 </div>
