@@ -62,10 +62,16 @@ const DEFAULT_FORM: ProfileForm = {
 const WORK_TYPE_OPTIONS  = ['クロス', '床', 'CF', '補修', 'その他'] as const;
 const RADIUS_OPTIONS     = [10, 20, 30, 50] as const;
 const WEEKDAYS           = ['月', '火', '水', '木', '金', '土', '日'] as const;
-const PREFECTURE_OPTIONS = [
-  '群馬県', '栃木県', '埼玉県', '茨城県', '東京都',
-  '神奈川県', '千葉県', '長野県', '新潟県',
-] as const;
+const REGION_PREFECTURES: { region: string; prefs: string[] }[] = [
+  { region: '北海道', prefs: ['北海道'] },
+  { region: '東北',   prefs: ['青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県'] },
+  { region: '関東',   prefs: ['茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県'] },
+  { region: '中部',   prefs: ['新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県', '静岡県', '愛知県'] },
+  { region: '関西',   prefs: ['三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県'] },
+  { region: '中国',   prefs: ['鳥取県', '島根県', '岡山県', '広島県', '山口県'] },
+  { region: '四国',   prefs: ['徳島県', '香川県', '愛媛県', '高知県'] },
+  { region: '九州',   prefs: ['福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'] },
+];
 const TIME_OPTIONS       = ['午前', '午後', '夜間可', '終日', '応相談'] as const;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -139,6 +145,7 @@ export default function CraftsmanProfile() {
   const [avatarError,       setAvatarError]       = useState<string | null>(null);
   const [worksUploading,    setWorksUploading]    = useState(false);
   const [worksError,        setWorksError]        = useState<string | null>(null);
+  const [openRegions,       setOpenRegions]       = useState<Set<string>>(new Set(['関東', '中部']));
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const worksInputRef  = useRef<HTMLInputElement>(null);
   const userId = getUserId();
@@ -508,21 +515,60 @@ export default function CraftsmanProfile() {
           <div className="border-t border-slate-100 my-4" />
 
           <Field label="対応都道府県（複数選択可）">
-            <div className="flex flex-wrap gap-2">
-              {PREFECTURE_OPTIONS.map(pref => {
-                const active = form.supported_prefectures.includes(pref);
+            <div className="space-y-1">
+              {REGION_PREFECTURES.map(({ region, prefs }) => {
+                const isOpen    = openRegions.has(region);
+                const selected  = prefs.filter(p => form.supported_prefectures.includes(p));
+                const toggleRegion = () =>
+                  setOpenRegions(prev => {
+                    const next = new Set(prev);
+                    next.has(region) ? next.delete(region) : next.add(region);
+                    return next;
+                  });
                 return (
-                  <button
-                    key={pref}
-                    onClick={() => set('supported_prefectures', toggle(form.supported_prefectures, pref))}
-                    className={`px-3 py-1.5 rounded-full text-sm font-bold border transition ${
-                      active
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
-                    }`}
-                  >
-                    {pref}
-                  </button>
+                  <div key={region} className="border border-slate-200 rounded-xl overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={toggleRegion}
+                      className="w-full flex items-center justify-between px-3 py-2 bg-slate-50 hover:bg-slate-100 transition"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-slate-700">{region}</span>
+                        {selected.length > 0 && (
+                          <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-1.5 py-0.5 leading-none">
+                            {selected.length}
+                          </span>
+                        )}
+                      </div>
+                      <svg
+                        className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/>
+                      </svg>
+                    </button>
+                    {isOpen && (
+                      <div className="px-3 py-2.5 flex flex-wrap gap-1.5 bg-white">
+                        {prefs.map(pref => {
+                          const active = form.supported_prefectures.includes(pref);
+                          return (
+                            <button
+                              key={pref}
+                              type="button"
+                              onClick={() => set('supported_prefectures', toggle(form.supported_prefectures, pref))}
+                              className={`px-2.5 py-1 rounded-full text-xs font-bold border transition ${
+                                active
+                                  ? 'bg-blue-600 text-white border-blue-600'
+                                  : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                              }`}
+                            >
+                              {pref}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
