@@ -147,6 +147,24 @@ function formatDate(iso: string) {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
+// ─── 成約後ワークフローステップ ───────────────────────────────────────────────
+
+type ContractedStep = 'check_site' | 'schedule' | 'precheck' | 'complete';
+
+const WORKFLOW_STEPS: { key: ContractedStep; label: string; num: string }[] = [
+  { key: 'check_site', label: '現場確認',   num: '①' },
+  { key: 'schedule',   label: '日程調整',   num: '②' },
+  { key: 'precheck',   label: '施工前確認', num: '③' },
+  { key: 'complete',   label: '完了報告',   num: '④' },
+];
+
+const STEP_ORDER: ContractedStep[] = ['check_site', 'schedule', 'precheck', 'complete'];
+
+function getContractedStep(contactState: ContactState): ContractedStep {
+  if (contactState.kind === 'unlocked') return 'schedule';
+  return 'check_site';
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function StatusBadge({ label }: { label: Exclude<StatusLabel, '全て'> }) {
@@ -1264,19 +1282,37 @@ export default function CraftsmanDashboardPage() {
                             <li className="text-[11px] text-slate-500 leading-relaxed">🔒 電話番号・LINEは表示されません</li>
                             <li className="text-[11px] text-slate-500 leading-relaxed">⭐ 工事完了後にレビュー依頼へ進めます</li>
                           </ul>
-                          {/* 次の流れ */}
-                          <div className="mt-2 pt-2 border-t border-green-200">
-                            <p className="text-[10px] font-bold text-green-700 mb-1.5">📋 次の流れ</p>
-                            <div className="flex items-center gap-1 flex-wrap text-[10px]">
-                              <span className="bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold">① 現場確認</span>
-                              <span className="text-green-400 font-bold">→</span>
-                              <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-bold">② 日程調整</span>
-                              <span className="text-green-400 font-bold">→</span>
-                              <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-bold">③ 施工前確認</span>
-                              <span className="text-green-400 font-bold">→</span>
-                              <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-bold">④ 完了報告</span>
-                            </div>
-                          </div>
+                          {/* 次の流れ（現在ステップをハイライト） */}
+                          {(() => {
+                            const cs       = contactStates.get(app.id) ?? { kind: 'idle' as const };
+                            const curStep  = getContractedStep(cs);
+                            const curIdx   = STEP_ORDER.indexOf(curStep);
+                            return (
+                              <div className="mt-2 pt-2 border-t border-green-200">
+                                <p className="text-[10px] font-bold text-green-700 mb-1.5">📋 次の流れ</p>
+                                <div className="flex items-center gap-1 flex-wrap text-[10px]">
+                                  {WORKFLOW_STEPS.map((step, i) => {
+                                    const done    = i < curIdx;
+                                    const current = i === curIdx;
+                                    return (
+                                      <span key={step.key} className="flex items-center gap-1">
+                                        {i > 0 && (
+                                          <span className={`font-bold ${done ? 'text-green-400' : 'text-slate-300'}`}>→</span>
+                                        )}
+                                        <span className={`px-2 py-0.5 rounded-full font-bold ${
+                                          done    ? 'bg-green-100 text-green-700' :
+                                          current ? 'bg-indigo-600 text-white' :
+                                                    'bg-slate-100 text-slate-400'
+                                        }`}>
+                                          {done ? `✓ ${step.label}` : `${step.num} ${step.label}`}
+                                        </span>
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </>
                       )}
                     </div>
