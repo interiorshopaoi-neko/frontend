@@ -752,6 +752,108 @@ function getExcludeReasons(req: EstimateRequest, c: NotifiableCraftsman): string
   return reasons;
 }
 
+// ─── DryRunPanel ──────────────────────────────────────────────────────────────
+
+function maskEmail(email: string): string {
+  const [user, domain] = email.split('@');
+  if (!domain) return '***';
+  return `${user.slice(0, 3)}***@${domain}`;
+}
+
+function DryRunPanel({
+  req,
+  craftsmen,
+}: {
+  req: EstimateRequest;
+  craftsmen: NotifiableCraftsman[];
+}) {
+  const [open, setOpen] = useState(false);
+
+  const recommended = craftsmen.filter(c => isRecommendedCraftsman(req, c));
+  const others      = craftsmen.filter(c => !isRecommendedCraftsman(req, c));
+
+  return (
+    <div className="mt-3 pt-3 border-t border-slate-100">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 hover:text-slate-700 transition-colors"
+      >
+        🤖 自動通知判定（Dry Run）
+        <span className="text-emerald-600 font-bold">対象 {recommended.length}人</span>
+        <span className="text-slate-400">除外 {others.length}人</span>
+        <span>{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div className="mt-2 space-y-3 text-[11px]">
+
+          {/* ✅ 通知対象 */}
+          <div>
+            <p className="font-bold text-emerald-700 mb-1.5">✅ 通知対象 {recommended.length}人</p>
+            {recommended.length === 0 ? (
+              <p className="text-slate-400 pl-2">対象職人なし</p>
+            ) : (
+              <div className="space-y-2">
+                {recommended.map(c => {
+                  const reasons = getRecommendReasons(req, c);
+                  return (
+                    <div key={c.user_id} className="pl-2 border-l-2 border-emerald-200 space-y-0.5">
+                      <p className="font-semibold text-slate-800">
+                        {c.shop_name || c.full_name || '名称未設定'}
+                      </p>
+                      <p className="text-slate-400">{maskEmail(c.email)}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {reasons.map(r => (
+                          <span key={r} className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-1.5 py-0.5 leading-none">
+                            ✓ {r}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* ❌ 除外 */}
+          <div>
+            <p className="font-bold text-slate-500 mb-1.5">❌ 除外 {others.length}人</p>
+            {others.length === 0 ? (
+              <p className="text-slate-400 pl-2">除外職人なし</p>
+            ) : (
+              <div className="space-y-2">
+                {others.map(c => {
+                  const reasons = getExcludeReasons(req, c);
+                  return (
+                    <div key={c.user_id} className="pl-2 border-l-2 border-slate-200 space-y-0.5">
+                      <p className="font-semibold text-slate-600">
+                        {c.shop_name || c.full_name || '名称未設定'}
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {reasons.map(r => (
+                          <span key={r} className="text-[10px] text-slate-400 bg-slate-50 border border-slate-200 rounded-full px-1.5 py-0.5 leading-none">
+                            — {r}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* サマリー */}
+          <p className="text-[10px] text-slate-400 border-t border-slate-100 pt-2">
+            通知対象: {recommended.length}人 / 除外: {others.length}人（エリア×工種 テキスト部分一致）
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CraftsmanNotifyPanel({
   reqId,
   req,
@@ -1615,6 +1717,7 @@ function RequestsList({ session }: { session: Session }) {
                       onSend={c => handleSendToOneCraftsman(r.id, r, c)}
                       onBulkSend={list => handleBulkSendToRecommended(r.id, r, list)}
                     />
+                    <DryRunPanel req={r} craftsmen={notifiableCraftsmen} />
                   </div>
                 </div>
                 );
