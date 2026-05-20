@@ -160,25 +160,30 @@ Phase56 で現場レーダー UI（チップ・難易度badge・情報充実度�
   - 推奨職人カードに「✓ 前橋エリア」「✓ クロス対応」などの推奨理由チップを表示
   - 「その他」職人カードに「— エリア未一致」「— 工種未設定」など除外理由を表示
   - 一括ボタン下に「エリア・工種が一致した職人にのみ送信されます」を表示
-  - 推奨セクション説明「エリア・工種が一致した職人です」を追加
   - → 管理者が通知対象を直感的に把握できる状態が整った
+- Phase62 で追加：**Dry Run ログ + 自動通知候補数表示**
+  - `api/notify.ts` に非ブロッキング `runDryRun()` を追加
+  - 案件投稿ごとにサーバーログへ `[dry-run] recommended craftsmen { selectedCraftsmenCount, skippedCount, selectedCraftsmen[{id, name, reason}] }` を出力
+  - 実際の送信は増やさない。service_role key で craftsmen を取得、area × work_type でマッチング
+  - AdminRequests のパネルボタンを「自動通知候補 N人」「候補0人」に更新（Dry Run であることを明示）
+  - セクション見出しに `Dry Run` バッジを追加
+  - → 本番ログで精度を観察しながら、自動通知へ安全に移行できる
 
-**将来ロードマップ：自動通知への移行ステップ**
-- 通知対象プレビューが整ったため、次は Step 1 の自動通知に安全に進める
-- 将来は「最近返信率が高い職人」「過去応募履歴あり」なども加味できる（AI スコアリング対象）
+**自動通知への移行ステップ：**
 
-**将来ロードマップ：**
-
-| ステップ | 内容 | 必要な DB 整備 |
-|---|---|---|
-| Step 1 | 自動一括通知（案件投稿時に推奨職人へ自動送信） | なし（現 craftsmen.service_area + work_types で可） |
-| Step 2 | 距離計算で近い職人を優先通知 | craftsmen.lat/lng + estimate_requests.lat/lng が必要 |
-| Step 3 | 急募は即時、通常は日次まとめ通知 | cron または Supabase Scheduled Functions |
+| ステップ | 内容 | 必要な DB 整備 | 状態 |
+|---|---|---|---|
+| Dry Run | ログだけ。実際の送信なし | なし | ✅ Phase62 で完了 |
+| Step 1 | 案件投稿時に自動で推奨職人へ送信 | なし（現 service_area + work_types で可） | 次の課題 |
+| Step 2 | 距離計算で近い職人を優先通知 | craftsmen.lat/lng + estimate_requests.lat/lng | 将来 |
+| Step 3 | 急募は即時、通常は日次まとめ通知 | cron または Supabase Scheduled Functions | 将来 |
 
 **設計方針：**
+- 現状のテキスト部分一致（service_area / work_types）は曖昧さがある → Dry Run ログで精度を確認してから Step 1 へ進む
 - 全員通知は避ける → マッチ精度が上がるほど応募率が上がる
 - 詳細住所はマッチング前に開示しすぎない（セキュリティ配慮）
 - 自動化する場合も「0件のときは運営に警告」を必ず維持
+- 将来は「最近返信率が高い職人」「過去応募履歴あり」なども加味できる（AI スコアリング対象）
 
 **精度改善の前提条件（Step2 以降に必要）：**
 - craftsmen テーブルに `lat` / `lng` カラムを追加（`service_area` テキストから変換）

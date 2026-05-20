@@ -854,8 +854,10 @@ function CraftsmanNotifyPanel({
         className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-300 rounded-lg px-3 py-1.5 transition-colors"
       >
         🔔 通知可能な職人 {count}人
-        {recommended.length > 0 && (
-          <span className="text-emerald-700 font-bold">（おすすめ {recommended.length}人）</span>
+        {recommended.length > 0 ? (
+          <span className="text-emerald-700 font-bold">（自動通知候補 {recommended.length}人）</span>
+        ) : (
+          <span className="text-amber-600 font-bold">（候補0人）</span>
         )}
         {open ? ' ▲' : ' ▼'}
       </button>
@@ -873,7 +875,7 @@ function CraftsmanNotifyPanel({
                 disabled={bulkSending || !!sendingKey}
                 className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
               >
-                {bulkSending ? '送信中...' : `⭐ 推奨職人 ${recommended.length}人に一括通知`}
+                {bulkSending ? '送信中...' : `⭐ 自動通知候補 ${recommended.length}人に一括通知`}
               </button>
               <p className="text-[10px] text-slate-400 text-center">エリア・工種が一致した職人にのみ送信されます</p>
             </div>
@@ -887,10 +889,11 @@ function CraftsmanNotifyPanel({
           {recommended.length > 0 && (
             <div>
               <p className="text-[10px] font-bold text-emerald-700 mb-1 flex items-center gap-1">
-                ⭐ おすすめ職人
+                ⭐ 自動通知候補
                 <span className="bg-emerald-100 text-emerald-700 rounded-full px-1.5 py-0.5">{recommended.length}人</span>
+                <span className="text-[9px] text-slate-400 font-normal ml-0.5">Dry Run</span>
               </p>
-              <p className="text-[10px] text-slate-400 mb-1.5">エリア・工種が一致した職人です</p>
+              <p className="text-[10px] text-slate-400 mb-1.5">エリア・工種が一致した職人です（自動通知時の対象予定）</p>
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 divide-y divide-emerald-100 overflow-hidden">
                 {recommended.map(c => renderRow(c, true))}
               </div>
