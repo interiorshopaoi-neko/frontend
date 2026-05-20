@@ -210,7 +210,7 @@ export default function CraftsmanApplyPage() {
             <div>
               <p className="text-sm font-extrabold text-blue-800">応募済みの案件です</p>
               <p className="text-xs text-blue-600 mt-0.5 leading-relaxed">
-                動画・写真・案件内容を確認できます。応募の詳細はダッシュボードで確認してください。
+                動画・写真・案件内容を確認できます。この画面は工事完了までいつでも確認できます。
               </p>
             </div>
           </div>

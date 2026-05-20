@@ -1173,14 +1173,14 @@ export default function CraftsmanDashboardPage() {
                     : 'bg-white border border-slate-200'
                 }`}>
 
-                  {/* ★ 成約トップバナー — 職人向けに「選ばれた」を最大強調 */}
+                  {/* 成約トップバナー — 次の行動を明確に */}
                   {app._status === '成約済み' && (
                     <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-4 py-3.5">
                       <p className="text-white font-extrabold text-sm leading-snug">
-                        🎉 依頼者があなたを選びました！
+                        ⚡ 成約した案件です
                       </p>
                       <p className="text-green-100 text-[11px] mt-1 leading-relaxed">
-                        下の「連絡先を見る」から依頼者のメールアドレスを確認し、連絡してください。
+                        まずは現場内容を確認し、依頼者へメールで日程調整してください。
                       </p>
                       <p className="text-green-200 text-[10px] mt-0.5">
                         ※ 無料枠を1件使用して連絡先を開示します
@@ -1253,8 +1253,8 @@ export default function CraftsmanDashboardPage() {
                     <div className="border-t border-slate-100 bg-green-50 px-4 py-3">
                       {app._status === '工事完了' ? (
                         <div>
-                          <p className="text-[11px] text-green-700 font-bold">✅ 工事完了 — 実績として記録されました</p>
-                          <p className="text-[10px] text-green-600 mt-0.5">お客様のレビューを待っています。内容は下から確認できます。</p>
+                          <p className="text-[11px] text-green-700 font-bold">✅ 工事完了 — 実績として保存されました</p>
+                          <p className="text-[10px] text-green-600 mt-0.5">あとで動画・写真・案件内容も見返せます。</p>
                         </div>
                       ) : (
                         <>
