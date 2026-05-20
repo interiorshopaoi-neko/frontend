@@ -717,6 +717,41 @@ function isRecommendedCraftsman(req: EstimateRequest, c: NotifiableCraftsman): b
   return areaMatch && typeMatch;
 }
 
+/** 推奨理由チップ（表示用） */
+function getRecommendReasons(req: EstimateRequest, c: NotifiableCraftsman): string[] {
+  const reqArea     = req.area ?? '';
+  const reqWorkType = req.work_type ?? '';
+  const cArea       = c.service_area ?? '';
+  const cTypes      = c.work_types ?? [];
+  const reasons: string[] = [];
+
+  if (cArea.length > 0 && (reqArea.includes(cArea) || cArea.includes(reqArea))) {
+    reasons.push(`${cArea}エリア`);
+  }
+  cTypes
+    .filter(t => reqWorkType.includes(t) || t.includes(reqWorkType))
+    .forEach(t => reasons.push(`${t}対応`));
+
+  return reasons;
+}
+
+/** 除外理由テキスト（表示用） */
+function getExcludeReasons(req: EstimateRequest, c: NotifiableCraftsman): string[] {
+  const reqArea     = req.area ?? '';
+  const reqWorkType = req.work_type ?? '';
+  const cArea       = c.service_area ?? '';
+  const cTypes      = c.work_types ?? [];
+  const reasons: string[] = [];
+
+  const areaMatch = cArea.length > 0 && (reqArea.includes(cArea) || cArea.includes(reqArea));
+  const typeMatch = cTypes.length > 0 && cTypes.some(t => reqWorkType.includes(t) || t.includes(reqWorkType));
+
+  if (!areaMatch) reasons.push(cArea.length === 0 ? 'エリア未設定' : `エリア未一致（${cArea}）`);
+  if (!typeMatch) reasons.push(cTypes.length === 0 ? '工種未設定' : '工種未一致');
+
+  return reasons;
+}
+
 function CraftsmanNotifyPanel({
   reqId,
   req,
@@ -746,26 +781,43 @@ function CraftsmanNotifyPanel({
     const sentTime    = sentMap[key];
     const isSending   = sendingKey === key;
     const displayName = c.shop_name || c.full_name || '名称未設定';
+    const recReasons  = isRec ? getRecommendReasons(req, c) : [];
+    const excReasons  = isRec ? [] : getExcludeReasons(req, c);
     return (
       <div key={c.user_id} className="flex items-center justify-between gap-3 px-3 py-2.5">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <p className="text-xs font-bold text-slate-800 truncate">{displayName}</p>
-            {isRec && (
-              <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-200 rounded-full px-2 py-0.5 leading-none flex-shrink-0">
-                この案件に対応できそうです
-              </span>
-            )}
           </div>
+          {/* 推奨理由チップ */}
+          {recReasons.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {recReasons.map(r => (
+                <span key={r} className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5 leading-none">
+                  ✓ {r}
+                </span>
+              ))}
+            </div>
+          )}
           <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
             {c.service_area && (
-              <span className="text-[11px] text-slate-500">📍 {c.service_area}</span>
+              <span className="text-[11px] text-slate-400">📍 {c.service_area}</span>
             )}
             {c.work_types && c.work_types.length > 0 && (
-              <span className="text-[11px] text-slate-500">{c.work_types.join('・')}</span>
+              <span className="text-[11px] text-slate-400">{c.work_types.join('・')}</span>
             )}
-            <span className="text-[11px] text-emerald-600 font-semibold">🔔 通知ON</span>
+            <span className="text-[11px] text-emerald-500">🔔 通知ON</span>
           </div>
+          {/* 除外理由 */}
+          {excReasons.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {excReasons.map(r => (
+                <span key={r} className="inline-flex items-center gap-0.5 text-[10px] text-slate-400 bg-slate-50 border border-slate-200 rounded-full px-2 py-0.5 leading-none">
+                  — {r}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         {sentTime ? (
           <span className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1">
@@ -809,19 +861,22 @@ function CraftsmanNotifyPanel({
       </button>
       {open && (
         <div className="mt-2 space-y-3">
-          {/* 一括通知ボタン（推奨のみ） */}
+          {/* 一括通知ボタン（推奨のみ）*/}
           {recommended.length > 0 ? (
-            <button
-              onClick={async () => {
-                setBulkSending(true);
-                await onBulkSend(recommended);
-                setBulkSending(false);
-              }}
-              disabled={bulkSending || !!sendingKey}
-              className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-            >
-              {bulkSending ? '送信中...' : `⭐ 推奨職人 ${recommended.length}人に一括通知`}
-            </button>
+            <div className="space-y-1">
+              <button
+                onClick={async () => {
+                  setBulkSending(true);
+                  await onBulkSend(recommended);
+                  setBulkSending(false);
+                }}
+                disabled={bulkSending || !!sendingKey}
+                className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              >
+                {bulkSending ? '送信中...' : `⭐ 推奨職人 ${recommended.length}人に一括通知`}
+              </button>
+              <p className="text-[10px] text-slate-400 text-center">エリア・工種が一致した職人にのみ送信されます</p>
+            </div>
           ) : (
             <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
               ⚠️ エリア「{req.area}」×工種「{req.work_type}」に一致する推奨職人がいません。個別に通知してください。
@@ -831,10 +886,11 @@ function CraftsmanNotifyPanel({
           {/* A. おすすめ職人 */}
           {recommended.length > 0 && (
             <div>
-              <p className="text-[10px] font-bold text-emerald-700 mb-1.5 flex items-center gap-1">
+              <p className="text-[10px] font-bold text-emerald-700 mb-1 flex items-center gap-1">
                 ⭐ おすすめ職人
                 <span className="bg-emerald-100 text-emerald-700 rounded-full px-1.5 py-0.5">{recommended.length}人</span>
               </p>
+              <p className="text-[10px] text-slate-400 mb-1.5">エリア・工種が一致した職人です</p>
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 divide-y divide-emerald-100 overflow-hidden">
                 {recommended.map(c => renderRow(c, true))}
               </div>
