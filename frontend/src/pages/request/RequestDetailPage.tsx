@@ -1,21 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getRooms, getRoomWorkSummary, getRoomDisplayName, getRoomDisplaySize } from '../../lib/requestMeta';
+import { fetchRequestDetail, RequestNotFoundError, type RequestDetail } from '../../utils/requestApi';
 
 // ── 型 ────────────────────────────────────────────────────────────────────────
-
-type RequestRow = {
-  id:            string;
-  area:          string | null;
-  work_type:     string | null;
-  has_video:     boolean | null;
-  has_photos:    boolean | null;
-  video_url:     string | null;
-  customer_note: string | null;
-  created_at:    string | null;
-  meta:          Record<string, unknown> | null;
-  // contact_value / contact_method は絶対に含めない（API 側でも除外済み）
-};
+// RequestDetail は utils/requestApi.ts で定義（contact_value / contact_method 除外済み）
+type RequestRow = RequestDetail;
 
 type RoomAdditionalEntry = {
   roomName:         string;
@@ -65,21 +55,17 @@ export default function RequestDetailPage() {
     }
 
     // service role proxy 経由で取得（RLS バイパス・contact 情報除外済み）
-    fetch(`/api/request-detail?id=${encodeURIComponent(id)}`)
-      .then(async r => {
-        if (r.status === 404) { setNotFound(true); setLoading(false); return; }
-        if (!r.ok) {
-          const body = await r.json().catch(() => ({ error: 'サーバーエラー' }));
-          setFetchErr(body.error ?? 'サーバーエラー');
-          setLoading(false);
-          return;
-        }
-        const data = await r.json();
+    fetchRequestDetail(id)
+      .then(data => {
         setReq(data as RequestRow);
         setLoading(false);
       })
-      .catch(() => {
-        setFetchErr('ネットワークエラー。もう一度お試しください。');
+      .catch((err: unknown) => {
+        if (err instanceof RequestNotFoundError) {
+          setNotFound(true);
+        } else {
+          setFetchErr(err instanceof Error ? err.message : 'ネットワークエラー。もう一度お試しください。');
+        }
         setLoading(false);
       });
   }, [id]);
@@ -178,19 +164,27 @@ export default function RequestDetailPage() {
         <h1 className="text-base font-extrabold text-slate-900">依頼カルテ</h1>
       </div>
 
-      {/* ナビゲーションバナー（Phase 1）*/}
+      {/* 3タブナビゲーション */}
       {!isDemo && (
-        <div className="bg-white border-b border-slate-100 px-4 py-2 flex gap-2">
-          <div className="flex-1 text-center text-xs font-bold text-blue-600 py-2 rounded-xl bg-blue-50">
-            📋 依頼内容を確認する ←
+        <nav className="bg-white border-b border-slate-200">
+          <div className="flex max-w-lg mx-auto">
+            <div className="flex-1 py-3 text-xs font-bold border-b-2 border-blue-600 text-blue-600 text-center">
+              依頼内容
+            </div>
+            <button
+              onClick={() => navigate(`/request/${id}/applications`)}
+              className="flex-1 py-3 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition"
+            >
+              応募状況
+            </button>
+            <button
+              onClick={() => navigate(`/request/${id}/extra-info`)}
+              className="flex-1 py-3 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition"
+            >
+              追加情報
+            </button>
           </div>
-          <button
-            onClick={() => navigate(`/request/${id}/extra-info`)}
-            className="flex-1 text-center text-xs font-bold text-slate-500 py-2 rounded-xl hover:bg-slate-50 transition"
-          >
-            📸 写真・情報を追加する
-          </button>
-        </div>
+        </nav>
       )}
 
       <div className="max-w-lg mx-auto px-4 py-5 space-y-4">

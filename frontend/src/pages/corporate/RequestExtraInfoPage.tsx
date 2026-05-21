@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { compressImage } from '../../utils/imageUtils';
+import { fetchRequestDetail, RequestNotFoundError } from '../../utils/requestApi';
 
 // ── 後方互換型（他ファイルが import している可能性があるため保持）──────────────
 
@@ -145,16 +146,9 @@ export default function RequestExtraInfoPage() {
       return;
     }
 
-    fetch(`/api/request-detail?id=${encodeURIComponent(id)}`)
-      .then(r => r.json())
-      .then((data: Record<string, unknown>) => {
-        if (data.error) {
-          setLoadError(String(data.error));
-          setLoading(false);
-          return;
-        }
-
-        const meta = data.meta as Record<string, unknown> | null ?? {};
+    fetchRequestDetail(id)
+      .then(data => {
+        const meta = data.meta ?? {};
         const rawRooms = (meta.rooms as RawRoom[] | undefined) ?? [];
         const rooms: RawRoom[] = rawRooms.length > 0 ? rawRooms : [{ name: 'メインのお部屋' }];
         setExistingRooms(rooms);
@@ -220,8 +214,10 @@ export default function RequestExtraInfoPage() {
 
         setLoading(false);
       })
-      .catch(() => {
-        setLoadError('依頼情報の読み込みに失敗しました');
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : '依頼情報の読み込みに失敗しました';
+        console.warn('[ExtraInfo] request detail fetch failed', { id, error: err });
+        setLoadError(msg);
         setLoading(false);
       });
   }, [id, isDemo]);
@@ -255,7 +251,8 @@ export default function RequestExtraInfoPage() {
       try {
         const blob = await compressImage(file, 1200, 0.80).catch(() => file as Blob);
         const ext  = blob.type === 'image/webp' ? 'webp' : 'jpg';
-        const path = `room-extra/${id ?? 'anon'}/${roomKey}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        // room-images/ は CorporateRequest でも使用済み → Storage RLS で許可されているパス
+        const path = `room-images/${id ?? 'anon'}/${roomKey}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
         const { error } = await supabase.storage
           .from('estimate-videos')
           .upload(path, blob, { contentType: blob.type });
@@ -408,11 +405,40 @@ export default function RequestExtraInfoPage() {
 
   if (loadError && !isDemo) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-6 gap-4 text-center">
-        <p className="text-sm font-bold text-slate-700">{loadError}</p>
-        <button onClick={() => navigate(`/request/${id}`)} className="text-blue-600 text-sm font-semibold underline">
-          依頼状況ページへ
-        </button>
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-6 gap-5 text-center">
+        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
+          <span className="text-3xl">⚠️</span>
+        </div>
+        <div>
+          <p className="text-base font-extrabold text-slate-800 mb-1">依頼情報を読み込めませんでした</p>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            時間をおいてもう一度お試しください。<br />
+            繰り返し発生する場合はお問い合わせください。
+          </p>
+          {loadError !== '依頼情報の読み込みに失敗しました' && (
+            <p className="text-[10px] text-slate-400 mt-2">{loadError}</p>
+          )}
+        </div>
+        <div className="flex flex-col gap-2 w-full max-w-xs">
+          <button
+            onClick={() => navigate(`/request/${id}`)}
+            className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition active:scale-95"
+          >
+            依頼状況ページへ
+          </button>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full py-2.5 rounded-2xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-white transition"
+          >
+            再読み込みする
+          </button>
+          <button
+            onClick={() => navigate('/')}
+            className="w-full py-2.5 rounded-2xl border border-slate-200 text-slate-400 font-semibold text-sm hover:bg-white transition"
+          >
+            トップへ戻る
+          </button>
+        </div>
       </div>
     );
   }
@@ -444,19 +470,27 @@ export default function RequestExtraInfoPage() {
         </button>
       </header>
 
-      {/* ── ナビゲーションバナー（Phase 1）── */}
+      {/* ── 3タブナビゲーション ── */}
       {id && !isDemo && (
-        <div className="bg-white border-b border-slate-100 px-4 py-2 flex gap-2">
-          <button
-            onClick={() => navigate(`/request/${id}`)}
-            className="flex-1 text-center text-xs font-bold text-slate-500 py-2 rounded-xl hover:bg-slate-50 transition"
-          >
-            📋 依頼内容を確認する
-          </button>
-          <div className="flex-1 text-center text-xs font-bold text-blue-600 py-2 rounded-xl bg-blue-50">
-            📸 追加情報を送る ←
+        <nav className="bg-white border-b border-slate-200">
+          <div className="flex max-w-lg mx-auto">
+            <button
+              onClick={() => navigate(`/request/${id}`)}
+              className="flex-1 py-3 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition"
+            >
+              依頼内容
+            </button>
+            <button
+              onClick={() => navigate(`/request/${id}/applications`)}
+              className="flex-1 py-3 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition"
+            >
+              応募状況
+            </button>
+            <div className="flex-1 py-3 text-xs font-bold border-b-2 border-blue-600 text-blue-600 text-center">
+              追加情報
+            </div>
           </div>
-        </div>
+        </nav>
       )}
 
       <div className="max-w-lg mx-auto px-4 py-4 space-y-4">
