@@ -6,8 +6,6 @@ type RequestRow = {
   id: string;
   area: string | null;
   work_type: string | null;
-  contact_method: string | null;
-  contact_value: string | null;
   has_video: boolean | null;
   has_photos: boolean | null;
   video_url: string | null;
@@ -29,8 +27,6 @@ export default function RequestDetailPage() {
         id: 'demo-1',
         area: '群馬県太田市',
         work_type: 'クロス張替え',
-        contact_method: 'メール',
-        contact_value: '—',
         has_video: false,
         has_photos: false,
         video_url: null,
@@ -43,7 +39,7 @@ export default function RequestDetailPage() {
     }
     supabase
       .from('estimate_requests')
-      .select('id, area, work_type, contact_method, contact_value, has_video, has_photos, video_url, customer_note, created_at, meta')
+      .select('id, area, work_type, has_video, has_photos, video_url, customer_note, created_at, meta')
       .eq('id', id)
       .single()
       .then(({ data, error }) => {
@@ -104,16 +100,9 @@ export default function RequestDetailPage() {
             <p className="text-xs font-bold text-slate-400 mb-1">施工エリア</p>
             <p className="text-sm font-bold text-slate-800">{req.area ?? '—'}</p>
           </div>
-          <div className="px-5 py-4 border-b border-slate-50">
+          <div className="px-5 py-4">
             <p className="text-xs font-bold text-slate-400 mb-1">施工内容</p>
             <p className="text-sm font-bold text-slate-800">{req.work_type ?? '—'}</p>
-          </div>
-          <div className="px-5 py-4">
-            <p className="text-xs font-bold text-slate-400 mb-1">ご連絡方法</p>
-            <p className="text-sm font-bold text-slate-800">
-              {req.contact_method ?? '—'}
-              {req.contact_value ? `（${req.contact_value}）` : ''}
-            </p>
           </div>
         </div>
 
