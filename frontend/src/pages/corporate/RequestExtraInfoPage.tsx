@@ -182,6 +182,7 @@ export default function RequestExtraInfoPage() {
   const [images,        setImages]        = useState<string[]>([]);
   const [uploading,     setUploading]     = useState(false);
   const [uploadErrors,  setUploadErrors]  = useState<string[]>([]);
+  const [showDetail,    setShowDetail]    = useState(false);
 
   function updateRoom(idx: number, field: keyof RoomInfo, val: string) {
     setInfo(prev => ({
@@ -316,8 +317,8 @@ export default function RequestExtraInfoPage() {
           </svg>
         </button>
         <div className="flex-1">
-          <h1 className="text-base font-extrabold text-slate-900 leading-tight">部屋ごとの詳細を追加できます</h1>
-          <p className="text-[11px] text-slate-400 mt-0.5">任意です。複数部屋ある場合は部屋ごとに分けると職人が判断しやすくなります</p>
+          <h1 className="text-base font-extrabold text-slate-900 leading-tight">不足している情報を追加する</h1>
+          <p className="text-[11px] text-slate-400 mt-0.5">写真や動画を追加すると職人が判断しやすくなります。分かる範囲だけで大丈夫です。</p>
         </div>
         <button
           onClick={() => navigate('/')}
@@ -343,11 +344,12 @@ export default function RequestExtraInfoPage() {
         )}
 
         {/* 導入テキスト */}
-        <div className="bg-blue-50 rounded-2xl px-5 py-4 border border-blue-100">
-          <p className="text-sm font-bold text-blue-800 mb-1">見積もり精度を上げるために</p>
-          <p className="text-xs text-blue-600 leading-relaxed">
-            あと少しだけ教えてください。スキップしても依頼は完了しています。
-          </p>
+        <div className="bg-slate-100 rounded-xl px-4 py-3 space-y-1">
+          {['写真や動画を追加すると、職人が判断しやすくなります', '分かる範囲だけで大丈夫です', 'すでに依頼は完了しています。スキップ可能です'].map(t => (
+            <p key={t} className="text-xs text-slate-600 flex items-start gap-1.5">
+              <span className="text-slate-400 flex-shrink-0 mt-px">✓</span>{t}
+            </p>
+          ))}
         </div>
 
         {isDemo && (
@@ -356,22 +358,33 @@ export default function RequestExtraInfoPage() {
           </div>
         )}
 
-        {/* 職人への価値説明 */}
-        <div className="bg-indigo-50 rounded-2xl px-5 py-4 border border-indigo-100">
-          <p className="text-xs font-bold text-indigo-700 mb-1">入力は任意です</p>
-          <p className="text-xs text-indigo-500 leading-relaxed">
-            部屋数・家具量・希望時期があると、職人が見積もりを出しやすくなります。分かる範囲だけで大丈夫です。
-          </p>
-        </div>
-
-        {/* ── 新フィールド：品番・写真・希望 ── */}
-
-        {/* 安心メッセージ */}
-        <div className="bg-teal-50 border border-teal-100 rounded-2xl px-5 py-4">
-          <p className="text-sm font-bold text-teal-700 mb-1">🎨 品番はまだ決まっていなくても大丈夫です</p>
-          <p className="text-xs text-teal-600 leading-relaxed">
-            気になる雰囲気・URLだけでも送れます。職人が決まった後でも追加で相談できます。
-          </p>
+        {/* ── 🎥 写真追加（最上部・目立たせる） ── */}
+        <div className="bg-blue-600 rounded-2xl px-5 py-4 text-white">
+          <p className="text-sm font-extrabold mb-0.5">🎥 写真・参考画像を追加する</p>
+          <p className="text-[11px] text-blue-100 mb-3">10〜15秒でOK。現在の壁・床の状態や気になる箇所を撮って送ると職人がすぐ判断できます。</p>
+          <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl px-4 py-4 cursor-pointer transition-all ${uploading ? 'opacity-50 pointer-events-none' : 'hover:border-white/60'} border-white/40`}>
+            <span className="text-2xl">{uploading ? '⏳' : '📸'}</span>
+            <p className="text-xs font-bold">{uploading ? 'アップロード中...' : '写真を選択する（複数可）'}</p>
+            <input type="file" accept="image/*" multiple className="hidden"
+              disabled={uploading || images.length >= 10}
+              onChange={e => handleImageFiles(e.target.files)}
+            />
+          </label>
+          {uploadErrors.length > 0 && (
+            <p className="text-[10px] text-amber-300 mt-2">一部アップロードに失敗しました：{uploadErrors.join('、')}</p>
+          )}
+          {images.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 mt-3">
+              {images.map((url, i) => (
+                <div key={i} className="relative aspect-square rounded-xl overflow-hidden bg-blue-700">
+                  <img src={url} alt={`写真${i + 1}`} className="w-full h-full object-cover opacity-90" loading="lazy" />
+                  <button type="button"
+                    onClick={() => setImages(prev => prev.filter((_, j) => j !== i))}
+                    className="absolute top-1 right-1 w-5 h-5 bg-black/60 text-white rounded-full text-[10px] flex items-center justify-center">✕</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* 品番・URL */}
@@ -399,8 +412,8 @@ export default function RequestExtraInfoPage() {
           </div>
         </Section>
 
-        {/* アクセントクロス・ソフト巾木 */}
-        <Section label="追加ご希望（任意）">
+        {/* アクセントクロス・ソフト巾木（詳細内） */}
+        {showDetail && <Section label="追加ご希望（任意）">
           <div className="space-y-4">
             <div>
               <p className="text-[11px] font-semibold text-slate-500 mb-1.5">✨ アクセントクロス</p>
@@ -419,45 +432,7 @@ export default function RequestExtraInfoPage() {
               />
             </div>
           </div>
-        </Section>
-
-        {/* 写真追加 */}
-        <Section label="参考写真（任意・最大10枚）">
-          <div className="space-y-3">
-            <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl px-4 py-6 cursor-pointer transition-all ${uploading ? 'opacity-50 pointer-events-none' : 'hover:border-teal-300 hover:bg-teal-50/40'} border-slate-200`}>
-              <span className="text-2xl">{uploading ? '⏳' : '📸'}</span>
-              <p className="text-xs font-bold text-slate-600">{uploading ? 'アップロード中...' : '写真を選択する'}</p>
-              <p className="text-[10px] text-slate-400">気になる壁紙・現在の壁の状態など（複数可）</p>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                disabled={uploading || images.length >= 10}
-                onChange={e => handleImageFiles(e.target.files)}
-              />
-            </label>
-            {uploadErrors.length > 0 && (
-              <p className="text-[10px] text-amber-600">一部アップロードに失敗しました：{uploadErrors.join('、')}</p>
-            )}
-            {images.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
-                {images.map((url, i) => (
-                  <div key={i} className="relative aspect-square rounded-xl overflow-hidden bg-slate-100">
-                    <img src={url} alt={`写真${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
-                    <button
-                      type="button"
-                      onClick={() => setImages(prev => prev.filter((_, j) => j !== i))}
-                      className="absolute top-1 right-1 w-5 h-5 bg-black/60 text-white rounded-full text-[10px] flex items-center justify-center"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </Section>
+        </Section>}
 
         {/* 追加メモ */}
         <Section label="クロス・材料についての追加メモ（任意）">
@@ -470,7 +445,17 @@ export default function RequestExtraInfoPage() {
           />
         </Section>
 
+        {/* ── 詳細トグル ── */}
+        <button
+          type="button"
+          onClick={() => setShowDetail(v => !v)}
+          className="w-full py-3 rounded-2xl border border-slate-200 text-slate-500 font-semibold text-sm hover:bg-white flex items-center justify-center gap-2 transition-all"
+        >
+          {showDetail ? '▲ 閉じる' : '▼ 詳しく入力する（家具・材料・部屋数など）'}
+        </button>
+
         {/* クロス選び安心導線 */}
+        {showDetail && <>
         <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3">
           <p className="text-xs font-bold text-slate-600 mb-2">💡 人気の選び方</p>
           <div className="space-y-1.5">
@@ -636,6 +621,7 @@ export default function RequestExtraInfoPage() {
             }))}
           />
         </Section>
+        </>}
 
         {/* 送信 */}
         <button

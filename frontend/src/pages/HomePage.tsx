@@ -441,18 +441,18 @@ export default function HomePage() {
 
               <h1 style={{ fontSize: 30, fontWeight: 900, lineHeight: 1.25, color: '#0f172a', margin: '0 0 10px' }}>
                 ショート動画で、<br />
-                内装見積もりを<br />
-                <span style={{ color: '#3b82f6' }}>もっとスムーズに。</span>
+                内装工事の<br />
+                <span style={{ color: '#3b82f6' }}>概算確認。</span>
               </h1>
 
               <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 20px', lineHeight: 1.65 }}>
                 壁紙・床CFの現場動画を送るだけ。<br />
-                職人が動画で確認し、スムーズに見積もりをお届けします。
+                ログイン不要・住所入力不要。しつこい営業なし。
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px', marginBottom: 24 }}>
                 {[
-                  { d: 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z', text: '写真や寸法がなくてもOK' },
+                  { d: 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z', text: 'ログイン不要・住所不要' },
                   { d: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', text: '動画で状態が伝わりやすい' },
                   { d: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z', text: '細かい説明が苦手でもOK' },
                   { d: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z', text: 'しつこい営業なし' },
@@ -492,8 +492,8 @@ export default function HomePage() {
                     flexShrink: 0, fontSize: 18,
                   }}>🎬</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, fontWeight: 800, margin: 0, lineHeight: 1.35 }}>動画で見積もり依頼する</p>
-                    <p style={{ fontSize: 10, opacity: .75, margin: '2px 0 0' }}>完全無料・ログイン不要</p>
+                    <p style={{ fontSize: 13, fontWeight: 800, margin: 0, lineHeight: 1.35 }}>ショート動画で概算確認する</p>
+                    <p style={{ fontSize: 10, opacity: .75, margin: '2px 0 0' }}>完全無料・ログイン不要・住所入力不要</p>
                   </div>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                     stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

@@ -4,7 +4,7 @@ import { calculateServiceFee } from '../../lib/serviceFee';
 import { FEE_TABLE } from '../../constants/fees';
 import type { Job } from './CraftsmanJobsPage';
 import { calcRevenueNum } from '../../lib/revenueEstimate';
-import { getRoomMedia, hasAccentPreference } from '../../lib/requestMeta';
+import { getRoomMedia, hasAccentPreference, hasCeilingWork } from '../../lib/requestMeta';
 import SiteRadar from '../../components/SiteRadar';
 
 // ─── Freshness helpers ───────────────────────────────────────────────────────
@@ -334,29 +334,31 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                     </div>
                   </div>
 
-                  {/* ── クイック情報チップ（お客様向け特徴） ── */}
-                  <div className="px-4 mb-3 flex flex-wrap gap-1.5">
-                    {hasVideo && (
-                      <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2.5 py-1 rounded-full">
-                        🎬 動画あり
-                      </span>
-                    )}
-                    {job.has_photos && (
-                      <span className="bg-blue-50 text-blue-600 text-xs font-bold px-2.5 py-1 rounded-full">
-                        📷 写真あり
-                      </span>
-                    )}
-                    {(job.meta?.rooms?.length ?? 0) > 0 && (
-                      <span className="bg-violet-50 text-violet-700 text-xs font-bold px-2.5 py-1 rounded-full">
-                        🏠 {job.meta!.rooms!.length}部屋の情報あり
-                      </span>
-                    )}
-                    {hasAccentPreference(job.meta) && (
-                      <span className="bg-purple-50 text-purple-700 text-xs font-bold px-2.5 py-1 rounded-full">
-                        アクセント希望
-                      </span>
-                    )}
-                  </div>
+                  {/* ── クイック情報チップ（最大4個・優先度順） ── */}
+                  {(() => {
+                    const chips: { label: string; cls: string }[] = [];
+                    if (hasVideo)
+                      chips.push({ label: '🎥 動画あり',    cls: 'bg-blue-100 text-blue-700' });
+                    if (job.has_photos)
+                      chips.push({ label: '📷 写真あり',    cls: 'bg-blue-50 text-blue-600' });
+                    if (revenue >= 80000)
+                      chips.push({ label: '💰 高単価',      cls: 'bg-emerald-50 text-emerald-700' });
+                    if (hasCeilingWork(job.meta) || (job.meta?.rooms?.length ?? 0) >= 3)
+                      chips.push({ label: '⚠ 難易度高め',  cls: 'bg-orange-50 text-orange-700' });
+                    if ((job.meta?.rooms?.length ?? 0) > 0)
+                      chips.push({ label: `🏠 ${job.meta!.rooms!.length}部屋`, cls: 'bg-violet-50 text-violet-700' });
+                    if (hasAccentPreference(job.meta))
+                      chips.push({ label: 'アクセント希望', cls: 'bg-purple-50 text-purple-700' });
+                    return chips.slice(0, 4).length > 0 ? (
+                      <div className="px-4 mb-3 flex flex-wrap gap-1.5">
+                        {chips.slice(0, 4).map(c => (
+                          <span key={c.label} className={`text-xs font-bold px-2.5 py-1 rounded-full ${c.cls}`}>
+                            {c.label}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null;
+                  })()}
 
                   {/* ── 現場レーダー ── */}
                   <div className="px-4 mb-3">

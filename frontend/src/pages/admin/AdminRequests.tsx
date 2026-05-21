@@ -1412,6 +1412,43 @@ function RequestsList({ session }: { session: Session }) {
           </div>
         )}
 
+        {/* ── 🔥 要対応セクション ── */}
+        {!loading && !errMsg && (() => {
+          const urgentItems = enrichedRows.filter(r =>
+            r.status === 'new' &&
+            r._elapsedHours >= 12 &&
+            (appCountMap[r.id] ?? 0) === 0
+          );
+          if (urgentItems.length === 0) return null;
+          return (
+            <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 overflow-hidden">
+              <div className="px-5 py-3 bg-red-600 flex items-center gap-2">
+                <span className="text-white font-extrabold text-sm">🔥 今すぐ対応 — 応募0件の案件</span>
+                <span className="ml-auto bg-white/20 text-white text-xs font-bold px-2 py-0.5 rounded-full">{urgentItems.length}件</span>
+              </div>
+              <div className="divide-y divide-red-100">
+                {urgentItems.slice(0, 5).map(r => (
+                  <div key={r.id}
+                    className="px-5 py-3 flex items-center justify-between gap-3 hover:bg-red-100/50 cursor-pointer transition"
+                    onClick={() => setModalRow(r)}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-900 truncate">{r.work_type || '内装工事'} — {r.area || '—'}</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        {Math.round(r._elapsedHours)}時間経過 / 応募0件
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="bg-red-100 text-red-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full">要対応</span>
+                      {r.video_url && <span className="text-violet-600 text-[10px] font-bold">🎬 動画</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {!loading && !errMsg && displayRows.length > 0 && (
           <div>
             {/* ── おすすめ案件バナー（新規のみ・フィルタが all/new のとき表示） ── */}

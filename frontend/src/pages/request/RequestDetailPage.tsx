@@ -86,10 +86,39 @@ export default function RequestDetailPage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h1 className="text-base font-extrabold text-slate-900">依頼内容の確認</h1>
+        <h1 className="text-base font-extrabold text-slate-900">依頼状況</h1>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-5 space-y-4">
+
+        {/* ステータスカード */}
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+            <span className="text-lg">🔵</span>
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-extrabold text-emerald-800">募集中 — 職人が確認しています</p>
+            <p className="text-[11px] text-emerald-600 mt-0.5">対応可能な職人からメールで連絡が届きます</p>
+          </div>
+        </div>
+
+        {/* 大きなCTA */}
+        <button
+          onClick={() => navigate(`/request/${req.id}/extra-info`)}
+          className="w-full py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-sm transition-all shadow-sm flex items-center justify-center gap-2"
+        >
+          <span>📸</span> 写真・動画・情報を追加する →
+        </button>
+
+        {/* ブックマーク案内 */}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-2">
+          <span className="text-base flex-shrink-0">🔖</span>
+          <p className="text-xs text-amber-700 leading-relaxed">
+            <span className="font-bold">このページをブックマークしておくと便利です。</span><br />
+            依頼状況の確認・写真の追加をいつでも行えます。
+          </p>
+        </div>
+
         {/* 基本情報カード */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-50">
@@ -174,20 +203,6 @@ export default function RequestDetailPage() {
             </div>
           </div>
         )}
-
-        {/* 追加情報CTA */}
-        <div className="bg-blue-50 border border-blue-100 rounded-2xl px-5 py-4">
-          <p className="text-xs font-bold text-blue-800 mb-1">📸 写真・品番・希望内容を追加できます</p>
-          <p className="text-[11px] text-blue-600 leading-relaxed mb-3">
-            品番・URL・参考写真などを送ると、職人がより正確な概算を出せます。
-          </p>
-          <button
-            onClick={() => navigate(`/request/${req.id}/extra-info`)}
-            className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-sm transition-all"
-          >
-            写真・品番・希望を追加する →
-          </button>
-        </div>
 
         <button
           onClick={() => navigate('/')}

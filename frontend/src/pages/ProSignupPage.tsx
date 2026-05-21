@@ -391,9 +391,9 @@ export default function ProSignupPage() {
         </p>
         <div className="flex gap-4">
           {[
-            { num: '01', icon: '🎬', title: '動画で現場確認', sub: '現地行く前に\n状況が分かる' },
-            { num: '02', icon: '⚡', title: '3秒で判断',     sub: '気に入ったら\n右スワイプだけ' },
-            { num: '03', icon: '✅', title: '即応募・即返答', sub: '成約したら\n工事日を決める' },
+            { num: '01', icon: '🎬', title: 'ショート動画で判断', sub: '現地行く前に\n現場状況が分かる' },
+            { num: '02', icon: '📍', title: '空き日に近場で稼ぐ', sub: '自分のエリア・\n空き日に絞って表示' },
+            { num: '03', icon: '✅', title: '応募無料・成約時のみ', sub: '初回2件は\n手数料も無料' },
           ].map(({ num, icon, title, sub }) => (
             <div key={num} className="flex-1 flex flex-col items-center text-center">
               <p className="text-[9px] font-black text-blue-500/60 mb-1.5">{num}</p>
