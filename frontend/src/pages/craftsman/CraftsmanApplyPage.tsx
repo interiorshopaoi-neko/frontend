@@ -238,20 +238,7 @@ export default function CraftsmanApplyPage() {
               value={job?.preferred_date || labelUrgency(job?.urgency)}
             />
           </div>
-          {/* 現場レーダー */}
-          {job && (
-            <div className="mx-5 mb-4 pb-3 border-b border-slate-100">
-              <SiteRadar job={job} />
-            </div>
-          )}
-
-          {job?.customer_note && (
-            <div className="mx-5 mb-5 rounded-2xl bg-blue-50 px-4 py-3">
-              <p className="text-xs font-bold text-blue-700 mb-1">依頼主コメント</p>
-              <p className="text-sm text-slate-700 leading-relaxed">{job.customer_note}</p>
-            </div>
-          )}
-          {/* 部屋情報 */}
+          {/* 部屋情報 — 職人が最初に判断する施工スコープ */}
           {(() => {
             const rooms = job?.meta?.rooms ?? [];
             const wallPref = job?.meta?.wallpaper_preference;
@@ -390,6 +377,20 @@ export default function CraftsmanApplyPage() {
               </div>
             );
           })()}
+          {/* 現場レーダー */}
+          {job && (
+            <div className="mx-5 mb-4 pb-3 border-b border-slate-100">
+              <SiteRadar job={job} />
+            </div>
+          )}
+
+          {job?.customer_note && (
+            <div className="mx-5 mb-5 rounded-2xl bg-blue-50 px-4 py-3">
+              <p className="text-xs font-bold text-blue-700 mb-1">依頼主コメント</p>
+              <p className="text-sm text-slate-700 leading-relaxed">{job.customer_note}</p>
+            </div>
+          )}
+
           {/* お客様追加情報（extraInfo） */}
           {(() => {
             const ei = getExtraInfo(job?.meta);

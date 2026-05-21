@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { compressImage } from '../../utils/imageUtils';
 
-// ── 型定義 ────────────────────────────────────────────────────────────────────
+// ── 型定義（後方互換のため保持）────────────────────────────────────────────────
 
 export type RoomInfo = {
   name: string;
@@ -49,38 +49,6 @@ const MATERIAL_OPTIONS = [
   'クッションフロア',
   '職人に相談したい',
   '未定',
-] as const;
-
-const CONDITION_OPTIONS = [
-  '汚れ',
-  'めくれ',
-  '穴・傷',
-  'カビ',
-  'ペット臭',
-  '特になし',
-  '不明',
-] as const;
-
-const ROOM_COUNT_OPTIONS = [
-  '1部屋',
-  '2部屋',
-  '3部屋以上',
-  'まだ決まっていない',
-] as const;
-
-const ROOM_NAME_OPTIONS = ['LDK', '洋室', '和室', '廊下', 'その他'] as const;
-const WORK_TYPE_OPTIONS = ['壁紙', '床', '両方'] as const;
-const ROOM_SIZE_OPTIONS = ['6畳以下', '6〜8畳', '8〜10畳', '10畳以上', '不明'] as const;
-const ROOM_COND_OPTIONS = ['汚れ', 'めくれ', '傷', 'カビ', 'ペット臭', '不明'] as const;
-const ROOM_FURNITURE_OPTIONS = ['少ない', '普通', '多い'] as const;
-const ATTACHMENT_OPTIONS = ['写真', '間取り図', '品番メモ', '施工指示書'] as const;
-
-const TIMING_OPTIONS = [
-  'できるだけ早く',
-  '1〜2週間以内',
-  '1ヶ月以内',
-  '急がない',
-  '相談したい',
 ] as const;
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -152,6 +120,20 @@ function ChipMulti({
   );
 }
 
+// ── 部屋別データ型 ────────────────────────────────────────────────────────────
+
+type RoomEntry = {
+  name: string;
+  index: number;
+};
+
+type RoomAdditionalData = {
+  productNumber: string;
+  memo: string;
+  images: string[];
+  uploading: boolean;
+};
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function RequestExtraInfoPage() {
@@ -159,169 +141,184 @@ export default function RequestExtraInfoPage() {
   const navigate = useNavigate();
   const isDemo = !id || id.startsWith('demo');
 
-  const [info, setInfo] = useState<ExtraInfo>({
-    furniture:       '',
-    parking:         '',
-    material:        [],
-    condition:       [],
-    timing:          '',
-    memo:            '',
-    roomCount:       '',
-    rooms:           [{ name: '', workType: '', size: '', condition: [], furniture: '', memo: '' }],
-    attachmentFlags: [],
-  });
+  // 部屋リスト（metaから取得）
+  const [rooms, setRooms]       = useState<RoomEntry[]>([]);
+  const [roomData, setRoomData] = useState<RoomAdditionalData[]>([]);
+  const [loading, setLoading]   = useState(true);
+
+  // 詳細オプション
+  const [accentPref,   setAccentPref]   = useState('');
+  const [sokibariPref, setSokibariPref] = useState('');
+  const [furniture,    setFurniture]    = useState('');
+  const [parking,      setParking]      = useState('');
+  const [material,     setMaterial]     = useState<string[]>([]);
+  const [showDetail,   setShowDetail]   = useState(false);
+
   const [saving, setSaving] = useState(false);
-  const [done,   setDone]   = useState(false);
 
-  // ── 新フィールド（extraInfo として meta に保存）────────────────────────────
-  const [productNumber, setProductNumber] = useState('');
-  const [productUrl,    setProductUrl]    = useState('');
-  const [accentPref,    setAccentPref]    = useState('');
-  const [sokibariPref,  setSokibariPref]  = useState('');
-  const [productNote,   setProductNote]   = useState('');
-  const [images,        setImages]        = useState<string[]>([]);
-  const [uploading,     setUploading]     = useState(false);
-  const [uploadErrors,  setUploadErrors]  = useState<string[]>([]);
-  const [showDetail,    setShowDetail]    = useState(false);
+  // ── meta から部屋を取得 ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (isDemo || !id) {
+      // デモ：ダミー1部屋
+      setRooms([{ name: 'メインのお部屋', index: 0 }]);
+      setRoomData([{ productNumber: '', memo: '', images: [], uploading: false }]);
+      setLoading(false);
+      return;
+    }
 
-  function updateRoom(idx: number, field: keyof RoomInfo, val: string) {
-    setInfo(prev => ({
-      ...prev,
-      rooms: prev.rooms.map((r, i) => i === idx ? { ...r, [field]: val } : r),
-    }));
-  }
-  function toggleRoomCond(idx: number, val: string) {
-    setInfo(prev => ({
-      ...prev,
-      rooms: prev.rooms.map((r, i) => {
-        if (i !== idx) return r;
-        const has = r.condition.includes(val);
-        return { ...r, condition: has ? r.condition.filter(c => c !== val) : [...r.condition, val] };
-      }),
-    }));
-  }
-  function addRoom() {
-    setInfo(prev => ({ ...prev, rooms: [...prev.rooms, { name: '', workType: '', size: '', condition: [], furniture: '', memo: '' }] }));
-  }
-  function removeRoom(idx: number) {
-    setInfo(prev => ({ ...prev, rooms: prev.rooms.filter((_, i) => i !== idx) }));
-  }
+    supabase
+      .from('estimate_requests')
+      .select('meta')
+      .eq('id', id)
+      .single()
+      .then(({ data }) => {
+        const meta = data?.meta as Record<string, unknown> | null;
+        const rawRooms = (meta?.rooms as Array<Record<string, unknown>> | undefined) ?? [];
+        let roomList: RoomEntry[] = rawRooms.map((r, i) => ({
+          name: (r.customName as string) || (r.name as string) || `部屋${i + 1}`,
+          index: i,
+        }));
+        if (roomList.length === 0) {
+          roomList = [{ name: 'メインのお部屋', index: 0 }];
+        }
+        setRooms(roomList);
+        setRoomData(roomList.map(() => ({ productNumber: '', memo: '', images: [], uploading: false })));
 
-  function toggleMulti(key: 'material' | 'condition', val: string) {
-    setInfo(prev => {
-      const arr = prev[key];
-      return {
-        ...prev,
-        [key]: arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val],
-      };
-    });
-  }
+        // 既存値をプリセット
+        const existingExtraInfo = meta?.extraInfo as Record<string, unknown> | null;
+        if (existingExtraInfo) {
+          setAccentPref((existingExtraInfo.accentPreference as string) ?? '');
+          setSokibariPref((existingExtraInfo.softSokibariPreference as string) ?? '');
+        }
+        const existingLegacy = meta?.extra_info as Record<string, unknown> | null;
+        if (existingLegacy) {
+          setFurniture((existingLegacy.furniture as string) ?? '');
+          setParking((existingLegacy.parking as string) ?? '');
+          setMaterial((existingLegacy.material as string[]) ?? []);
+        }
+        setLoading(false);
+      });
+  }, [id, isDemo]);
 
-  async function handleImageFiles(files: FileList | null) {
+  // ── 部屋別画像アップロード ──────────────────────────────────────────────────
+  async function handleRoomImageFiles(roomIdx: number, files: FileList | null) {
     if (!files || files.length === 0) return;
-    setUploading(true);
-    const errs: string[] = [];
+    setRoomData(prev =>
+      prev.map((d, i) => i === roomIdx ? { ...d, uploading: true } : d)
+    );
+    const existing = roomData[roomIdx]?.images ?? [];
+    const remaining = Math.max(0, 10 - existing.length);
     const urls: string[] = [];
-    const remaining = Math.max(0, 10 - images.length);
     for (const file of Array.from(files).slice(0, remaining)) {
       try {
         const blob = await compressImage(file, 1200, 0.80).catch(() => file as Blob);
         const ext  = blob.type === 'image/webp' ? 'webp' : 'jpg';
-        const path = `extra-images/${id ?? 'anon'}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const path = `room-extra/${id ?? 'anon'}/${roomIdx}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from('estimate-videos')
           .upload(path, blob, { contentType: blob.type });
-        if (upErr) { errs.push(file.name); continue; }
+        if (upErr) continue;
         const { data: { publicUrl } } = supabase.storage.from('estimate-videos').getPublicUrl(path);
         urls.push(publicUrl);
-      } catch {
-        errs.push(file.name);
-      }
+      } catch { /* skip */ }
     }
-    setImages(prev => [...prev, ...urls].slice(0, 10));
-    if (errs.length > 0) setUploadErrors(errs);
-    setUploading(false);
+    setRoomData(prev =>
+      prev.map((d, i) =>
+        i === roomIdx
+          ? { ...d, images: [...d.images, ...urls].slice(0, 10), uploading: false }
+          : d
+      )
+    );
   }
 
+  // ── 保存 ────────────────────────────────────────────────────────────────────
   async function handleSave() {
     setSaving(true);
 
-    console.log('[RequestExtraInfo] extra_info to save:', JSON.stringify(info, null, 2));
-
     if (!isDemo && id) {
-      // 既存 meta を読んで rooms 等を保持しつつ extra_info だけ更新
       const { data: existing } = await supabase
         .from('estimate_requests')
         .select('meta')
         .eq('id', id)
         .single();
       const existingMeta = (existing?.meta as Record<string, unknown> | null) ?? {};
-      const extraInfo: Record<string, unknown> = {};
-      if (productNumber.trim())  extraInfo.productNumber          = productNumber.trim();
-      if (productUrl.trim())     extraInfo.productUrl             = productUrl.trim();
-      if (accentPref)            extraInfo.accentPreference       = accentPref;
-      if (sokibariPref)          extraInfo.softSokibariPreference = sokibariPref;
-      if (productNote.trim())    extraInfo.note                   = productNote.trim();
-      if (images.length > 0)     extraInfo.images                 = images;
-      const mergedMeta = { ...existingMeta, extra_info: info, extraInfo };
+
+      // 部屋別追加情報（入力があった部屋のみ）
+      const roomAdditionalInfo = rooms
+        .map((r, i) => ({
+          roomIndex:     r.index,
+          roomName:      r.name,
+          productNumber: roomData[i]?.productNumber?.trim() ?? '',
+          memo:          roomData[i]?.memo?.trim() ?? '',
+          images:        roomData[i]?.images ?? [],
+        }))
+        .filter(r => r.productNumber || r.memo || r.images.length > 0);
+
+      // extraInfo（アクセント・巾木）
+      const prevExtraInfo = (existingMeta.extraInfo as Record<string, unknown> | null) ?? {};
+      const extraInfo: Record<string, unknown> = { ...prevExtraInfo };
+      if (accentPref)   extraInfo.accentPreference       = accentPref;
+      if (sokibariPref) extraInfo.softSokibariPreference = sokibariPref;
+
+      // extra_info（家具・駐車場・材料）
+      const prevLegacy = (existingMeta.extra_info as Record<string, unknown> | null) ?? {};
+      const extraInfoLegacy: Record<string, unknown> = { ...prevLegacy };
+      if (furniture)           extraInfoLegacy.furniture = furniture;
+      if (parking)             extraInfoLegacy.parking   = parking;
+      if (material.length > 0) extraInfoLegacy.material  = material;
+
+      const mergedMeta: Record<string, unknown> = {
+        ...existingMeta,
+        extra_info: extraInfoLegacy,
+        extraInfo,
+      };
+      if (roomAdditionalInfo.length > 0) {
+        mergedMeta.roomAdditionalInfo = roomAdditionalInfo;
+      }
 
       const { error } = await supabase
         .from('estimate_requests')
         .update({ meta: mergedMeta } as Record<string, unknown>)
         .eq('id', id);
       if (error) {
-        console.warn('[RequestExtraInfo] meta save skipped (column may not exist):', error.message);
+        console.warn('[RequestExtraInfo] save error:', error.message);
       }
     }
 
     setSaving(false);
-    setDone(true);
+    navigate(id && !isDemo ? `/request/${id}` : '/');
   }
 
-  // ── 完了画面 ────────────────────────────────────────────────────────────────
-  if (done) {
+  // ── ローディング ─────────────────────────────────────────────────────────────
+  if (loading) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center px-5 text-center">
-        <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-5">
-          <svg className="w-8 h-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <h2 className="text-xl font-extrabold text-slate-900 mb-2">ありがとうございます</h2>
-        <p className="text-sm text-slate-500 mb-8 leading-relaxed">
-          追加情報を受け付けました。<br />職人がより正確な概算を出しやすくなります。
-        </p>
-        <button
-          onClick={() => navigate('/')}
-          className="w-full max-w-xs py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-base transition-all"
-        >
-          トップへ戻る
-        </button>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full" />
       </div>
     );
   }
 
-  // ── フォーム ────────────────────────────────────────────────────────────────
+  // ── フォーム ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
 
       {/* ヘッダー */}
       <header className="bg-white border-b border-slate-200 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate(id && !isDemo ? `/request/${id}` : '/')}
           className="text-slate-400 hover:text-slate-700 p-1 -ml-1 rounded-xl transition"
-          aria-label="閉じる"
+          aria-label="戻る"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
         <div className="flex-1">
-          <h1 className="text-base font-extrabold text-slate-900 leading-tight">不足している情報を追加する</h1>
-          <p className="text-[11px] text-slate-400 mt-0.5">写真や動画を追加すると職人が判断しやすくなります。分かる範囲だけで大丈夫です。</p>
+          <h1 className="text-base font-extrabold text-slate-900 leading-tight">追加情報を送る</h1>
+          <p className="text-[11px] text-slate-400 mt-0.5">分かる範囲だけで大丈夫です。スキップもできます。</p>
         </div>
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate(id && !isDemo ? `/request/${id}` : '/')}
           className="text-xs text-slate-400 font-semibold hover:text-slate-600 px-3 py-1.5 rounded-xl hover:bg-slate-100 transition"
         >
           スキップ
@@ -330,298 +327,169 @@ export default function RequestExtraInfoPage() {
 
       <div className="max-w-lg mx-auto px-4 py-5 space-y-4">
 
-        {/* 依頼内容へ戻るバナー */}
-        {id && !isDemo && (
-          <button
-            onClick={() => navigate(`/request/${id}`)}
-            className="w-full flex items-center justify-between bg-white border border-slate-200 rounded-2xl px-4 py-3 text-left hover:bg-slate-50 transition"
-          >
-            <span className="text-xs font-bold text-slate-700">依頼内容を確認する</span>
-            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        )}
-
-        {/* 導入テキスト */}
-        <div className="bg-slate-100 rounded-xl px-4 py-3 space-y-1">
-          {['写真や動画を追加すると、職人が判断しやすくなります', '分かる範囲だけで大丈夫です', 'すでに依頼は完了しています。スキップ可能です'].map(t => (
-            <p key={t} className="text-xs text-slate-600 flex items-start gap-1.5">
-              <span className="text-slate-400 flex-shrink-0 mt-px">✓</span>{t}
-            </p>
-          ))}
-        </div>
-
         {isDemo && (
           <div className="rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3">
             <p className="text-xs font-bold text-amber-700">📋 デモモード — 実際には保存されません</p>
           </div>
         )}
 
-        {/* ── 🎥 写真追加（最上部・目立たせる） ── */}
-        <div className="bg-blue-600 rounded-2xl px-5 py-4 text-white">
-          <p className="text-sm font-extrabold mb-0.5">🎥 写真・参考画像を追加する</p>
-          <p className="text-[11px] text-blue-100 mb-3">10〜15秒でOK。現在の壁・床の状態や気になる箇所を撮って送ると職人がすぐ判断できます。</p>
-          <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl px-4 py-4 cursor-pointer transition-all ${uploading ? 'opacity-50 pointer-events-none' : 'hover:border-white/60'} border-white/40`}>
-            <span className="text-2xl">{uploading ? '⏳' : '📸'}</span>
-            <p className="text-xs font-bold">{uploading ? 'アップロード中...' : '写真を選択する（複数可）'}</p>
-            <input type="file" accept="image/*" multiple className="hidden"
-              disabled={uploading || images.length >= 10}
-              onChange={e => handleImageFiles(e.target.files)}
-            />
-          </label>
-          {uploadErrors.length > 0 && (
-            <p className="text-[10px] text-amber-300 mt-2">一部アップロードに失敗しました：{uploadErrors.join('、')}</p>
-          )}
-          {images.length > 0 && (
-            <div className="grid grid-cols-3 gap-2 mt-3">
-              {images.map((url, i) => (
-                <div key={i} className="relative aspect-square rounded-xl overflow-hidden bg-blue-700">
-                  <img src={url} alt={`写真${i + 1}`} className="w-full h-full object-cover opacity-90" loading="lazy" />
-                  <button type="button"
-                    onClick={() => setImages(prev => prev.filter((_, j) => j !== i))}
-                    className="absolute top-1 right-1 w-5 h-5 bg-black/60 text-white rounded-full text-[10px] flex items-center justify-center">✕</button>
-                </div>
-              ))}
-            </div>
-          )}
+        {/* 導入テキスト */}
+        <div className="bg-blue-50 rounded-xl px-4 py-3">
+          <p className="text-xs font-bold text-blue-700 mb-1.5">写真や品番を追加すると職人が判断しやすくなります</p>
+          <p className="text-[11px] text-blue-600 leading-relaxed">
+            部屋ごとに「参考写真」「品番・希望メモ」を追加できます。すでに依頼は完了しています。
+          </p>
         </div>
 
-        {/* 品番・URL */}
-        <Section label="クロス品番・URL（任意）">
-          <div className="space-y-3">
-            <div>
-              <p className="text-[11px] font-semibold text-slate-500 mb-1.5">品番</p>
-              <input
-                value={productNumber}
-                onChange={e => setProductNumber(e.target.value)}
-                placeholder="例：BB-8503、SP2816 など"
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-300"
-              />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold text-slate-500 mb-1.5">気になるURL・リンク</p>
-              <input
-                value={productUrl}
-                onChange={e => setProductUrl(e.target.value)}
-                placeholder="https://... （メーカーサイト・通販ページなど）"
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-300"
-              />
-            </div>
-            <p className="text-[10px] text-slate-400 leading-relaxed">品番が分からない場合は気になる壁紙のURL・写真だけでも大丈夫です</p>
-          </div>
-        </Section>
+        {/* ── 部屋別カード ── */}
+        {rooms.map((room, roomIdx) => {
+          const data = roomData[roomIdx] ?? { productNumber: '', memo: '', images: [], uploading: false };
+          return (
+            <div key={room.index} className="bg-white rounded-2xl ring-1 ring-slate-200 overflow-hidden">
+              {/* 部屋ヘッダー */}
+              <div className="bg-slate-900 px-4 py-3 flex items-center gap-2">
+                <span className="text-base">🏠</span>
+                <p className="text-sm font-extrabold text-white">{room.name}</p>
+              </div>
 
-        {/* アクセントクロス・ソフト巾木（詳細内） */}
-        {showDetail && <Section label="追加ご希望（任意）">
-          <div className="space-y-4">
-            <div>
-              <p className="text-[11px] font-semibold text-slate-500 mb-1.5">✨ アクセントクロス</p>
-              <ChipSingle
-                options={['希望あり', '希望なし', 'まだ決まっていない']}
-                value={accentPref}
-                onSelect={setAccentPref}
-              />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold text-slate-500 mb-1.5">📐 ソフト巾木の施工</p>
-              <ChipSingle
-                options={['施工希望', '不要', 'まだ決まっていない']}
-                value={sokibariPref}
-                onSelect={setSokibariPref}
-              />
-            </div>
-          </div>
-        </Section>}
+              <div className="px-4 py-4 space-y-4">
 
-        {/* 追加メモ */}
-        <Section label="クロス・材料についての追加メモ（任意）">
-          <textarea
-            value={productNote}
-            onChange={e => setProductNote(e.target.value)}
-            rows={3}
-            placeholder="例：北欧っぽい雰囲気にしたい、白系で清潔感を出したい、子供が汚してもOKな素材希望など"
-            className="w-full border-2 border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-teal-400 resize-none leading-relaxed"
-          />
-        </Section>
+                {/* 写真追加 */}
+                <div>
+                  <p className="text-[11px] font-bold text-slate-500 mb-2">
+                    📸 写真・参考画像（任意）
+                    <span className="ml-1 text-slate-300 font-normal">現在の壁・床の状態、気になる箇所など</span>
+                  </p>
+                  <label className={`flex items-center justify-center gap-2 border-2 border-dashed rounded-xl px-4 py-3 cursor-pointer transition-all ${data.uploading ? 'opacity-50 pointer-events-none' : 'hover:border-blue-300 hover:bg-blue-50'} border-slate-200`}>
+                    <span className="text-lg">{data.uploading ? '⏳' : '📷'}</span>
+                    <p className="text-xs font-bold text-slate-500">{data.uploading ? 'アップロード中...' : '写真を選択（複数可）'}</p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      disabled={data.uploading || data.images.length >= 10}
+                      onChange={e => handleRoomImageFiles(roomIdx, e.target.files)}
+                    />
+                  </label>
+                  {data.images.length > 0 && (
+                    <div className="grid grid-cols-3 gap-1.5 mt-2">
+                      {data.images.map((url, i) => (
+                        <div key={i} className="relative aspect-square rounded-xl overflow-hidden bg-slate-100">
+                          <img src={url} alt={`写真${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                          <button
+                            type="button"
+                            onClick={() => setRoomData(prev =>
+                              prev.map((d, ri) =>
+                                ri === roomIdx
+                                  ? { ...d, images: d.images.filter((_, j) => j !== i) }
+                                  : d
+                              )
+                            )}
+                            className="absolute top-1 right-1 w-5 h-5 bg-black/60 text-white rounded-full text-[10px] flex items-center justify-center"
+                          >✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-        {/* ── 詳細トグル ── */}
+                {/* 品番 */}
+                <div>
+                  <p className="text-[11px] font-bold text-slate-500 mb-1.5">
+                    🏷 クロス品番（任意）
+                    <span className="ml-1 text-slate-300 font-normal">例：BB-8503、SP2816</span>
+                  </p>
+                  <input
+                    value={data.productNumber}
+                    onChange={e => setRoomData(prev =>
+                      prev.map((d, ri) => ri === roomIdx ? { ...d, productNumber: e.target.value } : d)
+                    )}
+                    placeholder="品番を入力（分からなければ空白でOK）"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  />
+                </div>
+
+                {/* メモ */}
+                <div>
+                  <p className="text-[11px] font-bold text-slate-500 mb-1.5">
+                    📝 職人へのメモ（任意）
+                  </p>
+                  <textarea
+                    value={data.memo}
+                    onChange={e => setRoomData(prev =>
+                      prev.map((d, ri) => ri === roomIdx ? { ...d, memo: e.target.value } : d)
+                    )}
+                    rows={2}
+                    placeholder="例：窓の下が汚れている、北欧系の雰囲気にしたい など"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-200 resize-none"
+                  />
+                </div>
+
+              </div>
+            </div>
+          );
+        })}
+
+        {/* ── 詳しく入力するトグル ── */}
         <button
           type="button"
           onClick={() => setShowDetail(v => !v)}
           className="w-full py-3 rounded-2xl border border-slate-200 text-slate-500 font-semibold text-sm hover:bg-white flex items-center justify-center gap-2 transition-all"
         >
-          {showDetail ? '▲ 閉じる' : '▼ 詳しく入力する（家具・材料・部屋数など）'}
+          {showDetail ? '▲ 閉じる' : '▼ 詳しく入力する（家具・材料・アクセントなど）'}
         </button>
 
-        {/* クロス選び安心導線 */}
-        {showDetail && <>
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3">
-          <p className="text-xs font-bold text-slate-600 mb-2">💡 人気の選び方</p>
-          <div className="space-y-1.5">
-            {[
-              { t: '失敗しにくい白系', d: '清潔感が出やすく、どの部屋にも合わせやすいです' },
-              { t: 'グレー系', d: '生活感を抑えた落ち着いた雰囲気に' },
-              { t: 'アクセントクロス', d: '一面だけ色を変えて印象を変えられます' },
-            ].map(({ t, d }) => (
-              <div key={t} className="bg-white rounded-xl px-3 py-2 border border-slate-100">
-                <p className="text-xs font-bold text-slate-700">{t}</p>
-                <p className="text-[10px] text-slate-500 mt-0.5">{d}</p>
-              </div>
-            ))}
-          </div>
-          <p className="text-[10px] text-slate-400 mt-2">🔮 準備中：AIで施工後の雰囲気イメージを確認できる機能を開発中です</p>
-        </div>
+        {showDetail && (
+          <>
+            {/* アクセントクロス */}
+            <Section label="✨ アクセントクロス（任意）">
+              <ChipSingle
+                options={['希望あり', '希望なし', 'まだ決まっていない']}
+                value={accentPref}
+                onSelect={setAccentPref}
+              />
+            </Section>
 
-        <div className="border-t border-slate-200 pt-2">
-          <p className="text-[11px] font-bold text-slate-500 mb-3">その他の詳細情報（任意）</p>
-        </div>
+            {/* ソフト巾木 */}
+            <Section label="📐 ソフト巾木の施工（任意）">
+              <ChipSingle
+                options={['施工希望', '不要', 'まだ決まっていない']}
+                value={sokibariPref}
+                onSelect={setSokibariPref}
+              />
+            </Section>
 
-        {/* 0. 部屋数 */}
-        <Section label="部屋数">
-          <ChipSingle
-            options={ROOM_COUNT_OPTIONS}
-            value={info.roomCount}
-            onSelect={v => setInfo(prev => ({ ...prev, roomCount: v }))}
-          />
-        </Section>
+            {/* 家具移動 */}
+            <Section label="家具の移動について（任意）">
+              <ChipSingle
+                options={FURNITURE_OPTIONS}
+                value={furniture}
+                onSelect={setFurniture}
+              />
+            </Section>
 
-        {/* 複数部屋の内訳 */}
-        {(info.roomCount === '2部屋' || info.roomCount === '3部屋以上') && (
-          <Section label="部屋ごとの情報（任意）">
-            <div className="space-y-4">
-              {info.rooms.map((room, i) => (
-                <div key={i} className="border border-slate-100 rounded-2xl p-4 bg-slate-50 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold text-slate-700">部屋 {i + 1}</p>
-                    {i > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => removeRoom(i)}
-                        className="text-[11px] text-red-400 hover:text-red-600 font-semibold"
-                      >
-                        削除
-                      </button>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-500 mb-1.5">部屋名</p>
-                    <ChipSingle options={ROOM_NAME_OPTIONS} value={room.name} onSelect={v => updateRoom(i, 'name', v)} />
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-500 mb-1.5">工事内容</p>
-                    <ChipSingle options={WORK_TYPE_OPTIONS} value={room.workType} onSelect={v => updateRoom(i, 'workType', v)} />
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-500 mb-1.5">だいたいの広さ</p>
-                    <ChipSingle options={ROOM_SIZE_OPTIONS} value={room.size} onSelect={v => updateRoom(i, 'size', v)} />
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-500 mb-1.5">状態（複数選択可）</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {ROOM_COND_OPTIONS.map(c => (
-                        <button key={c} type="button" onClick={() => toggleRoomCond(i, c)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                            room.condition.includes(c)
-                              ? 'bg-orange-500 text-white border-orange-500'
-                              : 'bg-white text-slate-600 border-slate-200 hover:border-orange-300'
-                          }`}>{c}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-500 mb-1.5">家具量</p>
-                    <ChipSingle options={ROOM_FURNITURE_OPTIONS} value={room.furniture} onSelect={v => updateRoom(i, 'furniture', v)} />
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-500 mb-1.5">気になる箇所（任意）</p>
-                    <input
-                      value={room.memo}
-                      onChange={e => updateRoom(i, 'memo', e.target.value)}
-                      placeholder="例：窓の下が汚れている"
-                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-300 bg-white"
-                    />
-                  </div>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={addRoom}
-                className="w-full py-2.5 rounded-xl border border-dashed border-blue-300 text-xs font-semibold text-blue-500 hover:bg-blue-50 transition"
-              >
-                ＋ 部屋を追加
-              </button>
-            </div>
-          </Section>
+            {/* 駐車場 */}
+            <Section label="駐車場について（任意）">
+              <ChipSingle
+                options={PARKING_OPTIONS}
+                value={parking}
+                onSelect={setParking}
+              />
+            </Section>
+
+            {/* 材料希望 */}
+            <Section label="材料の希望（任意・複数選択可）">
+              <ChipMulti
+                options={MATERIAL_OPTIONS}
+                selected={material}
+                onToggle={v => setMaterial(prev =>
+                  prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]
+                )}
+              />
+            </Section>
+          </>
         )}
-
-        {/* A. 家具移動 */}
-        <Section label="A. 家具の移動について">
-          <ChipSingle
-            options={FURNITURE_OPTIONS}
-            value={info.furniture}
-            onSelect={v => setInfo(prev => ({ ...prev, furniture: v }))}
-          />
-        </Section>
-
-        {/* B. 駐車場 */}
-        <Section label="B. 駐車場について">
-          <ChipSingle
-            options={PARKING_OPTIONS}
-            value={info.parking}
-            onSelect={v => setInfo(prev => ({ ...prev, parking: v }))}
-          />
-        </Section>
-
-        {/* C. 材料希望 */}
-        <Section label="C. 材料の希望（複数選択可）">
-          <ChipMulti
-            options={MATERIAL_OPTIONS}
-            selected={info.material}
-            onToggle={v => toggleMulti('material', v)}
-          />
-        </Section>
-
-        {/* D. 現在の状態 */}
-        <Section label="D. 現在の状態（複数選択可）">
-          <ChipMulti
-            options={CONDITION_OPTIONS}
-            selected={info.condition}
-            onToggle={v => toggleMulti('condition', v)}
-          />
-        </Section>
-
-        {/* F. 追加メモ */}
-        <Section label="F. 追加メモ（任意）">
-          <textarea
-            value={info.memo}
-            onChange={e => setInfo(prev => ({ ...prev, memo: e.target.value }))}
-            rows={3}
-            placeholder="気になる箇所、希望、職人に伝えたいことなど"
-            className="w-full border-2 border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-blue-400 resize-none leading-relaxed"
-          />
-          <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
-            ※ 個人情報（電話番号・住所等）は入力しないでください。成約後に別途メールにてご案内します。
-          </p>
-        </Section>
-
-        {/* G. 追加資料 */}
-        <Section label="G. 追加資料（任意・複数選択可）">
-          <p className="text-[11px] text-slate-400 mb-2 leading-relaxed">
-            お持ちの場合は後からチャットでお送りいただけます。
-          </p>
-          <ChipMulti
-            options={ATTACHMENT_OPTIONS}
-            selected={info.attachmentFlags}
-            onToggle={v => setInfo(prev => ({
-              ...prev,
-              attachmentFlags: prev.attachmentFlags.includes(v)
-                ? prev.attachmentFlags.filter(x => x !== v)
-                : [...prev.attachmentFlags, v],
-            }))}
-          />
-        </Section>
-        </>}
 
         {/* 送信 */}
         <button
@@ -633,11 +501,15 @@ export default function RequestExtraInfoPage() {
         </button>
 
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate(id && !isDemo ? `/request/${id}` : '/')}
           className="w-full py-3 rounded-2xl border border-slate-200 text-slate-500 font-semibold text-sm hover:bg-white transition-all"
         >
           今はスキップする
         </button>
+
+        <p className="text-center text-[10px] text-slate-400 leading-relaxed px-2">
+          ※ 個人情報（電話番号・住所等）は入力しないでください。成約後に別途メールにてご案内します。
+        </p>
 
       </div>
     </div>

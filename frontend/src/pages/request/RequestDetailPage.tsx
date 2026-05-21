@@ -41,10 +41,13 @@ export default function RequestDetailPage() {
       .from('estimate_requests')
       .select('id, area, work_type, has_video, has_photos, video_url, customer_note, created_at, meta')
       .eq('id', id)
-      .single()
+      .maybeSingle()
       .then(({ data, error }) => {
-        if (error || !data) { setNotFound(true); }
-        else { setReq(data as RequestRow); }
+        if (error) {
+          console.warn('[RequestDetailPage] fetch error:', error.message, error.code);
+        }
+        if (data) { setReq(data as RequestRow); }
+        else { setNotFound(true); }
         setLoading(false);
       });
   }, [id]);
@@ -59,11 +62,28 @@ export default function RequestDetailPage() {
 
   if (notFound || !req) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6 text-center">
-        <p className="text-slate-500 text-sm mb-4">依頼が見つかりませんでした。</p>
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-6 text-center gap-4">
+        <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
+          <span className="text-2xl">🔍</span>
+        </div>
+        <div>
+          <p className="text-base font-extrabold text-slate-700 mb-1">依頼が見つかりませんでした</p>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            URLが正しいか確認してください。<br />
+            すでに依頼が削除されているか、URLが異なる可能性があります。
+          </p>
+        </div>
+        {id && !id.startsWith('demo') && (
+          <button
+            onClick={() => navigate(`/request/${id}/extra-info`)}
+            className="text-xs text-blue-500 font-semibold underline"
+          >
+            追加情報ページで確認する
+          </button>
+        )}
         <button
           onClick={() => navigate('/')}
-          className="text-blue-600 text-sm font-bold"
+          className="w-full max-w-xs py-3.5 rounded-2xl bg-slate-900 text-white font-bold text-sm"
         >
           トップへ戻る
         </button>
@@ -71,8 +91,16 @@ export default function RequestDetailPage() {
     );
   }
 
-  const rooms = (req.meta?.rooms as Array<{ name: string; workType: string; size: string }> | undefined) ?? [];
+  const rooms = (req.meta?.rooms as Array<{ name: string; workType: string; size: string; customName?: string }> | undefined) ?? [];
   const extraInfo = req.meta?.extra_info as Record<string, unknown> | undefined;
+  const extraInfoNew = req.meta?.extraInfo as Record<string, unknown> | undefined;
+  const roomAdditionalInfo = (req.meta?.roomAdditionalInfo as Array<{
+    roomIndex: number;
+    roomName: string;
+    productNumber?: string;
+    memo?: string;
+    images?: string[];
+  }> | undefined) ?? [];
   const createdDate = req.created_at
     ? new Date(req.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })
     : null;
@@ -177,10 +205,10 @@ export default function RequestDetailPage() {
           </div>
         )}
 
-        {/* 追加情報 */}
-        {extraInfo && Object.keys(extraInfo).length > 0 && (
+        {/* 追加情報（旧フォーマット） */}
+        {extraInfo && (extraInfo.furniture || extraInfo.timing || extraInfo.memo) && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4">
-            <p className="text-xs font-bold text-slate-400 mb-3">追加情報（品番・希望など）</p>
+            <p className="text-xs font-bold text-slate-400 mb-3">追加情報</p>
             <div className="space-y-1.5">
               {(extraInfo.furniture as string | undefined) && (
                 <div className="flex justify-between text-sm">
@@ -200,6 +228,66 @@ export default function RequestDetailPage() {
                   <p className="text-slate-700 mt-0.5 leading-relaxed">{extraInfo.memo as string}</p>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* 追加情報（新フォーマット: アクセント・巾木など） */}
+        {extraInfoNew && (extraInfoNew.accentPreference || extraInfoNew.softSokibariPreference) && (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4">
+            <p className="text-xs font-bold text-slate-400 mb-3">ご希望</p>
+            <div className="space-y-1.5">
+              {(extraInfoNew.accentPreference as string | undefined) && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">✨ アクセントクロス</span>
+                  <span className="font-bold text-slate-700">{extraInfoNew.accentPreference as string}</span>
+                </div>
+              )}
+              {(extraInfoNew.softSokibariPreference as string | undefined) && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">📐 ソフト巾木</span>
+                  <span className="font-bold text-slate-700">{extraInfoNew.softSokibariPreference as string}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 部屋別追加情報（写真・品番・メモ） */}
+        {roomAdditionalInfo.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 border-b border-slate-50">
+              <p className="text-xs font-bold text-slate-400">📸 部屋別 追加情報</p>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {roomAdditionalInfo.map((room, i) => (
+                <div key={i} className="px-5 py-4 space-y-2">
+                  <p className="text-sm font-extrabold text-slate-800">🏠 {room.roomName}</p>
+                  {room.productNumber && (
+                    <div className="text-sm">
+                      <span className="text-slate-400">品番：</span>
+                      <span className="font-bold text-slate-700">{room.productNumber}</span>
+                    </div>
+                  )}
+                  {room.memo && (
+                    <p className="text-sm text-slate-600 leading-relaxed">{room.memo}</p>
+                  )}
+                  {(room.images?.length ?? 0) > 0 && (
+                    <div className="grid grid-cols-3 gap-1.5 mt-1">
+                      {room.images!.map((url, j) => (
+                        <a key={j} href={url} target="_blank" rel="noreferrer">
+                          <img
+                            src={url}
+                            alt={`${room.roomName} 写真${j + 1}`}
+                            className="w-full aspect-square object-cover rounded-xl border border-slate-100"
+                            loading="lazy"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}

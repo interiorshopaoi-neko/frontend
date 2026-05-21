@@ -5,6 +5,7 @@ import { FEE_TABLE } from '../../constants/fees';
 import type { Job } from './CraftsmanJobsPage';
 import { calcRevenueNum } from '../../lib/revenueEstimate';
 import { getRoomMedia, hasAccentPreference, hasCeilingWork } from '../../lib/requestMeta';
+import { getRoomWorkSummaries } from '../../utils/requestSummary';
 import SiteRadar from '../../components/SiteRadar';
 
 // ─── Freshness helpers ───────────────────────────────────────────────────────
@@ -318,6 +319,56 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                     )}
                   </div>
 
+                  {/* ── 施工概要ブロック ── */}
+                  {(() => {
+                    const rooms = getRoomWorkSummaries(job.meta);
+                    if (rooms.length === 0) {
+                      return (
+                        <div className="mx-4 mb-3 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
+                          <p className="text-xs text-slate-400 font-bold mb-0.5">施工概要</p>
+                          <p className="text-sm font-bold text-slate-700">{job.work_type || 'クロス張り替え'}</p>
+                        </div>
+                      );
+                    }
+                    if (rooms.length === 1) {
+                      const r = rooms[0];
+                      return (
+                        <div className="mx-4 mb-3 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
+                          <p className="text-xs text-slate-400 font-bold mb-1">施工概要</p>
+                          <p className="text-base font-extrabold text-slate-900">{r.name}</p>
+                          {r.workParts.length > 0 && (
+                            <p className="text-xs text-slate-600 mt-0.5">{r.workParts.join('・')}</p>
+                          )}
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
+                            {r.size && (
+                              <span className="text-[11px] bg-white border border-slate-200 text-slate-600 font-bold px-2 py-0.5 rounded-full">
+                                📐 {r.size}
+                              </span>
+                            )}
+                            {r.conditions.map(c => (
+                              <span key={c} className="text-[11px] bg-amber-50 border border-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full">
+                                {c}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="mx-4 mb-3 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
+                        <p className="text-xs text-slate-400 font-bold mb-1">施工概要 · {rooms.length}部屋</p>
+                        <div className="space-y-1">
+                          {rooms.map((r, i) => (
+                            <div key={i} className="flex items-baseline gap-1.5">
+                              <span className="text-sm font-extrabold text-slate-900 min-w-[3.5rem]">{r.name}</span>
+                              <span className="text-xs text-slate-500 truncate">{[...r.workParts, r.size].filter(Boolean).join('・')}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* ── 売上ブロック（メイン） ── */}
                   <div className="mx-4 mb-3 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white px-4 py-3.5 shadow-sm shadow-blue-200">
                     <div className="flex items-center justify-between mb-1.5">
@@ -349,9 +400,9 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                       chips.push({ label: `🏠 ${job.meta!.rooms!.length}部屋`, cls: 'bg-violet-50 text-violet-700' });
                     if (hasAccentPreference(job.meta))
                       chips.push({ label: 'アクセント希望', cls: 'bg-purple-50 text-purple-700' });
-                    return chips.slice(0, 4).length > 0 ? (
+                    return chips.slice(0, 3).length > 0 ? (
                       <div className="px-4 mb-3 flex flex-wrap gap-1.5">
-                        {chips.slice(0, 4).map(c => (
+                        {chips.slice(0, 3).map(c => (
                           <span key={c.label} className={`text-xs font-bold px-2.5 py-1 rounded-full ${c.cls}`}>
                             {c.label}
                           </span>
