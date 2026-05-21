@@ -2,8 +2,11 @@
 // GET /api/request-detail?id=xxx
 //
 // estimate_requests の1行を service role key で取得して返す。
-// contact_value / contact_method は絶対に返さない。
+// contact_value / contact_method は絶対に返さない（削除して返す）。
 // RLS をバイパスするため anon クライアントの代わりに使う。
+//
+// select=* で全列を取得し、サーバー側で sensitive fields を除去する。
+// これにより「存在しない列名を明示 → 400エラー」を回避できる。
 // ================================================================
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -16,6 +19,9 @@ const SUPABASE_URL = (
 ).trim();
 
 const SUPABASE_SERVICE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
+
+// 絶対に返してはいけない列（顧客の連絡先情報）
+const FORBIDDEN_FIELDS = ['contact_value', 'contact_method'];
 
 function sbHeaders() {
   return {
@@ -62,13 +68,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const trimmedId = id.trim();
 
   try {
-    // select: 絶対に contact_value / contact_method を含めない
-    // has_video / has_photos は本番DBに存在しない列のため除外
-    // has_video は video_url の non-null で代用（フロント側で処理）
+    // select=* で全列取得。存在しない列名を明示すると 400 になるため。
+    // sensitive fields はサーバー側で削除してから返す（二重保護）。
     const url =
       `${SUPABASE_URL}/rest/v1/estimate_requests` +
       `?id=eq.${encodeURIComponent(trimmedId)}` +
-      `&select=id,area,work_type,video_url,customer_note,created_at,meta` +
+      `&select=*` +
       `&limit=1`;
 
     console.info('[request-detail] fetching id=', trimmedId);
@@ -81,11 +86,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const row = rows[0];
 
-    // 念のため sensitive fields を削除（select に含めていないが二重保護）
-    delete row.contact_value;
-    delete row.contact_method;
+    // contact_value / contact_method は絶対に返さない（二重保護）
+    for (const field of FORBIDDEN_FIELDS) {
+      delete row[field];
+    }
 
-    console.info('[request-detail] ok id=', trimmedId);
+    console.info('[request-detail] ok id=', trimmedId, 'cols=', Object.keys(row).join(','));
     return res.status(200).json(row);
 
   } catch (err: unknown) {

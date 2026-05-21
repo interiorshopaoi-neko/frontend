@@ -20,12 +20,12 @@ type RoomAdditionalEntry = {
 // ── デモデータ ────────────────────────────────────────────────────────────────
 
 const DEMO_REQ: RequestRow = {
-  id:            'demo-1',
-  area:          '群馬県太田市',
-  work_type:     'クロス張替え',
-  video_url:     null,
-  customer_note: 'これはデモ表示です。',
-  created_at:    new Date().toISOString(),
+  id:         'demo-1',
+  area:       '群馬県太田市',
+  work_type:  'クロス張替え',
+  video_url:  null,
+  memo:       'これはデモ表示です。',
+  created_at: new Date().toISOString(),
   meta: {
     rooms: [
       { name: '寝室', workType: 'クロス', wallWorkScope: 'wall_ceiling', size: '8畳' },
@@ -380,11 +380,13 @@ export default function RequestDetailPage() {
           </div>
         )}
 
-        {/* メモ */}
-        {req.customer_note && (
+        {/* メモ（DB列名: memo / customer_note どちらも対応）*/}
+        {(req.memo || (req as Record<string, unknown>).customer_note) && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4">
             <p className="text-xs font-bold text-slate-400 mb-2">備考・メモ</p>
-            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{req.customer_note}</p>
+            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+              {(req.memo || (req as Record<string, unknown>).customer_note) as string}
+            </p>
           </div>
         )}
 

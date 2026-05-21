@@ -6,19 +6,29 @@
 // 片方だけ動く状態をなくす。
 //
 // contact_value / contact_method は API 側で除外済み・ここでも扱わない。
+//
+// 注: API は select=* で返すため、実際のDB列名をそのまま受け取る。
+//     estimate_requests の実在列に基づいた型定義にすること。
+//     存在しない列（customer_note, has_video, has_photos）は型に含めない。
 // ================================================================
 
 export type RequestDetail = {
   id:            string;
-  area:          string | null;
-  work_type:     string | null;
-  // has_video / has_photos は本番DBに存在しない列のため除外済み
-  // has_video の代用: video_url !== null で判定
-  video_url:     string | null;
-  customer_note: string | null;
-  created_at:    string | null;
-  meta:          Record<string, unknown> | null;
-  // contact_value / contact_method は絶対に含めない
+  area?:         string | null;
+  work_type?:    string | null;
+  video_url?:    string | null;    // メイン動画URL（has_video の代用: non-null で動画あり）
+  memo?:         string | null;    // 実DB列名（RPC: p_memo）。customer_note とは別物
+  size_note?:    string | null;    // RPC: p_size_note
+  timing?:       string | null;    // RPC: p_timing
+  room_type?:    string | null;
+  site_condition?: string | null;
+  desire_type?:  string | null;
+  meta?:         Record<string, unknown> | null;
+  created_at?:   string | null;
+  status?:       string | null;
+  // contact_value / contact_method は API 側で除外済み・型にも含めない
+  // 上記以外のDB列もそのまま通過するが、フロントは既知列のみ使う
+  [key: string]: unknown;
 };
 
 export class RequestNotFoundError extends Error {

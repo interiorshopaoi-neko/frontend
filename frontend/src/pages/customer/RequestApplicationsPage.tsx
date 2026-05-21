@@ -502,32 +502,12 @@ export default function RequestApplicationsPage() {
 
         {/* 応募カード一覧 */}
         {apps.length === 0 ? (
-          <div className="space-y-3">
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm">
-              <p className="text-3xl mb-2">⏳</p>
-              <p className="text-sm font-bold text-slate-700 mb-1">まだ応募がありません</p>
-              <p className="text-xs text-slate-400 mb-4">職人からの応募をお待ちください</p>
-            </div>
-            {id && !isDemo && (
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-4">
-                <p className="text-xs font-bold text-slate-600 mb-1">📸 写真・動画を追加すると職人が判断しやすくなります</p>
-                <p className="text-[11px] text-slate-400 mb-3">追加情報があると応募が増えやすくなります。</p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => navigate(`/request/${id}`)}
-                    className="flex-1 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition"
-                  >
-                    依頼内容を確認
-                  </button>
-                  <button
-                    onClick={() => navigate(`/request/${id}/extra-info`)}
-                    className="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition active:scale-95"
-                  >
-                    写真・情報を追加する
-                  </button>
-                </div>
-              </div>
-            )}
+          <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center shadow-sm">
+            <p className="text-3xl mb-2">⏳</p>
+            <p className="text-sm font-bold text-slate-700 mb-1">まだ応募がありません</p>
+            <p className="text-xs text-slate-400">
+              写真や動画を追加すると職人が判断しやすくなります（上の案内から追加できます）
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
