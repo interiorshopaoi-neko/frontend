@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
 import { compressImage } from '../../utils/imageUtils';
 import { fetchRequestDetail, RequestNotFoundError } from '../../utils/requestApi';
 
@@ -36,14 +35,17 @@ type RoomAdditionalEntry = {
 type RoomAdditionalInfo = Record<string, RoomAdditionalEntry>;
 
 type PerRoomState = {
-  productNumber:  string;
-  note:           string;
-  photos:         string[];   // 保存済み publicUrl のみ（Storage にある）
-  previewUrls:    string[];   // アップロード中の blob URL（即時プレビュー用・保存しない）
-  videoUrl:       string;
-  uploading:      boolean;    // 写真アップロード中フラグ
-  videoUploading: boolean;
-  uploadError:    string;     // 写真アップロードエラーメッセージ（''=なし）
+  productNumber:     string;
+  note:              string;
+  photos:            string[];   // 保存済み publicUrl のみ（Storage にある）
+  previewUrls:       string[];   // 圧縮/アップロード中の blob URL（即時プレビュー用・保存しない）
+  compressing:       boolean;    // 画像圧縮中フラグ（「画像を軽くしています…」表示用）
+  uploading:         boolean;    // 画像アップロード中フラグ
+  uploadError:       string;     // 画像アップロードエラーメッセージ（''=なし）
+  videoUrl:          string;     // 保存済み動画 publicUrl
+  videoLocalPreview: string;     // アップロード前のローカルプレビュー blob URL
+  videoUploading:    boolean;    // 動画アップロード中フラグ
+  videoError:        string;     // 動画アップロードエラーメッセージ（''=なし）
 };
 
 type AddedRoom = {
@@ -142,7 +144,7 @@ export default function RequestExtraInfoPage() {
   useEffect(() => {
     if (isDemo || !id) {
       setExistingRooms([{ name: 'メインのお部屋', customName: 'メインのお部屋' }]);
-      setPerRoom({ '0': { productNumber: '', note: '', photos: [], previewUrls: [], videoUrl: '', uploading: false, videoUploading: false, uploadError: '' } });
+      setPerRoom({ '0': { productNumber: '', note: '', photos: [], previewUrls: [], compressing: false, uploading: false, uploadError: '', videoUrl: '', videoLocalPreview: '', videoUploading: false, videoError: '' } });
       setLoading(false);
       return;
     }
@@ -164,14 +166,17 @@ export default function RequestExtraInfoPage() {
           const key = String(i);
           const e = existingRAI[key];
           initPerRoom[key] = {
-            productNumber:  e?.productNumber ?? '',
-            note:           e?.note ?? '',
-            photos:         e?.photos ?? [],
-            previewUrls:    [],
-            videoUrl:       e?.videoUrl ?? '',
-            uploading:      false,
-            videoUploading: false,
-            uploadError:    '',
+            productNumber:     e?.productNumber ?? '',
+            note:              e?.note ?? '',
+            photos:            e?.photos ?? [],
+            previewUrls:       [],
+            compressing:       false,
+            uploading:         false,
+            uploadError:       '',
+            videoUrl:          e?.videoUrl ?? '',
+            videoLocalPreview: '',
+            videoUploading:    false,
+            videoError:        '',
           };
         });
 
@@ -189,14 +194,17 @@ export default function RequestExtraInfoPage() {
             const key = `added_${i}`;
             const e = existingRAI[key];
             initPerRoom[key] = {
-              productNumber:  e?.productNumber ?? '',
-              note:           e?.note ?? '',
-              photos:         e?.photos ?? [],
-              previewUrls:    [],
-              videoUrl:       e?.videoUrl ?? '',
-              uploading:      false,
-              videoUploading: false,
-              uploadError:    '',
+              productNumber:     e?.productNumber ?? '',
+              note:              e?.note ?? '',
+              photos:            e?.photos ?? [],
+              previewUrls:       [],
+              compressing:       false,
+              uploading:         false,
+              uploadError:       '',
+              videoUrl:          e?.videoUrl ?? '',
+              videoLocalPreview: '',
+              videoUploading:    false,
+              videoError:        '',
             };
           });
         }
@@ -227,8 +235,10 @@ export default function RequestExtraInfoPage() {
   }, [id, isDemo]);
 
   // ── 写真アップロード（部屋別）────────────────────────────────────────────────
-  // /api/upload-room-image 経由で service role key を使って Storage RLS をバイパスする。
-  // 圧縮は必須（compressImage が throw した場合はエラー表示・silent fallback なし）。
+  // フェーズ1: 即時 blob プレビュー表示 + compressing:true（「画像を軽くしています…」）
+  // フェーズ2: 全ファイル圧縮（compressImage 必須・失敗はエラー表示）
+  // フェーズ3: uploading:true（「アップロード中…」）+ /api/upload-room-image へ送信
+  // フェーズ4: blob URL を publicUrl に差し替え・エラー集計
   async function handlePhotoUpload(roomKey: string, files: FileList | null) {
     if (!files || files.length === 0) return;
 
@@ -237,45 +247,59 @@ export default function RequestExtraInfoPage() {
     const fileArr = Array.from(files).slice(0, Math.max(0, 5 - existingCount));
     if (fileArr.length === 0) return;
 
-    // 即座にプレビュー表示（blob URL）
+    // フェーズ1: 即座にプレビュー表示（blob URL）、圧縮開始を通知
     const blobUrls = fileArr.map(f => URL.createObjectURL(f));
     setPerRoom(prev => ({
       ...prev,
       [roomKey]: {
         ...prev[roomKey],
         previewUrls: [...(prev[roomKey]?.previewUrls ?? []), ...blobUrls],
-        uploading:   true,
+        compressing: true,
+        uploading:   false,
         uploadError: '',
       },
     }));
 
-    // バックグラウンドでアップロード・publicUrl への差し替え
+    // フェーズ2: 全ファイルを圧縮（失敗はエラー扱い・silent fallback なし）
+    type Compressed = { blobUrl: string; blob: Blob } | { blobUrl: string; failed: true };
+    const compressed: Compressed[] = [];
+    for (let i = 0; i < fileArr.length; i++) {
+      try {
+        const blob = await compressImage(fileArr[i], 1200, 0.80);
+        compressed.push({ blobUrl: blobUrls[i], blob });
+      } catch (e) {
+        console.warn('[ExtraInfo] compress failed:', e);
+        compressed.push({ blobUrl: blobUrls[i], failed: true });
+      }
+    }
+
+    // フェーズ3: アップロード開始
+    setPerRoom(prev => ({
+      ...prev,
+      [roomKey]: { ...prev[roomKey], compressing: false, uploading: true },
+    }));
+
+    // roomKey → 数字のみの roomIndex（added_N は 1000+N オフセット）
+    const roomIndex = roomKey.startsWith('added_')
+      ? String(1000 + parseInt(roomKey.slice('added_'.length), 10))
+      : roomKey;
+
     const successMap: Record<string, string> = {};  // blobUrl → publicUrl
     const failedBlobUrls: string[] = [];
 
-    for (let i = 0; i < fileArr.length; i++) {
-      const file    = fileArr[i];
-      const blobUrl = blobUrls[i];
+    for (const item of compressed) {
+      if ('failed' in item) {
+        failedBlobUrls.push(item.blobUrl);
+        continue;
+      }
       try {
-        // 圧縮必須（失敗時は throw → silent fallback なし）
-        const blob = await compressImage(file, 1200, 0.80);
-
         // base64 変換
         const base64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result as string;
-            resolve(result.split(',')[1] ?? '');
-          };
+          reader.onload  = () => resolve((reader.result as string).split(',')[1] ?? '');
           reader.onerror = () => reject(new Error('base64 変換に失敗しました'));
-          reader.readAsDataURL(blob);
+          reader.readAsDataURL(item.blob);
         });
-
-        // roomKey → 数字のみの roomIndex へ変換
-        // added_N 系は 1000+N のオフセットで衝突回避（通常部屋は 0〜9 程度）
-        const roomIndex = roomKey.startsWith('added_')
-          ? String(1000 + parseInt(roomKey.slice('added_'.length), 10))
-          : roomKey;
 
         // /api/upload-room-image 経由でアップロード（service role → Storage RLS バイパス）
         const apiRes = await fetch('/api/upload-room-image', {
@@ -285,72 +309,145 @@ export default function RequestExtraInfoPage() {
             requestId: id ?? '',
             roomIndex,
             base64,
-            mimeType:  blob.type,
+            mimeType:  item.blob.type,
           }),
         });
 
         if (!apiRes.ok) {
           const errBody = await apiRes.json().catch(() => ({ error: 'upload failed' }));
           console.warn('[ExtraInfo] photo upload API error:', apiRes.status, errBody);
-          failedBlobUrls.push(blobUrl);
+          failedBlobUrls.push(item.blobUrl);
           continue;
         }
 
         const { publicUrl } = await apiRes.json() as { publicUrl: string };
-        successMap[blobUrl] = publicUrl;
+        successMap[item.blobUrl] = publicUrl;
 
       } catch (e) {
         console.warn('[ExtraInfo] photo upload exception:', e);
-        failedBlobUrls.push(blobUrl);
+        failedBlobUrls.push(item.blobUrl);
       }
     }
 
-    // blob URL を publicUrl に差し替え（成功・失敗とも previewUrls から除去）
+    // フェーズ4: blob URL を差し替え（成功・失敗とも previewUrls から除去）
     setPerRoom(prev => {
       const d = prev[roomKey];
       if (!d) return prev;
-      const uploadedBlobSet = new Set(blobUrls);
-      const newPreviews = d.previewUrls.filter(u => !uploadedBlobSet.has(u));
+      const uploadedSet = new Set(blobUrls);
+      const newPreviews = d.previewUrls.filter(u => !uploadedSet.has(u));
       const newPublic   = [...d.photos, ...Object.values(successMap)].slice(0, 5);
       const errorMsg    = failedBlobUrls.length > 0
         ? `${failedBlobUrls.length}枚の写真でエラーが発生しました。再度お試しください。`
         : '';
       return {
         ...prev,
-        [roomKey]: { ...d, photos: newPublic, previewUrls: newPreviews, uploading: false, uploadError: errorMsg },
+        [roomKey]: { ...d, photos: newPublic, previewUrls: newPreviews, compressing: false, uploading: false, uploadError: errorMsg },
       };
     });
   }
 
   // ── 動画アップロード（部屋別）────────────────────────────────────────────────
+  // 動画は最大50MBのため base64 JSON は使えない。
+  // /api/upload-room-video で署名付きURLを取得し、クライアントから直接 Storage に PUT する。
+  // Storage path はサーバー側で固定生成（room-videos/{requestId}/{roomIndex}/{timestamp}.mp4）。
   const videoInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const ALLOWED_VIDEO_MIME = ['video/mp4', 'video/quicktime', 'video/webm'] as const;
 
   async function handleVideoUpload(roomKey: string, file: File | null) {
     if (!file) return;
 
-    if (file.size > VIDEO_SIZE_LIMIT_MB * 1024 * 1024) {
-      alert(`動画ファイルは${VIDEO_SIZE_LIMIT_MB}MB以下にしてください`);
+    // ファイルタイプ検証
+    if (!(ALLOWED_VIDEO_MIME as readonly string[]).includes(file.type)) {
+      setPerRoom(prev => ({
+        ...prev,
+        [roomKey]: { ...prev[roomKey], videoError: 'mp4・mov・webm 形式の動画のみアップロードできます' },
+      }));
       return;
     }
 
-    setPerRoom(prev => ({ ...prev, [roomKey]: { ...prev[roomKey], videoUploading: true } }));
-
-    try {
-      const ext  = file.name.split('.').pop() ?? 'mp4';
-      const path = `room-videos/${id ?? 'anon'}/${roomKey}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await supabase.storage.from('estimate-videos').upload(path, file, { contentType: file.type });
-      if (error) {
-        console.warn('[ExtraInfo] video upload error:', error.message);
-        setPerRoom(prev => ({ ...prev, [roomKey]: { ...prev[roomKey], videoUploading: false } }));
-        return;
-      }
-      const { data: { publicUrl } } = supabase.storage.from('estimate-videos').getPublicUrl(path);
+    // サイズ検証（50MB）
+    if (file.size > VIDEO_SIZE_LIMIT_MB * 1024 * 1024) {
       setPerRoom(prev => ({
         ...prev,
-        [roomKey]: { ...prev[roomKey], videoUrl: publicUrl, videoUploading: false },
+        [roomKey]: { ...prev[roomKey], videoError: `動画は${VIDEO_SIZE_LIMIT_MB}MB以下にしてください` },
       }));
-    } catch {
-      setPerRoom(prev => ({ ...prev, [roomKey]: { ...prev[roomKey], videoUploading: false } }));
+      return;
+    }
+
+    // ローカルプレビュー表示 + アップロード開始
+    const localPreview = URL.createObjectURL(file);
+    setPerRoom(prev => ({
+      ...prev,
+      [roomKey]: {
+        ...prev[roomKey],
+        videoLocalPreview: localPreview,
+        videoUploading:    true,
+        videoError:        '',
+      },
+    }));
+
+    // roomKey → 数字のみの roomIndex（added_N は 1000+N オフセット）
+    const roomIndex = roomKey.startsWith('added_')
+      ? String(1000 + parseInt(roomKey.slice('added_'.length), 10))
+      : roomKey;
+
+    try {
+      // Step 1: 署名付きアップロードURL取得（service role → RLS バイパス）
+      const apiRes = await fetch('/api/upload-room-video', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          requestId: id ?? '',
+          roomIndex,
+          mimeType:  file.type,
+        }),
+      });
+
+      if (!apiRes.ok) {
+        const errBody = await apiRes.json().catch(() => ({ error: '動画のアップロードに失敗しました' }));
+        throw new Error(typeof errBody?.error === 'string' ? errBody.error : '動画のアップロードに失敗しました');
+      }
+
+      const { uploadUrl, publicUrl } = await apiRes.json() as { uploadUrl: string; publicUrl: string };
+
+      // Step 2: 署名付きURLに直接 PUT（Vercelを通さないため50MBでも可）
+      const uploadRes = await fetch(uploadUrl, {
+        method:  'PUT',
+        headers: { 'Content-Type': file.type },
+        body:    file,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error(`アップロードに失敗しました（${uploadRes.status}）`);
+      }
+
+      // 成功
+      URL.revokeObjectURL(localPreview);
+      setPerRoom(prev => ({
+        ...prev,
+        [roomKey]: {
+          ...prev[roomKey],
+          videoUrl:          publicUrl,
+          videoLocalPreview: '',
+          videoUploading:    false,
+          videoError:        '',
+        },
+      }));
+
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : '動画のアップロードに失敗しました';
+      console.warn('[ExtraInfo] video upload error:', e);
+      URL.revokeObjectURL(localPreview);
+      setPerRoom(prev => ({
+        ...prev,
+        [roomKey]: {
+          ...prev[roomKey],
+          videoLocalPreview: '',
+          videoUploading:    false,
+          videoError:        msg,
+        },
+      }));
     }
   }
 
@@ -554,7 +651,7 @@ export default function RequestExtraInfoPage() {
         {/* ── 部屋別カード（Phase 3・4）── */}
         {existingRooms.map((room, roomIdx) => {
           const roomKey = String(roomIdx);
-          const d = perRoom[roomKey] ?? { productNumber: '', note: '', photos: [], previewUrls: [], videoUrl: '', uploading: false, videoUploading: false, uploadError: '' };
+          const d = perRoom[roomKey] ?? { productNumber: '', note: '', photos: [], previewUrls: [], compressing: false, uploading: false, uploadError: '', videoUrl: '', videoLocalPreview: '', videoUploading: false, videoError: '' };
           const displayName = getRoomDisplayName(room, roomIdx);
           const isFirstRoom = roomIdx === 0;
 
@@ -582,13 +679,13 @@ export default function RequestExtraInfoPage() {
 
                   {(d.photos.length + d.previewUrls.length) < 5 && (
                     <label className={`flex items-center gap-2 border-2 border-dashed rounded-xl px-4 py-3 cursor-pointer transition-all ${
-                      d.uploading ? 'opacity-50 pointer-events-none' : 'hover:border-blue-300 hover:bg-blue-50'} border-slate-200`}>
-                      <span className="text-lg">{d.uploading ? '⏳' : '📷'}</span>
+                      (d.compressing || d.uploading) ? 'opacity-50 pointer-events-none' : 'hover:border-blue-300 hover:bg-blue-50'} border-slate-200`}>
+                      <span className="text-lg">{(d.compressing || d.uploading) ? '⏳' : '📷'}</span>
                       <p className="text-xs font-bold text-slate-500">
-                        {d.uploading ? 'アップロード中...' : '写真を選択（複数可）'}
+                        {d.compressing ? '画像を軽くしています…' : d.uploading ? 'アップロード中...' : '写真を選択（複数可）'}
                       </p>
                       <input type="file" accept="image/*" multiple className="hidden"
-                        disabled={d.uploading}
+                        disabled={d.compressing || d.uploading}
                         onChange={e => handlePhotoUpload(roomKey, e.target.files)} />
                     </label>
                   )}
@@ -600,8 +697,8 @@ export default function RequestExtraInfoPage() {
                         {d.previewUrls.map((url, i) => (
                           <div key={`prev-${i}`} className="relative aspect-square rounded-xl overflow-hidden bg-slate-100">
                             <img src={url} alt={`プレビュー${i + 1}`} className="w-full h-full object-cover" />
-                            {/* アップロード中インジケーター（uploading:true のときのみ表示）*/}
-                            {d.uploading && (
+                            {/* 圧縮中またはアップロード中のオーバーレイ */}
+                            {(d.compressing || d.uploading) && (
                               <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                               </div>
@@ -618,9 +715,11 @@ export default function RequestExtraInfoPage() {
                         ))}
                       </div>
                       <p className="text-[10px] font-bold mt-1">
-                        {d.uploading
-                          ? <span className="text-blue-600">📤 アップロード中...</span>
-                          : <span className="text-emerald-600">✓ 写真を追加しました（{d.photos.length}枚）</span>
+                        {d.compressing
+                          ? <span className="text-amber-600">🗜 画像を軽くしています...</span>
+                          : d.uploading
+                            ? <span className="text-blue-600">📤 アップロード中...</span>
+                            : <span className="text-emerald-600">✓ 写真を追加しました（{d.photos.length}枚）</span>
                         }
                       </p>
                     </>
@@ -633,7 +732,7 @@ export default function RequestExtraInfoPage() {
                   )}
                 </div>
 
-                {/* 動画追加（Phase 4）*/}
+                {/* 動画追加 */}
                 <div>
                   <p className="text-[11px] font-bold text-slate-500 mb-2">
                     🎬 動画
@@ -641,27 +740,50 @@ export default function RequestExtraInfoPage() {
                   </p>
 
                   {d.videoUrl ? (
-                    <div className="flex items-center gap-2 bg-emerald-50 rounded-xl px-3 py-2">
-                      <span className="text-base">🎬</span>
-                      <div className="flex-1">
-                        <p className="text-xs font-bold text-emerald-700">動画を追加しました</p>
-                        <video src={d.videoUrl} controls playsInline preload="none"
-                          className="w-full rounded-lg bg-slate-900 mt-1" style={{ maxHeight: '120px' }} />
-                      </div>
+                    /* 保存済み動画 */
+                    <div className="bg-emerald-50 rounded-xl px-3 py-2">
+                      <p className="text-xs font-bold text-emerald-700 mb-1">✅ この部屋の動画あり</p>
+                      <video src={d.videoUrl} controls playsInline preload="none"
+                        className="w-full rounded-lg bg-slate-900" style={{ maxHeight: '140px' }} />
                     </div>
                   ) : d.videoUploading ? (
-                    <div className="flex items-center gap-2 bg-blue-50 rounded-xl px-3 py-2">
-                      <div className="animate-spin w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full flex-shrink-0" />
-                      <p className="text-xs font-bold text-blue-600">動画アップロード中...</p>
+                    /* アップロード中（ローカルプレビューあり） */
+                    <div className="bg-blue-50 rounded-xl px-3 py-2 space-y-2">
+                      {d.videoLocalPreview && (
+                        <div className="relative rounded-lg overflow-hidden bg-slate-900" style={{ maxHeight: '120px' }}>
+                          <video src={d.videoLocalPreview} playsInline preload="metadata" muted
+                            className="w-full" style={{ maxHeight: '120px' }} />
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <div className="animate-spin w-6 h-6 border-2 border-white border-t-transparent rounded-full" />
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        {!d.videoLocalPreview && (
+                          <div className="animate-spin w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full flex-shrink-0" />
+                        )}
+                        <p className="text-xs font-bold text-blue-600">動画アップロード中...</p>
+                      </div>
                     </div>
                   ) : (
+                    /* 未選択 */
                     <label className="flex items-center gap-2 border-2 border-dashed rounded-xl px-4 py-3 cursor-pointer hover:border-blue-300 hover:bg-blue-50 border-slate-200 transition-all">
                       <span className="text-lg">🎥</span>
-                      <p className="text-xs font-bold text-slate-500">動画を追加する</p>
-                      <input type="file" accept="video/*" className="hidden"
+                      <div>
+                        <p className="text-xs font-bold text-slate-500">動画を追加する</p>
+                        <p className="text-[10px] text-slate-300">mp4 / mov / webm</p>
+                      </div>
+                      <input type="file" accept="video/mp4,video/quicktime,video/webm" className="hidden"
                         ref={el => { videoInputRefs.current[roomKey] = el; }}
                         onChange={e => handleVideoUpload(roomKey, e.target.files?.[0] ?? null)} />
                     </label>
+                  )}
+
+                  {/* 動画エラー表示 */}
+                  {d.videoError && (
+                    <div className="mt-2 rounded-xl bg-red-50 border border-red-100 px-3 py-2">
+                      <p className="text-[11px] font-bold text-red-600">⚠️ {d.videoError}</p>
+                    </div>
                   )}
                 </div>
 
@@ -699,7 +821,7 @@ export default function RequestExtraInfoPage() {
         {/* ── 追加部屋（Phase 5）── */}
         {addedRooms.map((r, i) => {
           const roomKey = `added_${i}`;
-          const d = perRoom[roomKey] ?? { productNumber: '', note: '', photos: [], previewUrls: [], videoUrl: '', uploading: false, videoUploading: false, uploadError: '' };
+          const d = perRoom[roomKey] ?? { productNumber: '', note: '', photos: [], previewUrls: [], compressing: false, uploading: false, uploadError: '', videoUrl: '', videoLocalPreview: '', videoUploading: false, videoError: '' };
           return (
             <div key={roomKey} className="bg-white rounded-2xl ring-1 ring-violet-200 overflow-hidden">
               <div className="bg-violet-700 px-4 py-3 flex items-center gap-2">
@@ -719,10 +841,12 @@ export default function RequestExtraInfoPage() {
                 {/* 写真 */}
                 {(d.photos.length + d.previewUrls.length) < 5 && (
                   <label className={`flex items-center gap-2 border-2 border-dashed rounded-xl px-3 py-2 cursor-pointer transition-all ${
-                    d.uploading ? 'opacity-50 pointer-events-none' : 'hover:border-violet-300 hover:bg-violet-50'} border-slate-200`}>
-                    <span>{d.uploading ? '⏳' : '📷'}</span>
-                    <p className="text-xs text-slate-400 font-semibold">{d.uploading ? 'アップロード中...' : '写真を追加'}</p>
-                    <input type="file" accept="image/*" multiple className="hidden" disabled={d.uploading}
+                    (d.compressing || d.uploading) ? 'opacity-50 pointer-events-none' : 'hover:border-violet-300 hover:bg-violet-50'} border-slate-200`}>
+                    <span>{(d.compressing || d.uploading) ? '⏳' : '📷'}</span>
+                    <p className="text-xs text-slate-400 font-semibold">
+                      {d.compressing ? '画像を軽くしています…' : d.uploading ? 'アップロード中...' : '写真を追加'}
+                    </p>
+                    <input type="file" accept="image/*" multiple className="hidden" disabled={d.compressing || d.uploading}
                       onChange={e => handlePhotoUpload(roomKey, e.target.files)} />
                   </label>
                 )}
@@ -731,7 +855,7 @@ export default function RequestExtraInfoPage() {
                     {d.previewUrls.map((url, j) => (
                       <div key={`prev-${j}`} className="relative aspect-square rounded-xl overflow-hidden bg-slate-100">
                         <img src={url} alt={`プレビュー${j + 1}`} className="w-full h-full object-cover" />
-                        {d.uploading && (
+                        {(d.compressing || d.uploading) && (
                           <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                             <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                           </div>
@@ -786,7 +910,7 @@ export default function RequestExtraInfoPage() {
                   const i = addedRooms.length;
                   const key = `added_${i}`;
                   setAddedRooms(prev => [...prev, { ...newRoom }]);
-                  setPerRoom(prev => ({ ...prev, [key]: { productNumber: '', note: '', photos: [], previewUrls: [], videoUrl: '', uploading: false, videoUploading: false, uploadError: '' } }));
+                  setPerRoom(prev => ({ ...prev, [key]: { productNumber: '', note: '', photos: [], previewUrls: [], compressing: false, uploading: false, uploadError: '', videoUrl: '', videoLocalPreview: '', videoUploading: false, videoError: '' } }));
                   setNewRoom({ name: '', workType: '', note: '' });
                   setShowAddRoom(false);
                 }}
