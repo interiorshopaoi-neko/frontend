@@ -271,15 +271,21 @@ export default function RequestExtraInfoPage() {
           reader.readAsDataURL(blob);
         });
 
+        // roomKey → 数字のみの roomIndex へ変換
+        // added_N 系は 1000+N のオフセットで衝突回避（通常部屋は 0〜9 程度）
+        const roomIndex = roomKey.startsWith('added_')
+          ? String(1000 + parseInt(roomKey.slice('added_'.length), 10))
+          : roomKey;
+
         // /api/upload-room-image 経由でアップロード（service role → Storage RLS バイパス）
         const apiRes = await fetch('/api/upload-room-image', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({
-            id:       id ?? 'anon',
-            roomKey,
+            requestId: id ?? '',
+            roomIndex,
             base64,
-            mimeType: blob.type,
+            mimeType:  blob.type,
           }),
         });
 

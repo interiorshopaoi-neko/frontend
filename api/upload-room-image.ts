@@ -7,12 +7,19 @@
 // anon クライアントから直接 Storage にアップロードすると
 // Storage RLS にブロックされるため、このサーバー経由で保存する。
 //
+// セキュリティ:
+//   - requestId は数字のみ許可（パストラバーサル防止）
+//   - roomIndex  は数字のみ許可（パストラバーサル防止）
+//   - mimeType   は image/jpeg | image/png | image/webp のみ許可
+//   - ファイルサイズ上限 5MB
+//   - 保存パスはサーバー側で構築し、クライアントからは受け取らない
+//
 // Body (application/json):
 //   {
-//     id:       string,   // estimate_requests.id
-//     roomKey:  string,   // "0", "1", "added_0" など
-//     base64:   string,   // base64エンコードされた画像バイナリ
-//     mimeType: string,   // "image/webp" | "image/jpeg" | "image/png"
+//     requestId: string,   // estimate_requests.id（数字のみ）
+//     roomIndex: string,   // 部屋インデックス（数字のみ）
+//     base64:    string,   // base64エンコードされた画像バイナリ
+//     mimeType:  string,   // "image/webp" | "image/jpeg" | "image/png"
 //   }
 //
 // Response:
@@ -30,16 +37,19 @@ const SUPABASE_URL = (
 
 const SUPABASE_SERVICE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
 
-const BUCKET     = 'estimate-videos';
-const MAX_BYTES  = 8 * 1024 * 1024;  // 8MB（圧縮後の上限、念のため）
+const BUCKET    = 'estimate-videos';
+const MAX_BYTES = 5 * 1024 * 1024;  // 5MB
 
 const ALLOWED_MIME = ['image/webp', 'image/jpeg', 'image/jpg', 'image/png'] as const;
 type AllowedMime = typeof ALLOWED_MIME[number];
 
-function mimeToExt(mime: AllowedMime): string {
-  if (mime === 'image/webp') return 'webp';
-  if (mime === 'image/png')  return 'png';
-  return 'jpg';
+// requestId / roomIndex の許可パターン（数字のみ・合理的な桁数）
+const RE_ID    = /^\d{1,10}$/;
+const RE_INDEX = /^\d{1,5}$/;
+
+// パスはサーバー側で完全に構築（クライアントから受け取らない）
+function buildStoragePath(requestId: string, roomIndex: string): string {
+  return `room-images/${requestId}/${roomIndex}/${Date.now()}.webp`;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -58,19 +68,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
-  const { id, roomKey, base64, mimeType } = (req.body ?? {}) as {
-    id?:       string;
-    roomKey?:  string;
-    base64?:   string;
-    mimeType?: string;
+  const { requestId, roomIndex, base64, mimeType } = (req.body ?? {}) as {
+    requestId?: string;
+    roomIndex?: string;
+    base64?:    string;
+    mimeType?:  string;
   };
 
-  if (!id || !roomKey || !base64 || !mimeType) {
-    return res.status(400).json({ error: 'id / roomKey / base64 / mimeType が必要です' });
+  // ── バリデーション ──────────────────────────────────────────────────────────
+
+  // requestId: 数字のみ
+  if (!requestId || !RE_ID.test(requestId)) {
+    return res.status(400).json({ error: 'requestId は1〜10桁の数字のみ有効です' });
   }
 
-  if (!ALLOWED_MIME.includes(mimeType as AllowedMime)) {
-    return res.status(400).json({ error: `mimeType が不正です: ${mimeType}` });
+  // roomIndex: 数字のみ
+  if (!roomIndex || !RE_INDEX.test(roomIndex)) {
+    return res.status(400).json({ error: 'roomIndex は1〜5桁の数字のみ有効です' });
+  }
+
+  // mimeType: 許可された画像形式のみ
+  if (!mimeType || !ALLOWED_MIME.includes(mimeType as AllowedMime)) {
+    return res.status(400).json({
+      error: `mimeType が不正です（jpeg / png / webp のみ許可）: ${mimeType ?? '(未指定)'}`,
+    });
+  }
+
+  // base64: 必須
+  if (!base64) {
+    return res.status(400).json({ error: 'base64 が必要です' });
   }
 
   // base64 → Buffer
@@ -81,15 +107,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'base64 のデコードに失敗しました' });
   }
 
+  // ファイルサイズ: 5MB 以下
   if (buf.length > MAX_BYTES) {
     return res.status(400).json({
-      error: `圧縮後の画像サイズが上限を超えています（${(buf.length / 1024 / 1024).toFixed(1)}MB > ${MAX_BYTES / 1024 / 1024}MB）`,
+      error: `ファイルサイズが上限を超えています（${(buf.length / 1024 / 1024).toFixed(1)}MB > ${MAX_BYTES / 1024 / 1024}MB）`,
     });
   }
 
-  const ext  = mimeToExt(mimeType as AllowedMime);
-  // CorporateRequest と同系統のパス（room-images/）
-  const path = `room-images/${id}/${roomKey}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  // ── パス構築（クライアントからは受け取らない）──────────────────────────────
+
+  const path = buildStoragePath(requestId, roomIndex);
+
+  // ── Supabase Storage アップロード ──────────────────────────────────────────
 
   try {
     const storageUrl = `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`;
@@ -114,7 +143,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
-    console.info('[upload-room-image] ok id=', id, 'roomKey=', roomKey, 'bytes=', buf.length, 'path=', path);
+    console.info('[upload-room-image] ok requestId=%s roomIndex=%s bytes=%d', requestId, roomIndex, buf.length);
     return res.status(200).json({ publicUrl });
 
   } catch (err: unknown) {
