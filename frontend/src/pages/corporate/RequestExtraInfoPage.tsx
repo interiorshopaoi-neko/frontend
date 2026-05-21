@@ -329,6 +329,19 @@ export default function RequestExtraInfoPage() {
 
       <div className="max-w-lg mx-auto px-4 py-5 space-y-4">
 
+        {/* 依頼内容へ戻るバナー */}
+        {id && !isDemo && (
+          <button
+            onClick={() => navigate(`/request/${id}`)}
+            className="w-full flex items-center justify-between bg-white border border-slate-200 rounded-2xl px-4 py-3 text-left hover:bg-slate-50 transition"
+          >
+            <span className="text-xs font-bold text-slate-700">依頼内容を確認する</span>
+            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
+
         {/* 導入テキスト */}
         <div className="bg-blue-50 rounded-2xl px-5 py-4 border border-blue-100">
           <p className="text-sm font-bold text-blue-800 mb-1">見積もり精度を上げるために</p>

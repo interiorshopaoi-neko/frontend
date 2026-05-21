@@ -9,13 +9,6 @@ type Chip = { text: string; cls: string };
 export function computeRadarChips(job: Job): Chip[] {
   const chips: Chip[] = [];
   const rooms = job.meta?.rooms ?? [];
-  const hasVideo = job.has_video || !!job.video_url;
-  const roomMedia = getRoomMedia(job.meta);
-  const hasRoomImages = roomMedia.some(rm => rm.images.length > 0);
-
-  // 最優先：確認しやすさ
-  if (hasVideo) chips.push({ text: '🎬 動画あり', cls: 'bg-blue-100 text-blue-700' });
-  if (job.has_photos || hasRoomImages) chips.push({ text: '📷 写真あり', cls: 'bg-blue-50 text-blue-600' });
 
   // 施工量（新旧両形式対応）
   const hasCeiling = rooms.some(r =>

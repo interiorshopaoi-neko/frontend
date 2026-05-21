@@ -1166,6 +1166,16 @@ export default function CorporateRequest() {
 
         {/* CTA群 */}
         <div className="max-w-xs w-full space-y-3">
+          {/* 依頼内容確認（request_id が取れた場合のみ） */}
+          {newRequestId && (
+            <button
+              onClick={() => navigate(`/request/${newRequestId}`)}
+              className="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-sm transition-all shadow-sm"
+            >
+              依頼内容を確認する →
+            </button>
+          )}
+
           {/* 応募確認（request_id が取れた場合のみ） */}
           {newRequestId && (
             <button

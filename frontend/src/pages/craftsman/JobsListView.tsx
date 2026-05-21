@@ -4,7 +4,7 @@ import { calculateServiceFee } from '../../lib/serviceFee';
 import { FEE_TABLE } from '../../constants/fees';
 import type { Job } from './CraftsmanJobsPage';
 import { calcRevenueNum } from '../../lib/revenueEstimate';
-import { hasCeilingWork, getRoomMedia } from '../../lib/requestMeta';
+import { getRoomMedia, hasAccentPreference } from '../../lib/requestMeta';
 import SiteRadar from '../../components/SiteRadar';
 
 // ─── Freshness helpers ───────────────────────────────────────────────────────
@@ -334,7 +334,7 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                     </div>
                   </div>
 
-                  {/* ── クイック情報チップ（判断材料を具体的に） ── */}
+                  {/* ── クイック情報チップ（お客様向け特徴） ── */}
                   <div className="px-4 mb-3 flex flex-wrap gap-1.5">
                     {hasVideo && (
                       <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2.5 py-1 rounded-full">
@@ -351,24 +351,9 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                         🏠 {job.meta!.rooms!.length}部屋の情報あり
                       </span>
                     )}
-                    {job.room_size && (
-                      <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">
-                        📐 {job.room_size}
-                      </span>
-                    )}
-                    {job.damage_level && (
-                      <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">
-                        損傷: {job.damage_level === 'low' ? '軽め' : job.damage_level === 'middle' ? '普通' : '重め'}
-                      </span>
-                    )}
-                    {hasCeilingWork(job.meta) && (
-                      <span className="bg-amber-50 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full">
-                        天井あり
-                      </span>
-                    )}
-                    {job.meta?.wallpaper_preference && job.meta.wallpaper_preference !== 'まだ決まっていない' && (
-                      <span className="bg-teal-50 text-teal-700 text-xs font-bold px-2.5 py-1 rounded-full">
-                        🎨 {job.meta.wallpaper_preference}
+                    {hasAccentPreference(job.meta) && (
+                      <span className="bg-purple-50 text-purple-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                        アクセント希望
                       </span>
                     )}
                   </div>

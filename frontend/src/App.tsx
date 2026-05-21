@@ -32,6 +32,7 @@ import TermsPage   from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import LegalPage   from './pages/LegalPage';
 import RequestExtraInfoPage from './pages/corporate/RequestExtraInfoPage';
+import RequestDetailPage from './pages/request/RequestDetailPage';
 import AuthConfirmed from './pages/auth/AuthConfirmed';
 import ResetPassword from './pages/auth/ResetPassword';
 
@@ -151,6 +152,7 @@ export default function App() {
         <Route path="/pro/jobs"           element={<Navigate to="/craftsman/jobs" replace />} />
         <Route path="/craftsman/jobs"     element={<CraftsmanJobsPage />} />
         <Route path="/craftsman/dashboard"           element={<CraftsmanDashboardPage />} />
+        <Route path="/request/:id"                 element={<RequestDetailPage />} />
         <Route path="/request/:id/applications"    element={<RequestApplicationsPage />} />
         <Route path="/request/:id/review"          element={<ReviewPage />} />
         <Route path="/request/:id/extra-info"      element={<RequestExtraInfoPage />} />
