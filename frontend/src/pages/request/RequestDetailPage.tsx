@@ -23,8 +23,6 @@ const DEMO_REQ: RequestRow = {
   id:            'demo-1',
   area:          '群馬県太田市',
   work_type:     'クロス張替え',
-  has_video:     false,
-  has_photos:    false,
   video_url:     null,
   customer_note: 'これはデモ表示です。',
   created_at:    new Date().toISOString(),
@@ -280,8 +278,8 @@ export default function RequestDetailPage() {
                       </div>
                     )}
 
-                    {/* 追加済み動画 */}
-                    {i === 0 && req.has_video && req.video_url && (
+                    {/* 追加済み動画（has_video列は非存在のため video_url の non-null で代用）*/}
+                    {i === 0 && req.video_url && (
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 mb-1">メイン動画</p>
                         <video src={req.video_url} controls playsInline preload="none"
@@ -390,14 +388,14 @@ export default function RequestDetailPage() {
           </div>
         )}
 
-        {/* 動画・写真（フラグ表示）*/}
-        {(req.has_video || req.has_photos) && rooms.length === 0 && (
+        {/* 動画（フラグ表示・部屋情報がない場合）*/}
+        {req.video_url && rooms.length === 0 && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4">
-            <p className="text-xs font-bold text-slate-400 mb-2">添付ファイル</p>
-            <div className="flex gap-2 flex-wrap">
-              {req.has_video && <span className="bg-blue-50 text-blue-700 text-xs font-bold px-3 py-1.5 rounded-full">🎬 動画あり</span>}
-              {req.has_photos && <span className="bg-blue-50 text-blue-700 text-xs font-bold px-3 py-1.5 rounded-full">📷 写真あり</span>}
-            </div>
+            <p className="text-xs font-bold text-slate-400 mb-2">添付動画</p>
+            <video src={req.video_url} controls playsInline preload="none"
+              className="w-full rounded-xl bg-slate-900" style={{ maxHeight: '200px' }}>
+              動画を再生できません
+            </video>
           </div>
         )}
 

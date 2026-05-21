@@ -63,10 +63,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // select: 絶対に contact_value / contact_method を含めない
+    // has_video / has_photos は本番DBに存在しない列のため除外
+    // has_video は video_url の non-null で代用（フロント側で処理）
     const url =
       `${SUPABASE_URL}/rest/v1/estimate_requests` +
       `?id=eq.${encodeURIComponent(trimmedId)}` +
-      `&select=id,area,work_type,has_video,has_photos,video_url,customer_note,created_at,meta` +
+      `&select=id,area,work_type,video_url,customer_note,created_at,meta` +
       `&limit=1`;
 
     console.info('[request-detail] fetching id=', trimmedId);

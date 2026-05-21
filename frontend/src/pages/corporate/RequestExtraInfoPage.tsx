@@ -152,7 +152,8 @@ export default function RequestExtraInfoPage() {
         const rawRooms = (meta.rooms as RawRoom[] | undefined) ?? [];
         const rooms: RawRoom[] = rawRooms.length > 0 ? rawRooms : [{ name: 'メインのお部屋' }];
         setExistingRooms(rooms);
-        setHasMainVideo(Boolean(data.has_video));
+        // has_video列は本番DBに存在しない → video_url の non-null で代用
+        setHasMainVideo(data.video_url !== null && data.video_url !== undefined && data.video_url !== '');
 
         // 既存 roomAdditionalInfo からプリセット
         const existingRAI = (meta.roomAdditionalInfo as RoomAdditionalInfo | null) ?? {};

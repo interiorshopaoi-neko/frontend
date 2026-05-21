@@ -12,8 +12,8 @@ export type RequestDetail = {
   id:            string;
   area:          string | null;
   work_type:     string | null;
-  has_video:     boolean | null;
-  has_photos:    boolean | null;
+  // has_video / has_photos は本番DBに存在しない列のため除外済み
+  // has_video の代用: video_url !== null で判定
   video_url:     string | null;
   customer_note: string | null;
   created_at:    string | null;
