@@ -35,11 +35,12 @@ type RoomAdditionalEntry = {
 type RoomAdditionalInfo = Record<string, RoomAdditionalEntry>;
 
 type PerRoomState = {
-  productNumber: string;
-  note:          string;
-  photos:        string[];
-  videoUrl:      string;
-  uploading:     boolean;    // photo upload
+  productNumber:  string;
+  note:           string;
+  photos:         string[];   // 保存済み publicUrl のみ
+  previewUrls:    string[];   // アップロード前の blob URL（即時表示用・保存しない）
+  videoUrl:       string;
+  uploading:      boolean;    // photo upload
   videoUploading: boolean;
 };
 
@@ -139,7 +140,7 @@ export default function RequestExtraInfoPage() {
   useEffect(() => {
     if (isDemo || !id) {
       setExistingRooms([{ name: 'メインのお部屋', customName: 'メインのお部屋' }]);
-      setPerRoom({ '0': { productNumber: '', note: '', photos: [], videoUrl: '', uploading: false, videoUploading: false } });
+      setPerRoom({ '0': { productNumber: '', note: '', photos: [], previewUrls: [], videoUrl: '', uploading: false, videoUploading: false } });
       setLoading(false);
       return;
     }
@@ -170,6 +171,7 @@ export default function RequestExtraInfoPage() {
             productNumber:  e?.productNumber ?? '',
             note:           e?.note ?? '',
             photos:         e?.photos ?? [],
+            previewUrls:    [],
             videoUrl:       e?.videoUrl ?? '',
             uploading:      false,
             videoUploading: false,
@@ -193,6 +195,7 @@ export default function RequestExtraInfoPage() {
               productNumber:  e?.productNumber ?? '',
               note:           e?.note ?? '',
               photos:         e?.photos ?? [],
+              previewUrls:    [],
               videoUrl:       e?.videoUrl ?? '',
               uploading:      false,
               videoUploading: false,
@@ -226,32 +229,58 @@ export default function RequestExtraInfoPage() {
   // ── 写真アップロード（部屋別）────────────────────────────────────────────────
   async function handlePhotoUpload(roomKey: string, files: FileList | null) {
     if (!files || files.length === 0) return;
-    setPerRoom(prev => ({ ...prev, [roomKey]: { ...prev[roomKey], uploading: true } }));
 
-    const existing = perRoom[roomKey]?.photos ?? [];
-    const remaining = Math.max(0, 5 - existing.length);
-    const urls: string[] = [];
+    const cur = perRoom[roomKey];
+    const existingCount = (cur?.photos.length ?? 0) + (cur?.previewUrls.length ?? 0);
+    const fileArr = Array.from(files).slice(0, Math.max(0, 5 - existingCount));
+    if (fileArr.length === 0) return;
 
-    for (const file of Array.from(files).slice(0, remaining)) {
-      try {
-        const blob = await compressImage(file, 1200, 0.80).catch(() => file as Blob);
-        const ext  = blob.type === 'image/webp' ? 'webp' : 'jpg';
-        const path = `room-extra/${id ?? 'anon'}/${roomKey}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error } = await supabase.storage.from('estimate-videos').upload(path, blob, { contentType: blob.type });
-        if (error) continue;
-        const { data: { publicUrl } } = supabase.storage.from('estimate-videos').getPublicUrl(path);
-        urls.push(publicUrl);
-      } catch { /* skip */ }
-    }
-
+    // 即座にプレビュー表示（blob URL）
+    const blobUrls = fileArr.map(f => URL.createObjectURL(f));
     setPerRoom(prev => ({
       ...prev,
       [roomKey]: {
         ...prev[roomKey],
-        photos:   [...(prev[roomKey]?.photos ?? []), ...urls].slice(0, 5),
-        uploading: false,
+        previewUrls: [...(prev[roomKey]?.previewUrls ?? []), ...blobUrls],
+        uploading:   true,
       },
     }));
+
+    // バックグラウンドでアップロード・publicUrl への差し替え
+    const successMap: Record<string, string> = {};  // blobUrl → publicUrl
+
+    for (let i = 0; i < fileArr.length; i++) {
+      const file    = fileArr[i];
+      const blobUrl = blobUrls[i];
+      try {
+        const blob = await compressImage(file, 1200, 0.80).catch(() => file as Blob);
+        const ext  = blob.type === 'image/webp' ? 'webp' : 'jpg';
+        const path = `room-extra/${id ?? 'anon'}/${roomKey}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error } = await supabase.storage
+          .from('estimate-videos')
+          .upload(path, blob, { contentType: blob.type });
+        if (error) {
+          console.warn('[ExtraInfo] photo upload error:', error.message, '| path:', path);
+          continue;  // blobUrl は previewUrls に残したまま（保存時に除外）
+        }
+        const { data: { publicUrl } } = supabase.storage.from('estimate-videos').getPublicUrl(path);
+        successMap[blobUrl] = publicUrl;
+      } catch (e) {
+        console.warn('[ExtraInfo] photo upload exception:', e);
+      }
+    }
+
+    // blob URL を publicUrl に差し替え（失敗分は previewUrls から削除）
+    setPerRoom(prev => {
+      const d = prev[roomKey];
+      if (!d) return prev;
+      const newPreviews = d.previewUrls.filter(u => !Object.prototype.hasOwnProperty.call(successMap, u));
+      const newPublic   = [...d.photos, ...Object.values(successMap)].slice(0, 5);
+      return {
+        ...prev,
+        [roomKey]: { ...d, photos: newPublic, previewUrls: newPreviews, uploading: false },
+      };
+    });
   }
 
   // ── 動画アップロード（部屋別）────────────────────────────────────────────────
@@ -449,7 +478,7 @@ export default function RequestExtraInfoPage() {
         {/* ── 部屋別カード（Phase 3・4）── */}
         {existingRooms.map((room, roomIdx) => {
           const roomKey = String(roomIdx);
-          const d = perRoom[roomKey] ?? { productNumber: '', note: '', photos: [], videoUrl: '', uploading: false, videoUploading: false };
+          const d = perRoom[roomKey] ?? { productNumber: '', note: '', photos: [], previewUrls: [], videoUrl: '', uploading: false, videoUploading: false };
           const displayName = getRoomDisplayName(room, roomIdx);
           const isFirstRoom = roomIdx === 0;
 
@@ -475,27 +504,47 @@ export default function RequestExtraInfoPage() {
                     <span className="ml-1 text-slate-300 font-normal">壁・床の状態、気になる箇所など（最大5枚）</span>
                   </p>
 
-                  {d.photos.length < 5 && (
+                  {(d.photos.length + d.previewUrls.length) < 5 && (
                     <label className={`flex items-center gap-2 border-2 border-dashed rounded-xl px-4 py-3 cursor-pointer transition-all ${
                       d.uploading ? 'opacity-50 pointer-events-none' : 'hover:border-blue-300 hover:bg-blue-50'} border-slate-200`}>
                       <span className="text-lg">{d.uploading ? '⏳' : '📷'}</span>
-                      <p className="text-xs font-bold text-slate-500">{d.uploading ? 'アップロード中...' : '写真を選択（複数可）'}</p>
+                      <p className="text-xs font-bold text-slate-500">
+                        {d.uploading ? 'アップロード中...' : '写真を選択（複数可）'}
+                      </p>
                       <input type="file" accept="image/*" multiple className="hidden"
                         disabled={d.uploading}
                         onChange={e => handlePhotoUpload(roomKey, e.target.files)} />
                     </label>
                   )}
 
-                  {d.photos.length > 0 && (
+                  {/* 即時プレビュー（blob URL）+ 保存済み（publicUrl）を両方表示 */}
+                  {(d.previewUrls.length + d.photos.length) > 0 && (
                     <>
                       <div className="grid grid-cols-3 gap-1.5 mt-2">
+                        {d.previewUrls.map((url, i) => (
+                          <div key={`prev-${i}`} className="relative aspect-square rounded-xl overflow-hidden bg-slate-100">
+                            <img src={url} alt={`プレビュー${i + 1}`} className="w-full h-full object-cover" />
+                            {/* アップロード中インジケーター */}
+                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            </div>
+                          </div>
+                        ))}
                         {d.photos.map((url, i) => (
-                          <div key={i} className="relative aspect-square rounded-xl overflow-hidden bg-slate-100">
+                          <div key={`photo-${i}`} className="relative aspect-square rounded-xl overflow-hidden bg-slate-100">
                             <img src={url} alt={`写真${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                            <div className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
+                              <span className="text-white text-[8px] font-bold">✓</span>
+                            </div>
                           </div>
                         ))}
                       </div>
-                      <p className="text-[10px] text-emerald-600 font-bold mt-1">✓ 写真を追加しました（{d.photos.length}枚）</p>
+                      <p className="text-[10px] font-bold mt-1">
+                        {d.uploading
+                          ? <span className="text-blue-600">📤 アップロード中...</span>
+                          : <span className="text-emerald-600">✓ 写真を追加しました（{d.photos.length}枚）</span>
+                        }
+                      </p>
                     </>
                   )}
                 </div>
@@ -566,7 +615,7 @@ export default function RequestExtraInfoPage() {
         {/* ── 追加部屋（Phase 5）── */}
         {addedRooms.map((r, i) => {
           const roomKey = `added_${i}`;
-          const d = perRoom[roomKey] ?? { productNumber: '', note: '', photos: [], videoUrl: '', uploading: false, videoUploading: false };
+          const d = perRoom[roomKey] ?? { productNumber: '', note: '', photos: [], previewUrls: [], videoUrl: '', uploading: false, videoUploading: false };
           return (
             <div key={roomKey} className="bg-white rounded-2xl ring-1 ring-violet-200 overflow-hidden">
               <div className="bg-violet-700 px-4 py-3 flex items-center gap-2">
@@ -584,17 +633,27 @@ export default function RequestExtraInfoPage() {
                 </div>
                 {r.note && <p className="text-xs text-slate-500 leading-relaxed">{r.note}</p>}
                 {/* 写真 */}
-                <label className={`flex items-center gap-2 border-2 border-dashed rounded-xl px-3 py-2 cursor-pointer transition-all ${
-                  d.uploading ? 'opacity-50 pointer-events-none' : 'hover:border-violet-300 hover:bg-violet-50'} border-slate-200`}>
-                  <span>{d.uploading ? '⏳' : '📷'}</span>
-                  <p className="text-xs text-slate-400 font-semibold">{d.uploading ? 'アップロード中...' : '写真を追加'}</p>
-                  <input type="file" accept="image/*" multiple className="hidden" disabled={d.uploading}
-                    onChange={e => handlePhotoUpload(roomKey, e.target.files)} />
-                </label>
-                {d.photos.length > 0 && (
+                {(d.photos.length + d.previewUrls.length) < 5 && (
+                  <label className={`flex items-center gap-2 border-2 border-dashed rounded-xl px-3 py-2 cursor-pointer transition-all ${
+                    d.uploading ? 'opacity-50 pointer-events-none' : 'hover:border-violet-300 hover:bg-violet-50'} border-slate-200`}>
+                    <span>{d.uploading ? '⏳' : '📷'}</span>
+                    <p className="text-xs text-slate-400 font-semibold">{d.uploading ? 'アップロード中...' : '写真を追加'}</p>
+                    <input type="file" accept="image/*" multiple className="hidden" disabled={d.uploading}
+                      onChange={e => handlePhotoUpload(roomKey, e.target.files)} />
+                  </label>
+                )}
+                {(d.previewUrls.length + d.photos.length) > 0 && (
                   <div className="grid grid-cols-3 gap-1.5">
+                    {d.previewUrls.map((url, j) => (
+                      <div key={`prev-${j}`} className="relative aspect-square rounded-xl overflow-hidden bg-slate-100">
+                        <img src={url} alt={`プレビュー${j + 1}`} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      </div>
+                    ))}
                     {d.photos.map((url, j) => (
-                      <img key={j} src={url} alt={`写真${j + 1}`} className="w-full aspect-square object-cover rounded-xl border border-slate-100" loading="lazy" />
+                      <img key={`photo-${j}`} src={url} alt={`写真${j + 1}`} className="w-full aspect-square object-cover rounded-xl border border-slate-100" loading="lazy" />
                     ))}
                   </div>
                 )}
@@ -636,7 +695,7 @@ export default function RequestExtraInfoPage() {
                   const i = addedRooms.length;
                   const key = `added_${i}`;
                   setAddedRooms(prev => [...prev, { ...newRoom }]);
-                  setPerRoom(prev => ({ ...prev, [key]: { productNumber: '', note: '', photos: [], videoUrl: '', uploading: false, videoUploading: false } }));
+                  setPerRoom(prev => ({ ...prev, [key]: { productNumber: '', note: '', photos: [], previewUrls: [], videoUrl: '', uploading: false, videoUploading: false } }));
                   setNewRoom({ name: '', workType: '', note: '' });
                   setShowAddRoom(false);
                 }}
