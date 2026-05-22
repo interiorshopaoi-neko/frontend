@@ -271,7 +271,7 @@ export default function ProSignupPage() {
             <img src="/logo-full.png" alt="PRO MATCH" style={{ height: 22, width: 'auto' }} />
           </div>
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/login?role=craftsman')}
             className="text-xs text-white/50 hover:text-white/80 transition font-medium"
           >
             ログイン
@@ -532,7 +532,7 @@ export default function ProSignupPage() {
         <p className="text-center text-xs text-white/30">
           すでにアカウントをお持ちの方は{' '}
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/login?role=craftsman')}
             className="text-white/60 font-bold hover:text-white transition underline underline-offset-2"
           >
             ログイン

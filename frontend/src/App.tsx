@@ -45,6 +45,51 @@ import ResetPassword from './pages/auth/ResetPassword';
   }
 }
 
+// ─── お客様セッション残存時の案内カード ──────────────────────────────────────
+// /for-pros または /login?role=craftsman にお客様セッションで来た場合に表示。
+// 「職人としてログインするにはログアウトが必要」と明示し、迷子を防ぐ。
+
+function CustomerOnCraftsmanPage({
+  onLogout,
+}: {
+  onLogout: () => void;
+}) {
+  const navigate = useNavigate();
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-6">
+          <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-3">
+            <span className="text-2xl">⚠️</span>
+          </div>
+          <p className="text-base font-bold text-slate-800 mb-1">お客様用の状態が残っています</p>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            職人としてログインするには、<br />
+            一度ログアウトしてください。
+          </p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-3">
+          <button
+            onClick={async () => {
+              await onLogout();
+              navigate('/login?role=craftsman');
+            }}
+            className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3.5 rounded-xl transition active:scale-95"
+          >
+            ログアウトして職人ログイン
+          </button>
+          <button
+            onClick={() => navigate('/corporate')}
+            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-3.5 rounded-xl transition active:scale-95 text-sm"
+          >
+            お客様ページへ戻る
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── ログイン済み案内カード ──────────────────────────────────────────────────
 // /login /register /for-pros にログイン済み職人が来たとき、勝手にダッシュボードへ
 // 飛ばす代わりにこのカードを表示する。
@@ -103,8 +148,10 @@ function LoginRoute({ user, logout, login }: {
   const [searchParams] = useSearchParams();
   const rolePara = searchParams.get('role');
   if (user?.role === 'craftsman') return <AlreadyLoggedIn user={user} onLogout={logout} />;
-  // ?role=craftsman が付いている場合は customer セッションが残っていても /corporate へ飛ばさない
-  if (user?.role === 'customer' && rolePara !== 'craftsman') return <Navigate to="/corporate" replace />;
+  // ?role=craftsman 付き & customer セッション残存 → 切替案内を出す（/corporate へ飛ばさない）
+  if (user?.role === 'customer' && rolePara === 'craftsman') return <CustomerOnCraftsmanPage onLogout={logout} />;
+  // customer セッション & role=craftsman なし → 通常通り /corporate へ
+  if (user?.role === 'customer') return <Navigate to="/corporate" replace />;
   return <Login onLogin={login} />;
 }
 
@@ -175,6 +222,7 @@ export default function App() {
         <Route path="/pro-signup" element={<ProSignupPage />} />
         <Route path="/for-pros"   element={
           user?.role === 'craftsman' ? <AlreadyLoggedIn user={user} onLogout={logout} /> :
+          user?.role === 'customer'  ? <CustomerOnCraftsmanPage onLogout={logout} /> :
           <ProSignupPage />
         } />
         <Route path="/policy"     element={<PolicyPage />} />
