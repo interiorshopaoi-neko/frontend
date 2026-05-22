@@ -330,12 +330,43 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
 
                   {/* ── 施工概要ブロック ── */}
                   {(() => {
-                    const rooms = getRoomWorkSummaries(job.meta);
+                    const rooms   = getRoomWorkSummaries(job.meta);
+                    const raiMap  = getRoomAdditionalInfo(job.meta ?? null);
+                    const raiVals = Object.values(raiMap);
+
+                    // 追加情報サマリー行（メイン施工情報の下に常に表示）
+                    const totalPhotos   = raiVals.reduce((n, e) => n + (e.photos?.length ?? 0), 0);
+                    const hasRaiVideo   = raiVals.some(e => !!e.videoUrl);
+                    const productNums   = raiVals.map(e => e.productNumber).filter(Boolean) as string[];
+                    const hasNote       = raiVals.some(e => !!e.note);
+                    const addedRooms    = raiVals.filter(e => e.addedByCustomer).map(e => e.roomName);
+
+                    const raiItems: string[] = [];
+                    if (totalPhotos > 0)    raiItems.push(`📷 写真 ${totalPhotos}枚`);
+                    if (hasRaiVideo)        raiItems.push('🎥 動画あり');
+                    if (productNums.length) raiItems.push(`品番：${productNums.join('・')}`);
+                    if (hasNote)            raiItems.push('メモあり');
+                    addedRooms.forEach(n => raiItems.push(`追加部屋：${n}`));
+
+                    const RaiSummary = raiItems.length > 0 ? (
+                      <div className="mt-2 pt-2 border-t border-slate-200">
+                        <p className="text-[10px] font-bold text-emerald-600 mb-1">追加情報あり</p>
+                        <div className="flex flex-wrap gap-1">
+                          {raiItems.map(item => (
+                            <span key={item} className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full">
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null;
+
                     if (rooms.length === 0) {
                       return (
                         <div className="mx-4 mb-3 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
                           <p className="text-xs text-slate-400 font-bold mb-0.5">施工概要</p>
                           <p className="text-sm font-bold text-slate-700">{job.work_type || 'クロス張り替え'}</p>
+                          {RaiSummary}
                         </div>
                       );
                     }
@@ -360,6 +391,7 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                               </span>
                             ))}
                           </div>
+                          {RaiSummary}
                         </div>
                       );
                     }
@@ -374,6 +406,7 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                             </div>
                           ))}
                         </div>
+                        {RaiSummary}
                       </div>
                     );
                   })()}

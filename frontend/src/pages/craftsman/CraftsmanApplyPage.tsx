@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { fetchRequestDetail } from '../../utils/requestApi';
 import { calculateServiceFee, formatFee } from '../../lib/serviceFee';
 import type { Job } from './CraftsmanJobsPage';
 import { getExtraInfo, getRoomMedia, getRoomAdditionalInfo, getRoomWorkSummary, getWallpaperAccentPreferences } from '../../lib/requestMeta';
@@ -80,14 +81,22 @@ export default function CraftsmanApplyPage() {
 
   useEffect(() => {
     if (!id || job || isDemo) return;
+    // service role key 経由の API で取得（anon RLS バイパス + meta 完全取得）
     (async () => {
-      const { data } = await supabase
-        .from('estimate_requests')
-        .select('*')
-        .eq('id', id)
-        .single();
-      setJob(data);
-      setLoadingJob(false);
+      try {
+        const detail = await fetchRequestDetail(id);
+        setJob(detail as unknown as Job);
+      } catch {
+        // フォールバック：anon クライアント直クエリ（meta が来ない場合もある）
+        const { data } = await supabase
+          .from('estimate_requests')
+          .select('*')
+          .eq('id', id)
+          .single();
+        setJob(data);
+      } finally {
+        setLoadingJob(false);
+      }
     })();
   }, [id]);
 

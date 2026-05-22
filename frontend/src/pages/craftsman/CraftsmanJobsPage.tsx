@@ -15,8 +15,28 @@ export type RoomInfo = {
   materialPref?: string;
 };
 
+export type RoomAdditionalEntry = {
+  roomName:         string;
+  workType?:        string;
+  productNumber?:   string;
+  note?:            string;
+  photos?:          string[];
+  videoUrl?:        string;
+  addedByCustomer?: boolean;
+};
+
 export type JobMeta = {
   rooms?: RoomInfo[];
+  roomMedia?: Array<{ roomId: string; roomName: string; videos: string[]; images: string[] }>;
+  roomAdditionalInfo?: Record<string, RoomAdditionalEntry>;
+  extraInfo?: {
+    productNumber?: string;
+    productUrl?: string;
+    accentPreference?: string;
+    softSokibariPreference?: string;
+    note?: string;
+    images?: string[];
+  };
   extra_info?: {
     furniture?: string;
     parking?: string;
@@ -27,6 +47,7 @@ export type JobMeta = {
   };
   thumbnail_url?: string;
   wallpaper_preference?: string;
+  wallpaper_accent_preferences?: string[];
 };
 
 export type Job = {
