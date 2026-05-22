@@ -83,7 +83,8 @@ export function calculateEstimateTotal(
 
 // ── 発注長さ ──────────────────────────────────────────────────────────────────
 
-export type LengthEntry = { id: number; cm: number };
+// count: 枚数（同じ寸法が複数ある場合）。未入力時は 1 扱い。
+export type LengthEntry = { id: number; cm: number; count: number };
 
 export type OrderLengthResult = {
   totalCm: number;
@@ -97,7 +98,7 @@ export function calculateOrderLength(
   lossRate: number,
   unitM: 1 | 0.5,
 ): OrderLengthResult {
-  const totalCm = entries.reduce((s, e) => s + e.cm, 0);
+  const totalCm = entries.reduce((s, e) => s + e.cm * (e.count || 1), 0);
   const totalM = totalCm / 100;
   const withLossM = totalM * (1 + lossRate / 100);
   const recommendedM = Math.ceil(withLossM / unitM) * unitM;

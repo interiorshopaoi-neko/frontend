@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BottomNav from '../components/BottomNav';
 import {
@@ -343,18 +343,75 @@ function ProQuoteCalculator() {
 // ─── LengthCalculator ─────────────────────────────────────────────────────────
 
 function LengthCalculator() {
-  const [entries, setEntries] = useState<LengthEntry[]>([]);
-  const [inputCm,   setInputCm]   = useState('');
-  const [lossRate,  setLossRate]  = useState('10');
-  const [orderUnit, setOrderUnit] = useState<1 | 0.5>(1);
-  const [copied,    setCopied]    = useState(false);
+  const [entries,    setEntries]    = useState<LengthEntry[]>([]);
+  const [inputCm,    setInputCm]    = useState('');
+  const [inputCount, setInputCount] = useState('');
+  const [lossRate,   setLossRate]   = useState('10');
+  const [orderUnit,  setOrderUnit]  = useState<1 | 0.5>(1);
+  const [copied,     setCopied]     = useState(false);
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key !== 'Enter') return;
+  const lenRef        = useRef<HTMLInputElement>(null);
+  const countRef      = useRef<HTMLInputElement>(null);
+  const blurTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── コア追加関数 ───────────────────────────────────────────────────────
+  function addEntry(shouldRefocus = false) {
     const cm = parseFloat(inputCm);
     if (!cm || cm <= 0) return;
-    setEntries(prev => [...prev, { id: Date.now(), cm }]);
+    const count = Math.max(1, parseInt(inputCount) || 1);
+    setEntries(prev => [...prev, { id: Date.now(), cm, count }]);
     setInputCm('');
+    setInputCount('');
+    if (shouldRefocus) {
+      // iPhone Safari でキーボードを維持しながらフォーカスを戻す
+      requestAnimationFrame(() => {
+        lenRef.current?.focus({ preventScroll: true });
+      });
+    }
+  }
+
+  function editEntry(entry: LengthEntry) {
+    setInputCm(String(entry.cm));
+    setInputCount(entry.count > 1 ? String(entry.count) : '');
+    setEntries(prev => prev.filter(e => e.id !== entry.id));
+    requestAnimationFrame(() => {
+      lenRef.current?.focus({ preventScroll: true });
+    });
+  }
+
+  // ── blur 遅延処理（cm→count 移動時に誤追加しない）────────────────────
+  function scheduleAdd() {
+    if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
+    blurTimerRef.current = setTimeout(() => {
+      blurTimerRef.current = null;
+      addEntry(false); // blur 起因なのでリフォーカスしない
+    }, 120);
+  }
+  function cancelScheduled() {
+    if (blurTimerRef.current) {
+      clearTimeout(blurTimerRef.current);
+      blurTimerRef.current = null;
+    }
+  }
+
+  // ── cm フィールド ─────────────────────────────────────────────────────
+  function handleCmKey(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') { e.preventDefault(); cancelScheduled(); addEntry(true); }
+  }
+  function handleCmBlur(e: React.FocusEvent<HTMLInputElement>) {
+    // count フィールドへの移動なら追加を保留
+    if (e.relatedTarget === countRef.current) return;
+    scheduleAdd();
+  }
+
+  // ── count フィールド ──────────────────────────────────────────────────
+  function handleCountFocus() { cancelScheduled(); } // cm blur の遅延追加をキャンセル
+  function handleCountKey(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') { e.preventDefault(); cancelScheduled(); addEntry(true); }
+  }
+  function handleCountBlur() {
+    // Done ボタン（iOS）も含め、count を抜けたタイミングで追加
+    addEntry(false);
   }
 
   const result = entries.length > 0
@@ -363,59 +420,143 @@ function LengthCalculator() {
 
   function copyResult() {
     if (!result) return;
+    const lines = entries.map(e => e.count > 1 ? `${e.cm}cm ×${e.count}` : `${e.cm}cm`);
     const text = [
-      '発注長さ計算',
-      '寸法:',
-      ...entries.map(e => `${e.cm}cm`),
+      '【発注長さ計算】',
+      ...lines,
       '',
       `合計: ${result.totalCm}cm / ${fmt2(result.totalM)}m`,
-      `ロス率: ${lossRate}%`,
-      `ロス込み: ${fmt2(result.withLossM)}m`,
-      `推奨発注: ${result.recommendedM}m`,
+      `ロス込み（${lossRate}%）: ${fmt2(result.withLossM)}m`,
+      `発注: ${result.recommendedM}m`,
     ].join('\n');
     navigator.clipboard.writeText(text).catch(() => {});
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 2500);
   }
 
   return (
     <div className="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm overflow-hidden">
+
+      {/* ヘッダー */}
       <div className="px-4 pt-4 pb-3 border-b border-slate-100 flex items-center gap-2">
         <span className="text-xl">📏</span>
         <div>
           <p className="text-sm font-extrabold text-slate-900">発注長さ計算</p>
-          <p className="text-[11px] text-slate-400">寸法をcmで入力してEnter → 合計・発注mを自動計算</p>
+          <p className="text-[11px] text-slate-400">数字 → Enter / Done / ＋ で連続追加</p>
         </div>
       </div>
 
       <div className="px-4 py-4 space-y-4">
-        {/* 入力 */}
+
+        {/* ── 入力行 ── */}
         <div>
-          <p className="text-xs font-bold text-slate-600 mb-1.5">寸法入力（cm）</p>
-          <input
-            type="number" inputMode="decimal" value={inputCm}
-            onChange={e => setInputCm(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="例）182　→ Enter で追加"
-            className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-base font-extrabold text-slate-900 placeholder-slate-300 focus:border-blue-400 focus:outline-none transition"
-          />
-          <p className="text-[10px] text-slate-400 mt-1">数字を入力して Enter キーで追加します</p>
+          <div className="flex gap-2 items-stretch">
+
+            {/* 長さ入力（メイン・大きく） */}
+            <div className="relative flex-1">
+              <input
+                ref={lenRef}
+                type="text"
+                inputMode="decimal"
+                enterKeyHint="done"
+                placeholder="長さ"
+                value={inputCm}
+                onChange={e => setInputCm(e.target.value.replace(/[^0-9.]/g, ''))}
+                onKeyDown={handleCmKey}
+                onBlur={handleCmBlur}
+                autoComplete="off"
+                className="w-full h-full rounded-xl border-2 border-blue-200 bg-blue-50 px-4 py-4 pr-10 text-2xl font-extrabold text-slate-900 placeholder-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 transition"
+              />
+              <span className="absolute right-3 bottom-3 text-slate-400 text-xs font-bold">cm</span>
+            </div>
+
+            {/* 枚数入力（コンパクト） */}
+            <div className="relative w-[72px] flex-shrink-0">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-base font-bold pointer-events-none">×</span>
+              <input
+                ref={countRef}
+                type="text"
+                inputMode="numeric"
+                enterKeyHint="done"
+                placeholder="1"
+                value={inputCount}
+                onChange={e => setInputCount(e.target.value.replace(/[^0-9]/g, ''))}
+                onFocus={handleCountFocus}
+                onKeyDown={handleCountKey}
+                onBlur={handleCountBlur}
+                autoComplete="off"
+                className="w-full h-full rounded-xl border-2 border-slate-200 bg-slate-50 pl-7 pr-2 py-4 text-xl font-extrabold text-slate-900 placeholder-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 transition text-center"
+              />
+            </div>
+
+            {/* ＋追加ボタン */}
+            <button
+              type="button"
+              onClick={() => { cancelScheduled(); addEntry(true); }}
+              className="flex-shrink-0 w-14 rounded-xl bg-blue-600 active:bg-blue-700 text-white font-extrabold text-2xl shadow-sm shadow-blue-200 active:scale-95 transition flex items-center justify-center"
+              aria-label="追加"
+            >
+              ＋
+            </button>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1.5">
+            Enter / Done / ＋ で追加 · 枚数未入力 → 自動×1
+          </p>
         </div>
 
-        {/* 追加済みリスト */}
+        {/* ── 追加済みリスト ── */}
         {entries.length > 0 && (
-          <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
-            {entries.map(e => (
-              <div key={e.id} className="flex items-center justify-between px-3 py-2">
-                <span className="text-sm font-bold text-slate-800">{e.cm} cm</span>
-                <button onClick={() => setEntries(prev => prev.filter(x => x.id !== e.id))}
-                  className="text-slate-300 hover:text-red-400 text-sm transition">✕</button>
+          <div className="rounded-xl border border-slate-200 overflow-hidden">
+            {entries.map((e, i) => (
+              <div
+                key={e.id}
+                className={`flex items-center justify-between px-4 py-3 ${
+                  i > 0 ? 'border-t border-slate-100' : ''
+                } bg-white`}
+              >
+                {/* 寸法・枚数（大きく） */}
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-extrabold text-slate-900">{e.cm}</span>
+                  <span className="text-sm font-bold text-slate-400">cm</span>
+                  <span className="text-sm font-bold text-slate-500 ml-1">×{e.count}</span>
+                  {e.count > 1 && (
+                    <span className="text-[10px] text-slate-400">
+                      = {e.cm * e.count}cm
+                    </span>
+                  )}
+                </div>
+                {/* 操作ボタン */}
+                <div className="flex gap-1.5 flex-shrink-0">
+                  <button
+                    onClick={() => editEntry(e)}
+                    className="text-[11px] font-bold text-slate-400 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 border border-transparent hover:border-blue-100 px-2.5 py-1.5 rounded-lg transition active:scale-95"
+                  >
+                    編集
+                  </button>
+                  <button
+                    onClick={() => setEntries(prev => prev.filter(x => x.id !== e.id))}
+                    className="text-[11px] font-bold text-slate-400 hover:text-red-500 bg-slate-100 hover:bg-red-50 border border-transparent hover:border-red-100 px-2.5 py-1.5 rounded-lg transition active:scale-95"
+                  >
+                    削除
+                  </button>
+                </div>
               </div>
             ))}
+            {/* 全削除 */}
+            {entries.length > 1 && (
+              <div className="border-t border-slate-100 px-4 py-2 text-right">
+                <button
+                  onClick={() => setEntries([])}
+                  className="text-[10px] font-bold text-slate-300 hover:text-red-400 transition"
+                >
+                  すべて削除
+                </button>
+              </div>
+            )}
           </div>
         )}
 
-        {/* 設定 */}
+        {/* ── 設定 ── */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <p className="text-[10px] text-slate-400 mb-1">ロス率</p>
@@ -426,39 +567,57 @@ function LengthCalculator() {
             <div className="flex gap-1">
               {([1, 0.5] as const).map(u => (
                 <button key={u} type="button" onClick={() => setOrderUnit(u)}
-                  className={`flex-1 text-xs font-bold py-2 rounded-xl border transition ${
+                  className={`flex-1 text-xs font-bold py-2.5 rounded-xl border transition active:scale-95 ${
                     orderUnit === u ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-500 border-slate-200'
-                  }`}>{u}m単位</button>
+                  }`}>{u}m</button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* 結果 */}
-        {result && (
-          <div className="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 space-y-1.5">
-            <div className="grid grid-cols-2 gap-2 text-[12px]">
-              <div className="text-slate-500">合計</div>
-              <div className="font-bold text-slate-800 text-right">{result.totalCm}cm / {fmt2(result.totalM)}m</div>
-              <div className="text-slate-500">ロス込み</div>
-              <div className="font-bold text-slate-800 text-right">{fmt2(result.withLossM)}m</div>
-            </div>
-            <div className="flex items-center justify-between border-t border-blue-200 pt-2">
-              <div>
-                <p className="text-[10px] text-blue-500 font-bold">推奨発注</p>
-                <p className="text-2xl font-extrabold text-blue-700">{result.recommendedM} m</p>
+        {/* ── 結果 ── */}
+        {result ? (
+          <div className="rounded-xl overflow-hidden border border-blue-200">
+            {/* 内訳（コンパクト） */}
+            <div className="px-4 py-3 bg-blue-50 space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500 font-medium">合計使用長さ</span>
+                <span className="font-bold text-slate-800">
+                  {result.totalCm} cm
+                  <span className="text-slate-400 text-xs ml-1">/ {fmt2(result.totalM)} m</span>
+                </span>
               </div>
-              <button onClick={copyResult}
-                className={`text-xs font-bold px-3 py-2 rounded-xl transition active:scale-95 ${
-                  copied ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-600 text-white'
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500 font-medium">ロス込み（{lossRate}%）</span>
+                <span className="font-bold text-slate-800">{fmt2(result.withLossM)} m</span>
+              </div>
+            </div>
+            {/* 発注m数（ドーン） */}
+            <div className="flex items-center justify-between bg-blue-600 px-4 py-3.5">
+              <div>
+                <p className="text-[11px] text-blue-200 font-bold">発注m数</p>
+                <p className="text-4xl font-extrabold text-white leading-tight tracking-tight">
+                  {result.recommendedM}
+                  <span className="text-2xl ml-1">m</span>
+                </p>
+              </div>
+              <button
+                onClick={copyResult}
+                className={`text-xs font-bold px-3.5 py-2.5 rounded-xl transition active:scale-95 border ${
+                  copied
+                    ? 'bg-emerald-400/20 text-emerald-200 border-emerald-400/30'
+                    : 'bg-white/15 hover:bg-white/25 text-white border-white/20'
                 }`}
-              >{copied ? '✅ コピー済み' : '📋 結果をコピー'}</button>
+              >
+                {copied ? '✅ コピー済み' : '📋 コピー'}
+              </button>
             </div>
           </div>
-        )}
-
-        {entries.length === 0 && (
-          <p className="text-center text-xs text-slate-400 py-2">寸法を追加すると結果が表示されます</p>
+        ) : (
+          <div className="rounded-xl border-2 border-dashed border-slate-200 py-6 text-center">
+            <p className="text-2xl mb-1">📐</p>
+            <p className="text-xs text-slate-400">寸法を追加すると<br />発注m数が表示されます</p>
+          </div>
         )}
       </div>
     </div>
