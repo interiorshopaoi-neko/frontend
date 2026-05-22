@@ -659,7 +659,7 @@ export default function RequestApplicationsPage() {
                     <div className="border-t border-green-100 bg-green-50 px-4 py-3">
                       <ul className="space-y-1">
                         <li className="text-[11px] text-green-800 font-bold leading-relaxed">📧 まずはメールで日程・詳細を調整してください</li>
-                        <li className="text-[11px] text-slate-500 leading-relaxed">🔒 電話番号・LINEは表示されません</li>
+                        <li className="text-[11px] text-slate-500 leading-relaxed">🔒 成約後にメールアドレスが共有されます</li>
                         <li className="text-[11px] text-slate-500 leading-relaxed">⭐ 工事完了後に職人からレビュー依頼が届きます</li>
                       </ul>
                     </div>
@@ -693,7 +693,7 @@ export default function RequestApplicationsPage() {
         {/* 注意書き */}
         <div className="mt-6 rounded-2xl bg-slate-100 px-4 py-3">
           <p className="text-[11px] text-slate-400 text-center leading-relaxed">
-            🔒 電話番号・住所などの個人情報は成約後に当事者間で共有されます。<br />
+            🔒 成約後にメールアドレスが共有されます。<br />
             成約前に個人情報が公開されることはありません。
           </p>
         </div>
