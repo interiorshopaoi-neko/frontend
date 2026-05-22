@@ -4,7 +4,7 @@ import { calculateServiceFee } from '../../lib/serviceFee';
 import { FEE_TABLE } from '../../constants/fees';
 import type { Job } from './CraftsmanJobsPage';
 import { calcRevenueNum } from '../../lib/revenueEstimate';
-import { getRoomMedia, hasAccentPreference, hasCeilingWork } from '../../lib/requestMeta';
+import { getRoomMedia, getRoomAdditionalInfo, hasAccentPreference, hasCeilingWork } from '../../lib/requestMeta';
 import { getRoomWorkSummaries } from '../../utils/requestSummary';
 import SiteRadar from '../../components/SiteRadar';
 
@@ -83,10 +83,12 @@ function isUrgent(job: Job): boolean {
 }
 
 function isInfoRich(job: Job): boolean {
-  const hasVideo    = job.has_video || !!job.video_url;
-  const roomMedia   = getRoomMedia(job.meta ?? null);
+  const hasVideo     = job.has_video || !!job.video_url;
+  const roomMedia    = getRoomMedia(job.meta ?? null);
   const hasRoomMedia = roomMedia.some(rm => rm.videos.length > 0 || rm.images.length > 0);
-  return (hasVideo && !!job.has_photos) || hasRoomMedia;
+  const raiVals      = Object.values(getRoomAdditionalInfo(job.meta ?? null));
+  const hasRaiMedia  = raiVals.some(e => !!e.videoUrl || (e.photos?.length ?? 0) > 0);
+  return (hasVideo && !!job.has_photos) || hasRoomMedia || hasRaiMedia;
 }
 
 // ─── Filter types ─────────────────────────────────────────────────────────────
@@ -120,9 +122,10 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
         c.urgent    = (c.urgent    ?? 0) + 1;
       if (job.created_at && (Date.now() - parseUtc(job.created_at)) < 86400000)
         c.new24h    = (c.new24h    ?? 0) + 1;
-      if (job.has_video || !!job.video_url)
+      const raiVals = Object.values(getRoomAdditionalInfo(job.meta ?? null));
+      if (job.has_video || !!job.video_url || raiVals.some(e => !!e.videoUrl))
         c.video     = (c.video     ?? 0) + 1;
-      if (job.has_photos)
+      if (job.has_photos || raiVals.some(e => (e.photos?.length ?? 0) > 0))
         c.photo     = (c.photo     ?? 0) + 1;
       if (isInfoRich(job))
         c.info_rich = (c.info_rich ?? 0) + 1;
@@ -135,8 +138,14 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
       .filter(job => {
         if (filter === 'urgent')    return isUrgent(job);
         if (filter === 'new24h')    return job.created_at ? (Date.now() - parseUtc(job.created_at)) < 86400000 : false;
-        if (filter === 'video')     return job.has_video || !!job.video_url;
-        if (filter === 'photo')     return job.has_photos;
+        if (filter === 'video') {
+          const raiVals = Object.values(getRoomAdditionalInfo(job.meta ?? null));
+          return job.has_video || !!job.video_url || raiVals.some(e => !!e.videoUrl);
+        }
+        if (filter === 'photo') {
+          const raiVals = Object.values(getRoomAdditionalInfo(job.meta ?? null));
+          return job.has_photos || raiVals.some(e => (e.photos?.length ?? 0) > 0);
+        }
         if (filter === 'info_rich') return isInfoRich(job);
         return true;
       })
@@ -387,11 +396,20 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
 
                   {/* ── クイック情報チップ（最大4個・優先度順） ── */}
                   {(() => {
+                    const raiVals      = Object.values(getRoomAdditionalInfo(job.meta ?? null));
+                    const hasRaiVideo  = raiVals.some(e => !!e.videoUrl);
+                    const hasRaiPhoto  = raiVals.some(e => (e.photos?.length ?? 0) > 0);
+                    const hasAddedRoom = raiVals.some(e => e.addedByCustomer);
+                    const showVideo    = hasVideo || hasRaiVideo;
+                    const showPhoto    = job.has_photos || hasRaiPhoto;
+
                     const chips: { label: string; cls: string }[] = [];
-                    if (hasVideo)
+                    if (showVideo)
                       chips.push({ label: '🎥 動画あり',    cls: 'bg-blue-100 text-blue-700' });
-                    if (job.has_photos)
+                    if (showPhoto)
                       chips.push({ label: '📷 写真あり',    cls: 'bg-blue-50 text-blue-600' });
+                    if (hasAddedRoom)
+                      chips.push({ label: '🆕 部屋追加あり', cls: 'bg-violet-50 text-violet-700' });
                     if (revenue >= 80000)
                       chips.push({ label: '💰 高単価',      cls: 'bg-emerald-50 text-emerald-700' });
                     if (hasCeilingWork(job.meta) || (job.meta?.rooms?.length ?? 0) >= 3)
@@ -400,9 +418,9 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                       chips.push({ label: `🏠 ${job.meta!.rooms!.length}部屋`, cls: 'bg-violet-50 text-violet-700' });
                     if (hasAccentPreference(job.meta))
                       chips.push({ label: 'アクセント希望', cls: 'bg-purple-50 text-purple-700' });
-                    return chips.slice(0, 3).length > 0 ? (
+                    return chips.slice(0, 4).length > 0 ? (
                       <div className="px-4 mb-3 flex flex-wrap gap-1.5">
-                        {chips.slice(0, 3).map(c => (
+                        {chips.slice(0, 4).map(c => (
                           <span key={c.label} className={`text-xs font-bold px-2.5 py-1 rounded-full ${c.cls}`}>
                             {c.label}
                           </span>

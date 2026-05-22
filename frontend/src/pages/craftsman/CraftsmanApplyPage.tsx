@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { calculateServiceFee, formatFee } from '../../lib/serviceFee';
 import type { Job } from './CraftsmanJobsPage';
-import { getExtraInfo, getRoomMedia, getRoomWorkSummary, getWallpaperAccentPreferences } from '../../lib/requestMeta';
+import { getExtraInfo, getRoomMedia, getRoomAdditionalInfo, getRoomWorkSummary, getWallpaperAccentPreferences } from '../../lib/requestMeta';
 import SiteRadar from '../../components/SiteRadar';
 
 function labelUrgency(level?: string) {
@@ -377,6 +377,77 @@ export default function CraftsmanApplyPage() {
               </div>
             );
           })()}
+          {/* 部屋別追加情報（roomAdditionalInfo — RequestExtraInfoPage 経由） */}
+          {(() => {
+            const rai     = getRoomAdditionalInfo(job?.meta);
+            const entries = Object.entries(rai).filter(([, e]) =>
+              (e.photos?.length ?? 0) > 0 || !!e.videoUrl || !!e.productNumber || !!e.note,
+            );
+            if (entries.length === 0) return null;
+            return (
+              <div className="mx-5 mb-5 rounded-2xl border border-emerald-100 bg-emerald-50/30 overflow-hidden">
+                <div className="px-4 py-2 bg-emerald-50 border-b border-emerald-100">
+                  <p className="text-[11px] font-bold text-emerald-700">📋 お客様による追加情報（部屋別）</p>
+                </div>
+                <div className="px-4 py-3 space-y-5">
+                  {entries.map(([key, entry]) => (
+                    <div key={key}>
+                      {/* 部屋名 */}
+                      <p className="text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                        {entry.roomName || key}
+                        {entry.addedByCustomer && (
+                          <span className="text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-100 px-1.5 py-0.5 rounded-full">
+                            🆕 お客様追加
+                          </span>
+                        )}
+                      </p>
+                      {/* 品番 */}
+                      {entry.productNumber && (
+                        <p className="text-xs text-slate-700 mb-1">
+                          <span className="font-bold text-slate-500">品番：</span>{entry.productNumber}
+                        </p>
+                      )}
+                      {/* メモ */}
+                      {entry.note && (
+                        <p className="text-xs text-slate-700 mb-1.5 leading-relaxed">
+                          <span className="font-bold text-slate-500">メモ：</span>{entry.note}
+                        </p>
+                      )}
+                      {/* 動画 */}
+                      {entry.videoUrl && (
+                        <video
+                          src={entry.videoUrl}
+                          controls
+                          playsInline
+                          preload="none"
+                          className="w-full rounded-xl bg-slate-900 mb-2"
+                          style={{ maxHeight: '200px' }}
+                        >
+                          動画を再生できません
+                        </video>
+                      )}
+                      {/* 写真グリッド */}
+                      {(entry.photos?.length ?? 0) > 0 && (
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {entry.photos!.map((url, ii) => (
+                            <a key={ii} href={url} target="_blank" rel="noreferrer">
+                              <img
+                                src={url}
+                                alt={`${entry.roomName} 写真${ii + 1}`}
+                                className="w-full aspect-square object-cover rounded-xl border border-slate-100"
+                                loading="lazy"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* 現場レーダー */}
           {job && (
             <div className="mx-5 mb-4 pb-3 border-b border-slate-100">

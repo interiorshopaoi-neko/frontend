@@ -120,6 +120,44 @@ export function getRoomDisplaySize(room: RoomMeta): string {
   return room.customSize || room.size || '';
 }
 
+// ── roomAdditionalInfo (per-room info added via RequestExtraInfoPage) ─────────
+// キーは roomKey ("0", "1", "added_0" …)。
+// addedByCustomer=true の場合は顧客が独自に追加した部屋。
+
+export type RoomAdditionalEntry = {
+  roomName:         string;
+  workType?:        string;
+  productNumber?:   string;
+  note?:            string;
+  photos?:          string[];   // publicUrl[]
+  videoUrl?:        string;     // publicUrl
+  addedByCustomer?: boolean;
+};
+
+export function getRoomAdditionalInfo(meta: unknown): Record<string, RoomAdditionalEntry> {
+  const m = asMeta(meta);
+  if (!m) return {};
+  const rai = m.roomAdditionalInfo;
+  if (!rai || typeof rai !== 'object' || Array.isArray(rai)) return {};
+  const result: Record<string, RoomAdditionalEntry> = {};
+  for (const [key, val] of Object.entries(rai as Record<string, unknown>)) {
+    if (!val || typeof val !== 'object' || Array.isArray(val)) continue;
+    const v = val as Record<string, unknown>;
+    result[key] = {
+      roomName:        typeof v.roomName        === 'string'  ? v.roomName        : key,
+      workType:        typeof v.workType        === 'string'  ? v.workType        : undefined,
+      productNumber:   typeof v.productNumber   === 'string'  ? v.productNumber   : undefined,
+      note:            typeof v.note            === 'string'  ? v.note            : undefined,
+      photos:          Array.isArray(v.photos)
+                         ? (v.photos as unknown[]).filter((s): s is string => typeof s === 'string')
+                         : undefined,
+      videoUrl:        typeof v.videoUrl        === 'string'  ? v.videoUrl        : undefined,
+      addedByCustomer: typeof v.addedByCustomer === 'boolean' ? v.addedByCustomer : undefined,
+    };
+  }
+  return result;
+}
+
 // ── extraInfo (post-submit customer additions) ────────────────────────────────
 
 export type ExtraInfoMeta = {

@@ -6,6 +6,8 @@ import {
   getRoomWorkSummary,
   getRoomDisplayName,
   getRoomDisplaySize,
+  getRoomMedia,
+  getRoomAdditionalInfo,
   type RoomMeta,
 } from '../lib/requestMeta';
 
@@ -59,4 +61,54 @@ export function getRoomWorkDetail(room: RoomMeta): string {
   const conds = room.condition ?? [];
   if (conds.length > 0) parts.push(conds.join('・'));
   return parts.join('｜');
+}
+
+// ── Phase 5 helpers ───────────────────────────────────────────────────────────
+
+// "2部屋" / "1部屋" / "" (0部屋の場合は空文字)
+export function getRoomCountLabel(meta: unknown): string {
+  const count = getRooms(meta).length;
+  return count > 0 ? `${count}部屋` : '';
+}
+
+// 全部屋を1行テキストで列挙 (例: "寝室・LDK・洋室")
+export function getRoomNamesLabel(meta: unknown): string {
+  return getRooms(meta).map(r => getRoomDisplayName(r)).join('・');
+}
+
+// メディア有無を文字列で返す ("動画・写真あり" / "動画あり" / "写真あり" / "")
+// opts: job列から取れる video_url, has_video, has_photos も渡せる
+export function getMediaSummary(
+  meta: unknown,
+  opts?: { videoUrl?: string | null; hasVideo?: boolean; hasPhotos?: boolean },
+): string {
+  const roomMedia = getRoomMedia(meta);
+  const rai       = getRoomAdditionalInfo(meta);
+  const raiVals   = Object.values(rai);
+
+  const hasVideo =
+    !!opts?.hasVideo ||
+    !!opts?.videoUrl ||
+    roomMedia.some(rm => rm.videos.length > 0) ||
+    raiVals.some(e => !!e.videoUrl);
+
+  const hasPhoto =
+    !!opts?.hasPhotos ||
+    roomMedia.some(rm => rm.images.length > 0) ||
+    raiVals.some(e => (e.photos?.length ?? 0) > 0);
+
+  if (hasVideo && hasPhoto) return '動画・写真あり';
+  if (hasVideo)             return '動画あり';
+  if (hasPhoto)             return '写真あり';
+  return '';
+}
+
+// roomAdditionalInfo の補足情報サマリー ("品番指定あり・メモあり・追加部屋あり" など)
+export function getAdditionalInfoSummary(meta: unknown): string {
+  const entries = Object.values(getRoomAdditionalInfo(meta));
+  const parts: string[] = [];
+  if (entries.some(e => !!e.productNumber))   parts.push('品番指定あり');
+  if (entries.some(e => !!e.note))            parts.push('メモあり');
+  if (entries.some(e => e.addedByCustomer))   parts.push('追加部屋あり');
+  return parts.join('・');
 }
