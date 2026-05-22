@@ -157,6 +157,7 @@ export default function CraftsmanJobsPage() {
       const { data, error } = await supabase
         .from('estimate_requests')
         .select('*')
+        .neq('status', 'hidden')
         .order('created_at', { ascending: false });
 
       if (error || !data || data.length === 0) {
