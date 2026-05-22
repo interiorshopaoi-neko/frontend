@@ -4,7 +4,7 @@ import { calculateServiceFee } from '../../lib/serviceFee';
 import { FEE_TABLE } from '../../constants/fees';
 import type { Job } from './CraftsmanJobsPage';
 import { calcRevenueNum } from '../../lib/revenueEstimate';
-import { getRoomMedia, getRoomAdditionalInfo, hasAccentPreference, hasCeilingWork } from '../../lib/requestMeta';
+import { getRoomMedia, getRoomAdditionalInfo, hasCeilingWork } from '../../lib/requestMeta';
 import { getRoomWorkSummaries } from '../../utils/requestSummary';
 import SiteRadar from '../../components/SiteRadar';
 
@@ -328,85 +328,87 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                     )}
                   </div>
 
-                  {/* ── 施工概要ブロック ── */}
+                  {/* ── 施工概要ブロック（主役） ── */}
                   {(() => {
                     const rooms   = getRoomWorkSummaries(job.meta);
-                    const raiMap  = getRoomAdditionalInfo(job.meta ?? null);
-                    const raiVals = Object.values(raiMap);
+                    const raiVals = Object.values(getRoomAdditionalInfo(job.meta ?? null));
 
-                    // 追加情報サマリー行（メイン施工情報の下に常に表示）
-                    const totalPhotos   = raiVals.reduce((n, e) => n + (e.photos?.length ?? 0), 0);
-                    const hasRaiVideo   = raiVals.some(e => !!e.videoUrl);
-                    const productNums   = raiVals.map(e => e.productNumber).filter(Boolean) as string[];
-                    const hasNote       = raiVals.some(e => !!e.note);
-                    const addedRooms    = raiVals.filter(e => e.addedByCustomer).map(e => e.roomName);
+                    // 追加情報サマリー（一覧では品番の具体値は出さない・詳細ページで見せる）
+                    const totalPhotos  = raiVals.reduce((n, e) => n + (e.photos?.length ?? 0), 0);
+                    const hasRaiVideo  = raiVals.some(e => !!e.videoUrl);
+                    const hasProduct   = raiVals.some(e => !!e.productNumber);
+                    const hasNote      = raiVals.some(e => !!e.note);
+                    const hasAddedRoom = raiVals.some(e => e.addedByCustomer);
 
-                    const raiItems: string[] = [];
-                    if (totalPhotos > 0)    raiItems.push(`📷 写真 ${totalPhotos}枚`);
-                    if (hasRaiVideo)        raiItems.push('🎥 動画あり');
-                    if (productNums.length) raiItems.push(`品番：${productNums.join('・')}`);
-                    if (hasNote)            raiItems.push('メモあり');
-                    addedRooms.forEach(n => raiItems.push(`追加部屋：${n}`));
+                    const raiParts: string[] = [];
+                    if (totalPhotos > 0) raiParts.push(`写真${totalPhotos}枚`);
+                    if (hasRaiVideo)     raiParts.push('動画あり');
+                    if (hasProduct)      raiParts.push('品番あり');
+                    if (hasNote)         raiParts.push('メモあり');
+                    if (hasAddedRoom)    raiParts.push('追加部屋あり');
+                    const raiLine = raiParts.length > 0
+                      ? `追加情報：${raiParts.join('・')}`
+                      : null;
 
-                    const RaiSummary = raiItems.length > 0 ? (
-                      <div className="mt-2 pt-2 border-t border-slate-200">
-                        <p className="text-[10px] font-bold text-emerald-600 mb-1">追加情報あり</p>
-                        <div className="flex flex-wrap gap-1">
-                          {raiItems.map(item => (
-                            <span key={item} className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full">
-                              {item}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null;
-
-                    if (rooms.length === 0) {
-                      return (
-                        <div className="mx-4 mb-3 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
-                          <p className="text-xs text-slate-400 font-bold mb-0.5">施工概要</p>
-                          <p className="text-sm font-bold text-slate-700">{job.work_type || 'クロス張り替え'}</p>
-                          {RaiSummary}
-                        </div>
-                      );
-                    }
+                    // 1部屋：「部屋名｜畳数」→「工事内容」→「条件」→「追加情報」
                     if (rooms.length === 1) {
                       const r = rooms[0];
                       return (
-                        <div className="mx-4 mb-3 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
-                          <p className="text-xs text-slate-400 font-bold mb-1">施工概要</p>
-                          <p className="text-base font-extrabold text-slate-900">{r.name}</p>
+                        <div className="mx-4 mb-3 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3">
+                          <p className="text-lg font-extrabold text-slate-900 leading-tight">
+                            {r.name}{r.size ? <span className="text-slate-400 font-bold">｜{r.size}</span> : ''}
+                          </p>
                           {r.workParts.length > 0 && (
-                            <p className="text-xs text-slate-600 mt-0.5">{r.workParts.join('・')}</p>
+                            <p className="text-sm text-slate-600 mt-0.5">{r.workParts.join('・')}</p>
                           )}
-                          <div className="flex flex-wrap gap-1.5 mt-1.5">
-                            {r.size && (
-                              <span className="text-[11px] bg-white border border-slate-200 text-slate-600 font-bold px-2 py-0.5 rounded-full">
-                                📐 {r.size}
-                              </span>
-                            )}
-                            {r.conditions.map(c => (
-                              <span key={c} className="text-[11px] bg-amber-50 border border-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full">
-                                {c}
-                              </span>
-                            ))}
-                          </div>
-                          {RaiSummary}
+                          {r.conditions.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {r.conditions.map(c => (
+                                <span key={c} className="text-[10px] bg-amber-50 border border-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full">
+                                  {c}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {raiLine && (
+                            <p className="text-[11px] font-bold text-emerald-600 mt-1.5">{raiLine}</p>
+                          )}
                         </div>
                       );
                     }
-                    return (
-                      <div className="mx-4 mb-3 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
-                        <p className="text-xs text-slate-400 font-bold mb-1">施工概要 · {rooms.length}部屋</p>
-                        <div className="space-y-1">
-                          {rooms.map((r, i) => (
-                            <div key={i} className="flex items-baseline gap-1.5">
-                              <span className="text-sm font-extrabold text-slate-900 min-w-[3.5rem]">{r.name}</span>
-                              <span className="text-xs text-slate-500 truncate">{[...r.workParts, r.size].filter(Boolean).join('・')}</span>
-                            </div>
-                          ))}
+
+                    // 複数部屋：「N部屋の工事」→ 部屋リスト →「追加情報」
+                    if (rooms.length > 1) {
+                      return (
+                        <div className="mx-4 mb-3 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3">
+                          <p className="text-xs font-bold text-slate-400 mb-1.5">{rooms.length}部屋の工事</p>
+                          <div className="space-y-1">
+                            {rooms.map((r, i) => (
+                              <div key={i} className="flex items-baseline gap-1.5">
+                                <span className="text-base font-extrabold text-slate-900">{r.name}</span>
+                                {r.size && <span className="text-xs text-slate-400">｜{r.size}</span>}
+                                {r.workParts.length > 0 && (
+                                  <span className="text-xs text-slate-500 truncate">{r.workParts.join('・')}</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          {raiLine && (
+                            <p className="text-[11px] font-bold text-emerald-600 mt-1.5">{raiLine}</p>
+                          )}
                         </div>
-                        {RaiSummary}
+                      );
+                    }
+
+                    // 部屋情報なし（旧データ）
+                    return (
+                      <div className="mx-4 mb-3 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3">
+                        <p className="text-lg font-extrabold text-slate-900 leading-tight">
+                          {job.work_type || 'クロス張り替え'}
+                        </p>
+                        {raiLine && (
+                          <p className="text-[11px] font-bold text-emerald-600 mt-1.5">{raiLine}</p>
+                        )}
                       </div>
                     );
                   })()}
@@ -427,33 +429,27 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                     </div>
                   </div>
 
-                  {/* ── クイック情報チップ（最大4個・優先度順） ── */}
+                  {/* ── 判断補助チップ（最大3つ・注意喚起と動画のみ） ── */}
                   {(() => {
-                    const raiVals      = Object.values(getRoomAdditionalInfo(job.meta ?? null));
-                    const hasRaiVideo  = raiVals.some(e => !!e.videoUrl);
-                    const hasRaiPhoto  = raiVals.some(e => (e.photos?.length ?? 0) > 0);
-                    const hasAddedRoom = raiVals.some(e => e.addedByCustomer);
-                    const showVideo    = hasVideo || hasRaiVideo;
-                    const showPhoto    = job.has_photos || hasRaiPhoto;
+                    const raiVals    = Object.values(getRoomAdditionalInfo(job.meta ?? null));
+                    const hasRaiVideo = raiVals.some(e => !!e.videoUrl);
+                    const roomCount  = job.meta?.rooms?.length ?? 0;
+                    const isTough    = hasCeilingWork(job.meta) || roomCount >= 3;
 
                     const chips: { label: string; cls: string }[] = [];
-                    if (showVideo)
-                      chips.push({ label: '🎥 動画あり',    cls: 'bg-blue-100 text-blue-700' });
-                    if (showPhoto)
-                      chips.push({ label: '📷 写真あり',    cls: 'bg-blue-50 text-blue-600' });
-                    if (hasAddedRoom)
-                      chips.push({ label: '🆕 部屋追加あり', cls: 'bg-violet-50 text-violet-700' });
-                    if (revenue >= 80000)
-                      chips.push({ label: '💰 高単価',      cls: 'bg-emerald-50 text-emerald-700' });
-                    if (hasCeilingWork(job.meta) || (job.meta?.rooms?.length ?? 0) >= 3)
-                      chips.push({ label: '⚠ 難易度高め',  cls: 'bg-orange-50 text-orange-700' });
-                    if ((job.meta?.rooms?.length ?? 0) > 0)
-                      chips.push({ label: `🏠 ${job.meta!.rooms!.length}部屋`, cls: 'bg-violet-50 text-violet-700' });
-                    if (hasAccentPreference(job.meta))
-                      chips.push({ label: 'アクセント希望', cls: 'bg-purple-50 text-purple-700' });
-                    return chips.slice(0, 4).length > 0 ? (
-                      <div className="px-4 mb-3 flex flex-wrap gap-1.5">
-                        {chips.slice(0, 4).map(c => (
+                    // 1. 難易度（最優先・注意喚起）
+                    if (isTough)
+                      chips.push({ label: '⚠ 難易度高め', cls: 'bg-orange-50 text-orange-700 border border-orange-100' });
+                    // 2. 部屋数（施工ボリューム判断）
+                    if (roomCount > 0)
+                      chips.push({ label: `🏠 ${roomCount}部屋`, cls: 'bg-slate-100 text-slate-600' });
+                    // 3. 動画（一覧で判断できる最大の材料）
+                    if (hasVideo || hasRaiVideo)
+                      chips.push({ label: '🎥 動画あり', cls: 'bg-blue-50 text-blue-600 border border-blue-100' });
+
+                    return chips.length > 0 ? (
+                      <div className="px-4 mb-3 flex gap-1.5">
+                        {chips.slice(0, 3).map(c => (
                           <span key={c.label} className={`text-xs font-bold px-2.5 py-1 rounded-full ${c.cls}`}>
                             {c.label}
                           </span>
