@@ -197,6 +197,69 @@ export default async function handler(req: any, res: any) {
             });
             return;
           }
+
+          // ── Stripe 決済済み確認（contact_unlocks）────────────────────────────
+          // Webhook 経由で contact_unlocks に paid レコードがある場合は
+          // クレジット消費なしで連絡先を返す（無料枠ゼロでも開示可能）
+          const _svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+          if (_svcKey) {
+            try {
+              const paidLockRes = await fetch(
+                `${SUPABASE_URL}/rest/v1/contact_unlocks` +
+                `?craftsman_id=eq.${encodeURIComponent(craftsman_id)}` +
+                `&estimate_request_id=eq.${encodeURIComponent(estimateRequestId)}` +
+                `&unlock_type=eq.paid&select=id&limit=1`,
+                {
+                  headers: {
+                    'apikey':        _svcKey,
+                    'Authorization': `Bearer ${_svcKey}`,
+                    'Accept':        'application/json',
+                  },
+                },
+              );
+              if (paidLockRes.ok) {
+                const paidRows = await paidLockRes.json() as unknown[];
+                if (paidRows.length > 0) {
+                  // 決済済み → estimate_requests からメールを取得
+                  const erPaidRes = await fetch(
+                    `${SUPABASE_URL}/rest/v1/estimate_requests` +
+                    `?id=eq.${encodeURIComponent(estimateRequestId)}` +
+                    `&select=contact_method,contact_value&limit=1`,
+                    {
+                      headers: {
+                        'apikey':        _svcKey,
+                        'Authorization': `Bearer ${_svcKey}`,
+                        'Accept':        'application/json',
+                      },
+                    },
+                  );
+                  if (erPaidRes.ok) {
+                    const erPaidRows = await erPaidRes.json() as Array<{
+                      contact_method: string | null;
+                      contact_value:  string | null;
+                    }>;
+                    const erPaid = erPaidRows[0];
+                    if (erPaid?.contact_method === 'メール' && erPaid.contact_value) {
+                      console.log('[check-billing] stripe paid contact found', {
+                        craftsman_id,
+                        estimateRequestId,
+                      });
+                      res.status(200).json({
+                        status:         'already_unlocked',
+                        contact_method: erPaid.contact_method,
+                        contact_value:  erPaid.contact_value.replace(/^mailto:/i, '').trim(),
+                        free_reason:    null,
+                      });
+                      return;
+                    }
+                  }
+                }
+              }
+            } catch (paidCheckErr) {
+              // 失敗しても通常の RPC フローへフォールスルー
+              console.warn('[check-billing] paid contact check skipped:', paidCheckErr);
+            }
+          }
         }
       }
     }

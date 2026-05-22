@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import BottomNav from '../../components/BottomNav';
 
@@ -130,15 +130,19 @@ function formatDate(iso: string) {
 function ContactPanel({
   appId,
   craftsmanId,
+  estimateRequestId,
   state,
   freeCredits,
   onReveal,
+  onCheckout,
 }: {
-  appId:        string;
-  craftsmanId:  string;
-  state:        ContactState;
-  freeCredits:  FreeCredits;
-  onReveal:     (appId: string, craftsmanId: string) => void;
+  appId:             string;
+  craftsmanId:       string;
+  estimateRequestId: string;
+  state:             ContactState;
+  freeCredits:       FreeCredits;
+  onReveal:          (appId: string, craftsmanId: string) => void;
+  onCheckout:        (appId: string, craftsmanId: string, estimateRequestId: string) => void;
 }) {
   const [copied,    setCopied]    = useState(false);
   const [contacted, setContacted] = useState(false);
@@ -230,13 +234,20 @@ function ContactPanel({
               無料枠がありません
             </p>
             <p className="text-[11px] text-rose-600 leading-relaxed">
-              決済機能は準備中です。<br />
-              お急ぎの場合は
-              <a href="/support" className="underline font-bold ml-0.5">お問い合わせ</a>
-              ください。
+              成約時のみサービス料がかかります。<br />
+              紹介コードで無料枠を増やすこともできます。
             </p>
           </div>
         </div>
+        <button
+          onClick={() => onCheckout(appId, craftsmanId, estimateRequestId)}
+          className="w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl py-2.5 text-xs font-extrabold transition active:scale-[0.98] shadow-sm"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+          </svg>
+          決済して連絡先を見る
+        </button>
         {/* 紹介コード誘導 */}
         <a
           href="/craftsman/dashboard"
@@ -244,8 +255,8 @@ function ContactPanel({
         >
           <span className="text-sm">🎁</span>
           <div>
-            <p className="text-[11px] font-extrabold text-blue-700">紹介コードで無料枠を増やせます</p>
-            <p className="text-[10px] text-blue-500">友人職人が登録すると +1件 → 管理画面へ</p>
+            <p className="text-[11px] font-extrabold text-blue-700">紹介コードで無料枠+2件</p>
+            <p className="text-[10px] text-blue-500">友人職人が登録すると自動で付与 → 管理画面へ</p>
           </div>
           <span className="text-blue-400 ml-auto text-xs">→</span>
         </a>
@@ -320,6 +331,8 @@ function ContactPanel({
 
 export default function CraftsmanApplicationsPage() {
   const navigate     = useNavigate();
+  const [searchParams] = useSearchParams();
+  const paidSuccess  = searchParams.get('paid') === '1';
   const [apps,       setApps]       = useState<ApplicationRow[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [isDemo,     setIsDemo]     = useState(false);
@@ -449,6 +462,36 @@ export default function CraftsmanApplicationsPage() {
     }
   }, [contactStates, setContact]);
 
+  // ── Stripe 決済ハンドラ ─────────────────────────────────────────────────────
+  const handleCheckout = useCallback(async (
+    appId: string,
+    cId:   string,
+    erqId: string,
+  ) => {
+    setContact(appId, { kind: 'loading' });
+    try {
+      const res  = await fetch('/api/create-checkout-session', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ craftsman_id: cId, estimate_request_id: erqId }),
+      });
+      const data = await res.json();
+      if (data.already_unlocked) {
+        // 既に開示済み（Webhook 処理済み） → 連絡先を再取得
+        void handleReveal(appId, cId);
+        return;
+      }
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url;
+        return;
+      }
+      setContact(appId, { kind: 'error', message: data.error ?? 'checkout_failed' });
+    } catch (err) {
+      console.error('[checkout] fetch error:', err);
+      setContact(appId, { kind: 'error', message: 'fetch_failed' });
+    }
+  }, [handleReveal, setContact]);
+
   // ── 工事完了報告ハンドラ ────────────────────────────────────────────────────
   const handleReportComplete = useCallback(async (app: ApplicationRow) => {
     if (reporting === app.id) return;
@@ -522,6 +565,18 @@ export default function CraftsmanApplicationsPage() {
 
       <div className="max-w-2xl mx-auto px-4 py-5 pb-24 space-y-4">
 
+        {paidSuccess && (
+          <div className="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 flex items-center gap-2">
+            <span className="text-blue-500 text-base flex-shrink-0">✅</span>
+            <div>
+              <p className="text-xs font-extrabold text-blue-800">決済が完了しました</p>
+              <p className="text-[10px] text-blue-600 mt-0.5">
+                成約案件の「連絡先を確認する」でメールアドレスが表示されます
+              </p>
+            </div>
+          </div>
+        )}
+
         {isDemo && (
           <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 flex items-center gap-2">
             <span className="text-amber-500 text-xs">📋</span>
@@ -569,7 +624,7 @@ export default function CraftsmanApplicationsPage() {
                 <span className="text-base">🔒</span>
                 <div>
                   <p className="text-xs font-bold text-slate-600">無料枠を使い切りました</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">決済機能は準備中です</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">決済後に連絡先を確認できます</p>
                 </div>
               </div>
               <a
@@ -577,7 +632,7 @@ export default function CraftsmanApplicationsPage() {
                 className="flex items-center gap-1.5 text-[11px] font-bold text-blue-600 hover:text-blue-700"
               >
                 <span>🎁</span>
-                <span>紹介コードで無料枠+1件 → 管理画面へ</span>
+                <span>紹介コードで無料枠+2件 → 管理画面へ</span>
               </a>
             </div>
           );
@@ -671,9 +726,11 @@ export default function CraftsmanApplicationsPage() {
                     <ContactPanel
                       appId={app.id}
                       craftsmanId={craftsmanId}
+                      estimateRequestId={app.estimate_request_id}
                       state={cState}
                       freeCredits={freeCredits}
                       onReveal={handleReveal}
+                      onCheckout={handleCheckout}
                     />
                   )}
 

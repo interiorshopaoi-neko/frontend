@@ -996,7 +996,7 @@ export default function CraftsmanDashboardPage() {
                         ? freeCredits.bonus > 0
                           ? `初回${freeCredits.remaining}件 + 紹介ボーナス${freeCredits.bonus}件`
                           : '成約案件の応募状況ページから確認できます'
-                        : '正式版では決済後に連絡先を確認できます'}
+                        : '決済後に連絡先を確認できます'}
                     </p>
                   </div>
                 </div>
@@ -1052,7 +1052,7 @@ export default function CraftsmanDashboardPage() {
                     </button>
                   </div>
                   <p className="text-[10px] text-blue-500 leading-relaxed">
-                    ※ 紹介ボーナス制度は準備中です。コードのシェアはできます。
+                    紹介コードで職人が登録すると、あなたに無料枠が +2件 追加されます。
                   </p>
                   <a
                     href={lineUrl}

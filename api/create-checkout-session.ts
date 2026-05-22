@@ -137,8 +137,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         craftsman_id:        craftsmanId,
         estimate_request_id: estimateRequestId,
       },
-      success_url: `${SITE_URL}/craftsman/dashboard?unlock=success&request_id=${estimateRequestId}`,
-      cancel_url:  `${SITE_URL}/craftsman/dashboard?unlock=cancel`,
+      success_url: `${SITE_URL}/craftsman/applications?paid=1`,
+      cancel_url:  `${SITE_URL}/craftsman/applications`,
     });
 
     if (!session.url) {
