@@ -274,9 +274,7 @@ export default function ProSignupPage() {
             >
               ← トップページ
             </Link>
-            <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(4px)', borderRadius: 8, padding: '4px 10px', border: '1px solid rgba(255,255,255,0.08)', display: 'inline-flex' }}>
-              <img src="/logo-full.png" alt="PRO MATCH" style={{ height: 22, width: 'auto' }} />
-            </div>
+            <span className="text-white font-extrabold text-sm tracking-wide">PRO MATCH</span>
           </div>
           <button
             onClick={() => navigate('/login?role=craftsman')}
