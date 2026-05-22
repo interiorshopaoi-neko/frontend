@@ -704,7 +704,8 @@ export default function CorporateRequest() {
   const [videoSizeError,  setVideoSizeError]  = useState(false);
   const [workType,     setWorkType]     = useState('');
   const [area,         setArea]         = useState('');
-  const [contactValue, setContactValue] = useState('');
+  const [contactValue,  setContactValue]  = useState('');
+  const [customerName,  setCustomerName]  = useState('');
   const contactMethod = 'メール'; // メールアドレスに統一
 
   // フォームデータ（詳細情報・すべて任意）
@@ -755,6 +756,7 @@ export default function CorporateRequest() {
     memo: string;
     area: string;
     contactValue: string;
+    customerName: string;
     step3Skipped: boolean;
   };
 
@@ -809,6 +811,7 @@ export default function CorporateRequest() {
       setMemo(d.memo ?? '');
       setArea(d.area ?? '');
       setContactValue(d.contactValue ?? '');
+      setCustomerName(d.customerName ?? '');
       setStep3Skipped(d.step3Skipped ?? false);
     } catch { /* 壊れたデータは無視 */ }
   }
@@ -853,13 +856,14 @@ export default function CorporateRequest() {
           memo,
           area,
           contactValue,
+          customerName,
           step3Skipped,
         };
         localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
       } catch { /* localStorage 失敗は無視 */ }
     }, 500);
     return () => clearTimeout(timer);
-  }, [step, rooms, wallpaperPreference, wallpaperAccentPreferences, workType, roomType, roomSize, timing, siteCondition, desireType, memo, area, contactValue, step3Skipped, showDraftBanner]);
+  }, [step, rooms, wallpaperPreference, wallpaperAccentPreferences, workType, roomType, roomSize, timing, siteCondition, desireType, memo, area, contactValue, customerName, step3Skipped, showDraftBanner]);
 
   const hasDetail = !!(timing || desireType || memo);
   const hasRoomInfo = rooms.some(r => r.workType || r.size);
@@ -1003,6 +1007,7 @@ export default function CorporateRequest() {
         ...(wallpaperAccentPreferences.length > 0 ? { wallpaper_accent_preferences: wallpaperAccentPreferences } : {}),
         ...(thumbnail_url ? { thumbnail_url } : {}),
         ...(roomMediaList.length > 0 ? { roomMedia: roomMediaList } : {}),
+        ...(customerName.trim() ? { customerName: customerName.trim() } : {}),
       };
       console.log('[CorporateRequest] rpc payload meta:', JSON.stringify(metaPayload, null, 2));
 
@@ -1755,14 +1760,41 @@ export default function CorporateRequest() {
                 職人からのご連絡はメールでお届けします
               </p>
             </div>
-            <input
-              type="email"
-              autoFocus
-              value={contactValue}
-              onChange={e => setContactValue(e.target.value)}
-              placeholder="example@mail.com"
-              className="w-full border-2 border-slate-200 rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-violet-400 transition-colors placeholder:text-slate-300"
-            />
+
+            {/* お名前（任意） */}
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                お名前（苗字だけでもOK）
+                <span className="ml-1.5 text-[10px] font-normal text-slate-400">任意</span>
+              </label>
+              <input
+                type="text"
+                value={customerName}
+                onChange={e => setCustomerName(e.target.value)}
+                placeholder="例：山田 / 山田太郎"
+                className="w-full border-2 border-slate-200 rounded-2xl px-5 py-3.5 text-base focus:outline-none focus:border-violet-400 transition-colors placeholder:text-slate-300"
+              />
+              <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
+                成約した職人にのみ、メールアドレスと一緒に共有されます
+              </p>
+            </div>
+
+            {/* メールアドレス */}
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                メールアドレス
+                <span className="ml-1.5 text-[10px] font-semibold text-rose-500">必須</span>
+              </label>
+              <input
+                type="email"
+                autoFocus
+                value={contactValue}
+                onChange={e => setContactValue(e.target.value)}
+                placeholder="example@mail.com"
+                className="w-full border-2 border-slate-200 rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-violet-400 transition-colors placeholder:text-slate-300"
+              />
+            </div>
+
             <div className="flex items-start gap-2 bg-slate-50 rounded-xl px-4 py-3">
               <span className="text-slate-400 text-xs mt-0.5 flex-shrink-0">🔒</span>
               <p className="text-xs text-slate-400 leading-relaxed">
@@ -1801,6 +1833,7 @@ export default function CorporateRequest() {
             { label: '動画',        value: videoFile?.name ?? 'なし（スキップ）' },
             { label: '施工内容',    value: workType },
             { label: 'エリア',      value: area },
+            ...(customerName.trim() ? [{ label: 'お名前', value: customerName.trim() }] : []),
             { label: '連絡先(メール)', value: contactValue },
           ].map(({ label, value }, i) => (
             <div key={i} className="flex items-start gap-4 px-5 py-3.5 bg-white hover:bg-slate-50 transition-colors">

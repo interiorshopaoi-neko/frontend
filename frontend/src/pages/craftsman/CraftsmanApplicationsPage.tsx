@@ -16,7 +16,7 @@ type ApplicationRow = {
   review_requested_at: string | null;
   reviewed_at: string | null;
   created_at: string;
-  estimate_requests: { work_type: string | null; area: string | null } | null;
+  estimate_requests: { work_type: string | null; area: string | null; meta?: Record<string, unknown> | null } | null;
 };
 
 type ContactState =
@@ -134,10 +134,11 @@ function formatDate(iso: string) {
 const SCOPE_CHIPS = ['壁のみ', '天井含む', '壁＋天井', 'アクセントクロス希望', 'ソフト巾木施工希望'] as const;
 type ScopeChip = typeof SCOPE_CHIPS[number];
 
-function PreCheckModal({ onClose, appId, contactEmail }: {
-  onClose: () => void;
-  appId:   string;
+function PreCheckModal({ onClose, appId, contactEmail, customerName }: {
+  onClose:       () => void;
+  appId:         string;
   contactEmail?: string;
+  customerName?: string;
 }) {
   const [dates,     setDates]     = useState(['', '', '']);
   const [scopes,    setScopes]    = useState<ScopeChip[]>([]);
@@ -205,11 +206,18 @@ function PreCheckModal({ onClose, appId, contactEmail }: {
         </div>
         <div className="overflow-y-auto px-5 py-4 space-y-5 flex-1">
 
-          {/* お客様メール（開示済みの場合） */}
-          {contactEmail && (
-            <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2">
-              <p className="text-[10px] font-bold text-emerald-600 mb-0.5">送信先メール</p>
-              <p className="text-sm font-bold text-slate-800 break-all">{contactEmail}</p>
+          {/* お客様名・メール（開示済みの場合） */}
+          {(customerName || contactEmail) && (
+            <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 space-y-1">
+              {customerName && (
+                <p className="text-sm font-bold text-slate-800">👤 {customerName}様</p>
+              )}
+              {contactEmail && (
+                <>
+                  <p className="text-[10px] font-bold text-emerald-600">送信先メール</p>
+                  <p className="text-sm font-bold text-slate-800 break-all">{contactEmail}</p>
+                </>
+              )}
             </div>
           )}
 
@@ -450,6 +458,7 @@ function ContactPanel({
   estimateRequestId,
   state,
   freeCredits,
+  customerName,
   onReveal,
   onCheckout,
 }: {
@@ -458,6 +467,7 @@ function ContactPanel({
   estimateRequestId: string;
   state:             ContactState;
   freeCredits:       FreeCredits;
+  customerName?:     string;
   onReveal:          (appId: string, craftsmanId: string) => void;
   onCheckout:        (appId: string, craftsmanId: string, estimateRequestId: string) => void;
 }) {
@@ -478,6 +488,16 @@ function ContactPanel({
         <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">
           依頼者の連絡先
         </p>
+
+        {/* お客様名（入力されている場合のみ）*/}
+        {customerName && (
+          <div className="flex items-center gap-2 bg-white rounded-xl border border-emerald-200 px-3 py-2">
+            <span className="text-emerald-500 text-sm flex-shrink-0">👤</span>
+            <span className="text-sm font-extrabold text-slate-900">
+              お客様名：{customerName}様
+            </span>
+          </div>
+        )}
 
         {/* Email display */}
         <div className="flex items-center gap-2 bg-white rounded-xl border border-emerald-200 px-3 py-2.5">
@@ -671,9 +691,10 @@ export default function CraftsmanApplicationsPage() {
   // 工事完了ボタンのローディング状態
   const [reporting,     setReporting]     = useState<string | null>(null);
   // 施工前確認モーダル
-  const [preCheckAppId, setPreCheckAppId] = useState<string | null>(null);
-  // 施工前確認モーダルに渡すメールアドレス（開示済みの場合のみ）
-  const [preCheckEmail, setPreCheckEmail] = useState<string | undefined>(undefined);
+  const [preCheckAppId,      setPreCheckAppId]      = useState<string | null>(null);
+  // 施工前確認モーダルに渡すメール・名前（開示済みの場合のみ）
+  const [preCheckEmail,      setPreCheckEmail]      = useState<string | undefined>(undefined);
+  const [preCheckCustomerName, setPreCheckCustomerName] = useState<string | undefined>(undefined);
 
   const setContact = useCallback((appId: string, state: ContactState) => {
     setContactStates(prev => new Map(prev).set(appId, state));
@@ -723,7 +744,7 @@ export default function CraftsmanApplicationsPage() {
       const requestIds = [...new Set(appData.map((a: any) => a.estimate_request_id))];
       const { data: reqData } = await supabase
         .from('estimate_requests')
-        .select('id, work_type, area')
+        .select('id, work_type, area, meta')
         .in('id', requestIds);
 
       const reqMap = new Map((reqData ?? []).map((r: any) => [String(r.id), r]));
@@ -1065,6 +1086,11 @@ export default function CraftsmanApplicationsPage() {
                       estimateRequestId={app.estimate_request_id}
                       state={cState}
                       freeCredits={freeCredits}
+                      customerName={
+                        typeof app.estimate_requests?.meta?.customerName === 'string'
+                          ? app.estimate_requests.meta.customerName
+                          : undefined
+                      }
                       onReveal={handleReveal}
                       onCheckout={handleCheckout}
                     />
@@ -1076,6 +1102,11 @@ export default function CraftsmanApplicationsPage() {
                       <button
                         onClick={() => {
                           setPreCheckEmail(cState.value);
+                          setPreCheckCustomerName(
+                            typeof app.estimate_requests?.meta?.customerName === 'string'
+                              ? app.estimate_requests.meta.customerName
+                              : undefined
+                          );
                           setPreCheckAppId(app.id);
                         }}
                         className="w-full flex items-center justify-center gap-2 bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-700 rounded-xl py-2.5 text-xs font-extrabold transition active:scale-[0.98]"
@@ -1139,7 +1170,12 @@ export default function CraftsmanApplicationsPage() {
         <PreCheckModal
           appId={preCheckAppId}
           contactEmail={preCheckEmail}
-          onClose={() => { setPreCheckAppId(null); setPreCheckEmail(undefined); }}
+          customerName={preCheckCustomerName}
+          onClose={() => {
+            setPreCheckAppId(null);
+            setPreCheckEmail(undefined);
+            setPreCheckCustomerName(undefined);
+          }}
         />
       )}
     </div>
