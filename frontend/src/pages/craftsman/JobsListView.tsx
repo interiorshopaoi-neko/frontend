@@ -7,6 +7,7 @@ import { calcRevenueNum } from '../../lib/revenueEstimate';
 import { getRoomMedia, getRoomAdditionalInfo, hasCeilingWork } from '../../lib/requestMeta';
 import { getRoomWorkSummaries } from '../../utils/requestSummary';
 import SiteRadar from '../../components/SiteRadar';
+import { getRemainingLabel, getDeadlineLevel } from '../../utils/requestDeadline';
 
 // ─── Freshness helpers ───────────────────────────────────────────────────────
 
@@ -456,6 +457,23 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                         ))}
                       </div>
                     ) : null;
+                  })()}
+
+                  {/* ── 募集確認予定ラベル ── */}
+                  {job.created_at && (() => {
+                    const label = getRemainingLabel(job.created_at);
+                    const level = getDeadlineLevel(job.created_at);
+                    const cls =
+                      level === 'expired' ? 'bg-slate-50 text-slate-400 border-slate-100' :
+                      level === 'warning' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                            'bg-slate-50 text-slate-500 border-slate-200';
+                    return (
+                      <div className="mx-4 mb-3 flex items-center gap-1.5">
+                        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${cls}`}>
+                          📅 {label}
+                        </span>
+                      </div>
+                    );
                   })()}
 
                   {/* ── 現場レーダー ── */}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ApplyConfirmModal from '../../components/ApplyConfirmModal';
 import type { Job } from './CraftsmanJobsPage';
 import { calcRevenueStr } from '../../lib/revenueEstimate';
+import { getRemainingLabel, getDeadlineLevel } from '../../utils/requestDeadline';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -291,6 +292,19 @@ function SwipeSlide({ job, idx, total, applied, submitting, onApply }: SlideProp
           {job.has_photos && <span className="text-white/60">📷 写真あり</span>}
           {job.has_floor_plan && <span className="text-white/60">📋 図面あり</span>}
           {postedAt && <span className="text-white/40 text-xs ml-auto">🕐 {postedAt}</span>}
+          {job.created_at && (() => {
+            const level = getDeadlineLevel(job.created_at);
+            const label = getRemainingLabel(job.created_at);
+            const cls =
+              level === 'expired' ? 'bg-white/10 text-white/40' :
+              level === 'warning' ? 'bg-amber-500/80 text-white' :
+                                    'bg-white/15 text-white/70';
+            return (
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm ${cls}`}>
+                📅 {label}
+              </span>
+            );
+          })()}
         </div>
 
         {/* 補助ボタン */}

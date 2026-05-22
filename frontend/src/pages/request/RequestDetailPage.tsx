@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getRooms, getRoomWorkSummary, getRoomDisplayName, getRoomDisplaySize } from '../../lib/requestMeta';
 import { fetchRequestDetail, RequestNotFoundError, type RequestDetail } from '../../utils/requestApi';
+import { getRemainingLabel, getDeadlineLevel } from '../../utils/requestDeadline';
 
 // ── 型 ────────────────────────────────────────────────────────────────────────
 // RequestDetail は utils/requestApi.ts で定義（contact_value / contact_method 除外済み）
@@ -197,6 +198,35 @@ export default function RequestDetailPage() {
             <p className="text-[11px] text-emerald-600 mt-0.5">対応可能な職人からメールで連絡が届きます</p>
           </div>
         </div>
+
+        {/* 募集期間の目安 */}
+        {req.created_at && (() => {
+          const level = getDeadlineLevel(req.created_at);
+          const label = getRemainingLabel(req.created_at);
+          const borderCls =
+            level === 'expired' ? 'bg-slate-50 border-slate-200' :
+            level === 'warning' ? 'bg-amber-50 border-amber-200' :
+                                  'bg-blue-50 border-blue-200';
+          const textCls =
+            level === 'expired' ? 'text-slate-500' :
+            level === 'warning' ? 'text-amber-800' :
+                                  'text-blue-800';
+          const subCls =
+            level === 'expired' ? 'text-slate-400' :
+            level === 'warning' ? 'text-amber-600' :
+                                  'text-blue-600';
+          return (
+            <div className={`rounded-2xl border px-5 py-4 ${borderCls}`}>
+              <div className="flex items-center justify-between mb-1">
+                <p className={`text-sm font-extrabold ${textCls}`}>📅 {label}</p>
+              </div>
+              <p className={`text-[11px] leading-relaxed ${subCls}`}>
+                職人からの応募は投稿から5日間を目安に受け付けます。<br />
+                5日後を目安に、継続するか確認させていただく場合があります。
+              </p>
+            </div>
+          );
+        })()}
 
         {/* 写真・情報追加 CTA */}
         <button

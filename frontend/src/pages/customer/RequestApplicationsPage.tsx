@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { getRemainingLabel, getDeadlineLevel } from '../../utils/requestDeadline';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -479,7 +480,7 @@ export default function RequestApplicationsPage() {
         )}
 
         {/* 応募件数バナー */}
-        <div className={`rounded-2xl px-4 py-3 mb-4 flex items-center justify-between ${
+        <div className={`rounded-2xl px-4 py-3 mb-3 flex items-center justify-between ${
           apps.length > 0 ? 'bg-blue-600 shadow-sm shadow-blue-200' : 'bg-slate-200'
         }`}>
           <div>
@@ -499,6 +500,25 @@ export default function RequestApplicationsPage() {
             </div>
           )}
         </div>
+
+        {/* 募集期間の目安 */}
+        {request?.created_at && (() => {
+          const level = getDeadlineLevel(request.created_at);
+          const label = getRemainingLabel(request.created_at);
+          const cls =
+            level === 'expired' ? 'bg-slate-50 border-slate-200 text-slate-500' :
+            level === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-700' :
+                                  'bg-sky-50 border-sky-200 text-sky-700';
+          return (
+            <div className={`rounded-xl border px-4 py-3 mb-4 flex items-center gap-2 ${cls}`}>
+              <span className="text-base">📅</span>
+              <div>
+                <p className="text-xs font-extrabold">{label}</p>
+                <p className="text-[11px] opacity-80">投稿から5日間を目安に応募を受け付けています</p>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* 応募カード一覧 */}
         {apps.length === 0 ? (

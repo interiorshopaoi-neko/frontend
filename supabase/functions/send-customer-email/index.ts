@@ -174,6 +174,21 @@ function buildHtml(p: {
         </table>
       </td></tr>
 
+      <!-- 募集期間について -->
+      <tr><td style="background:#ffffff;padding:0 32px 24px;">
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+               style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 18px;">
+          <tr><td>
+            <p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#16a34a;letter-spacing:0.08em;text-transform:uppercase;">募集期間について</p>
+            <p style="margin:0;font-size:13px;color:#166534;line-height:1.7;">
+              職人からの応募は、<strong>投稿から5日間を目安</strong>に受け付けます。<br>
+              5日後を目安に、継続するか確認させていただく場合があります。<br>
+              追加の写真や動画は、メール内のリンクからいつでも送れます。
+            </p>
+          </td></tr>
+        </table>
+      </td></tr>
+
       ${ctaHtml}
 
       <!-- 安心ポイント -->
@@ -249,6 +264,14 @@ function buildText(p: {
       `${siteUrl}/request/${requestId}/extra-info`,
     );
   }
+
+  lines.push(
+    '',
+    '── 募集期間について ──',
+    '職人からの応募は、投稿から5日間を目安に受け付けます。',
+    '5日後を目安に、継続するか確認させていただく場合があります。',
+    '追加の写真や動画は、メール内のリンクからいつでも送れます。',
+  );
 
   lines.push(
     '',
