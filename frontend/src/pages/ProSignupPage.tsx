@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { MapPin, Video, Camera, ArrowRight, Zap } from 'lucide-react';
 
 // ─── モック案件データ（LP用 / DBアクセスなし）────────────────────────────────
@@ -267,8 +267,16 @@ export default function ProSignupPage() {
 
         {/* Nav */}
         <div className="relative z-10 flex items-center justify-between px-5 pt-5 pb-2">
-          <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(4px)', borderRadius: 8, padding: '4px 10px', border: '1px solid rgba(255,255,255,0.08)', display: 'inline-flex' }}>
-            <img src="/logo-full.png" alt="PRO MATCH" style={{ height: 22, width: 'auto' }} />
+          <div className="flex items-center gap-3">
+            <Link
+              to="/"
+              className="text-xs text-white/50 hover:text-white/80 transition font-medium py-2 pr-2"
+            >
+              ← トップページ
+            </Link>
+            <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(4px)', borderRadius: 8, padding: '4px 10px', border: '1px solid rgba(255,255,255,0.08)', display: 'inline-flex' }}>
+              <img src="/logo-full.png" alt="PRO MATCH" style={{ height: 22, width: 'auto' }} />
+            </div>
           </div>
           <button
             onClick={() => navigate('/login?role=craftsman')}

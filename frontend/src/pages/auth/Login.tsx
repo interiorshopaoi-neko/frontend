@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
+
 import type { User, Role } from '../../types';
 import api from '../../utils/api';
 import { supabase } from '../../lib/supabase';
@@ -109,11 +110,23 @@ export default function Login({ onLogin }: Props) {
     }
   };
 
+  const isCraftsmanLogin = queryRole === 'craftsman' || defaultRole === 'craftsman';
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-900 via-blue-950 to-slate-900">
 
+      {/* ─── 戻るリンク ─── */}
+      <div className="flex-shrink-0 px-5 pt-5">
+        <Link
+          to={isCraftsmanLogin ? '/for-pros' : '/'}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-white/50 hover:text-white/90 transition-colors py-2 pr-2"
+        >
+          ← {isCraftsmanLogin ? '職人ページへ戻る' : 'トップページへ戻る'}
+        </Link>
+      </div>
+
       {/* ─── Top: ブランディング + ロール切替 + 疑似フォンモック ─── */}
-      <div className="flex-shrink-0 px-6 pt-10 pb-8 text-center">
+      <div className="flex-shrink-0 px-6 pt-4 pb-8 text-center">
 
         {/* ロゴ */}
         <div className="flex items-center justify-center gap-2.5 mb-7">
