@@ -256,7 +256,7 @@ function ContactPanel({
           <span className="text-sm">🎁</span>
           <div>
             <p className="text-[11px] font-extrabold text-blue-700">紹介コードで無料枠+2件</p>
-            <p className="text-[10px] text-blue-500">友人職人が登録すると自動で付与 → 管理画面へ</p>
+            <p className="text-[10px] text-blue-500">友人職人が初回利用すると自動で付与 → 管理画面へ</p>
           </div>
           <span className="text-blue-400 ml-auto text-xs">→</span>
         </a>

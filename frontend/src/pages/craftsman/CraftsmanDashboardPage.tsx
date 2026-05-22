@@ -1052,7 +1052,7 @@ export default function CraftsmanDashboardPage() {
                     </button>
                   </div>
                   <p className="text-[10px] text-blue-500 leading-relaxed">
-                    紹介コードで職人が登録すると、あなたに無料枠が +2件 追加されます。
+                    紹介した職人が初めて連絡先を確認すると、無料枠が +2件 追加されます。
                   </p>
                   <a
                     href={lineUrl}

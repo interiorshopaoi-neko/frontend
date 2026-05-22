@@ -244,6 +244,24 @@ export default async function handler(req: any, res: any) {
                         craftsman_id,
                         estimateRequestId,
                       });
+                      // 紹介ボーナス付与（初回開示時のみ有効・失敗しても開示をブロックしない）
+                      try {
+                        await fetch(
+                          `${SUPABASE_URL}/rest/v1/rpc/grant_referral_bonus_on_first_unlock`,
+                          {
+                            method:  'POST',
+                            headers: {
+                              'apikey':        _svcKey,
+                              'Authorization': `Bearer ${_svcKey}`,
+                              'Content-Type':  'application/json',
+                              'Accept':        'application/json',
+                            },
+                            body: JSON.stringify({ p_referred_user_id: craftsman_id }),
+                          },
+                        );
+                      } catch (bonusErr) {
+                        console.warn('[check-billing] referral bonus grant skipped (paid path):', bonusErr);
+                      }
                       res.status(200).json({
                         status:         'already_unlocked',
                         contact_method: erPaid.contact_method,
