@@ -67,12 +67,13 @@ type NotifiableCraftsman = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const STATUS_LABEL: Record<string, string> = {
-  new: '新規', in_progress: '対応中', done: '完了',
+  new: '新規', in_progress: '対応中', done: '完了', hidden: '非表示',
 };
 const STATUS_STYLE: Record<string, string> = {
   new:         'bg-indigo-50 text-indigo-700 border-indigo-200',
   in_progress: 'bg-orange-50 text-orange-700 border-orange-200',
   done:        'bg-slate-100 text-slate-400 border-slate-200',
+  hidden:      'bg-slate-100 text-slate-300 border-slate-100',
 };
 
 const DESIRE_SHORT: Record<string, string> = {
@@ -664,7 +665,7 @@ function DetailModal({
         </div>
 
         {/* ステータス操作 */}
-        <div className="px-6 pb-6 pt-3 flex gap-2 border-t border-slate-100 flex-shrink-0">
+        <div className="px-6 pb-6 pt-3 flex flex-wrap gap-2 border-t border-slate-100 flex-shrink-0">
           {row.status === 'new' && (
             <button onClick={() => onUpdate(row.id, 'in_progress')}
               className="flex-1 py-2.5 rounded-xl text-sm font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors">
@@ -675,6 +676,17 @@ function DetailModal({
             <button onClick={() => onUpdate(row.id, 'done')}
               className="flex-1 py-2.5 rounded-xl text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors">
               完了にする
+            </button>
+          )}
+          {row.status !== 'hidden' ? (
+            <button onClick={() => onUpdate(row.id, 'hidden')}
+              className="py-2.5 px-4 rounded-xl text-sm font-semibold text-slate-400 bg-slate-50 hover:bg-red-50 hover:text-red-600 border border-slate-200 transition-colors">
+              非表示
+            </button>
+          ) : (
+            <button onClick={() => onUpdate(row.id, 'new')}
+              className="py-2.5 px-4 rounded-xl text-sm font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors">
+              再表示
             </button>
           )}
           <button onClick={onClose}
@@ -1049,6 +1061,51 @@ function CraftsmanNotifyPanel({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ConfirmModal — 危険な操作（終了・非表示）に確認ステップを挿む
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ConfirmModal({
+  title, desc, confirmLabel, isDanger,
+  onConfirm, onCancel,
+}: {
+  title: string; desc: string; confirmLabel?: string; isDanger?: boolean;
+  onConfirm: () => void; onCancel: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className={`px-6 pt-5 pb-4 ${isDanger ? 'border-l-4 border-red-500' : 'border-l-4 border-amber-400'}`}>
+          <h3 className="text-base font-bold text-slate-900 mb-1">{title}</h3>
+          <p className="text-sm text-slate-500 leading-relaxed">{desc}</p>
+        </div>
+        <div className="flex gap-2 px-6 pb-5">
+          <button
+            onClick={onConfirm}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-colors ${
+              isDanger ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-800 hover:bg-slate-700'
+            }`}
+          >
+            {confirmLabel ?? '実行する'}
+          </button>
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors"
+          >
+            キャンセル
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // RequestsList
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1061,8 +1118,14 @@ function RequestsList({ session }: { session: Session }) {
   const [errMsg,       setErrMsg]       = useState<string | null>(null);
   const [filterStatus,  setFilterStatus]  = useState<string>('all');
   const [filterStale,   setFilterStale]   = useState(false);
+  const [filterNeedAction, setFilterNeedAction] = useState(false);
+  const [showHidden,    setShowHidden]   = useState(false);
   const [sortOrder,     setSortOrder]     = useState<SortOrder>('desc');
   const [modalRow,     setModalRow]     = useState<EstimateRequest | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    title: string; desc: string; confirmLabel?: string; isDanger?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
   const [toast,              setToast]              = useState<string | null>(null);
   const [videoUrl,           setVideoUrl]           = useState<string | null>(null);
   const [sendingFollowupId,  setSendingFollowupId]  = useState<string | null>(null);
@@ -1130,6 +1193,23 @@ function RequestsList({ session }: { session: Session }) {
     setRows(prev => prev.map(r => r.id === id ? { ...r, status: next } : r));
     setModalRow(prev => prev?.id === id ? { ...prev, status: next } : prev);
     showToast('更新しました');
+  };
+
+  /** 確認モーダルを挟んでからステータス更新 */
+  const confirmAndUpdate = (
+    id: string, next: string,
+    title: string, desc: string,
+    opts?: { confirmLabel?: string; isDanger?: boolean },
+  ) => {
+    setConfirmModal({
+      title, desc,
+      confirmLabel: opts?.confirmLabel,
+      isDanger: opts?.isDanger,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        await updateStatus(id, next);
+      },
+    });
   };
 
   const handleCopy = useCallback(async (text: string, label = 'コピーしました') => {
@@ -1260,8 +1340,20 @@ function RequestsList({ session }: { session: Session }) {
   const displayRows = useMemo(() => {
     const todayStr = new Date().toISOString().slice(0, 10);
     return enrichedRows
+      // hidden は専用トグルがないと隠す
+      .filter(r => showHidden ? true : r.status !== 'hidden')
       .filter(r => filterStatus === 'all' || r.status === filterStatus)
       .filter(r => !filterStale || getFreshness(r.created_at).status === 'urgent')
+      // 要対応フィルター: 応募0 & (12h経過 | 動画なし) & active
+      .filter(r => {
+        if (!filterNeedAction) return true;
+        const appCount = appCountMap[r.id] ?? 0;
+        return (
+          appCount === 0 &&
+          r.status !== 'done' && r.status !== 'hidden' &&
+          (r._elapsedHours >= 12 || !r.video_url)
+        );
+      })
       .filter(r => {
         switch (urlFilter) {
           case 'new':         return r.status === 'new';
@@ -1279,7 +1371,7 @@ function RequestsList({ session }: { session: Session }) {
         const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         return sortOrder === 'desc' ? -diff : diff;
       });
-  }, [enrichedRows, filterStatus, filterStale, urlFilter, sortOrder]);
+  }, [enrichedRows, filterStatus, filterStale, filterNeedAction, showHidden, appCountMap, urlFilter, sortOrder]);
 
   // おすすめ案件：new のみ・スコア最高・同点なら新しい順
   const recommendedRow = useMemo(() => {
@@ -1297,6 +1389,16 @@ function RequestsList({ session }: { session: Session }) {
     <div className="min-h-screen bg-slate-50">
 
       {toast && <Toast msg={toast} />}
+      {confirmModal && (
+        <ConfirmModal
+          title={confirmModal.title}
+          desc={confirmModal.desc}
+          confirmLabel={confirmModal.confirmLabel}
+          isDanger={confirmModal.isDanger}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
+      )}
       {videoUrl && <VideoModal url={videoUrl} onClose={() => setVideoUrl(null)} />}
       {modalRow && (
         <DetailModal
@@ -1383,6 +1485,38 @@ function RequestsList({ session }: { session: Session }) {
             >
               ⚠️ 継続確認待ち
               {staleCount > 0 && <span className={filterStale ? 'opacity-80' : 'opacity-60'}>{staleCount}</span>}
+            </button>
+            <button
+              onClick={() => setFilterNeedAction(v => !v)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all flex items-center gap-1 ${
+                filterNeedAction
+                  ? 'bg-red-600 text-white border-red-600'
+                  : 'bg-white text-red-600 border-red-300 hover:border-red-500'
+              }`}
+            >
+              🔥 要対応のみ
+              {(() => {
+                const n = enrichedRows.filter(r =>
+                  (appCountMap[r.id] ?? 0) === 0 &&
+                  r.status !== 'done' && r.status !== 'hidden' &&
+                  (r._elapsedHours >= 12 || !r.video_url)
+                ).length;
+                return n > 0 ? <span className={filterNeedAction ? 'opacity-80' : 'opacity-60'}>{n}</span> : null;
+              })()}
+            </button>
+            <button
+              onClick={() => setShowHidden(v => !v)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                showHidden
+                  ? 'bg-slate-700 text-white border-slate-700'
+                  : 'bg-white text-slate-400 border-slate-200 hover:border-slate-400'
+              }`}
+            >
+              {showHidden ? '👁 非表示も表示中' : '非表示を含む'}
+              {(() => {
+                const n = enrichedRows.filter(r => r.status === 'hidden').length;
+                return n > 0 ? <span className="ml-1 opacity-60">{n}</span> : null;
+              })()}
             </button>
             <div className="flex-1"/>
             <button onClick={() => setSortOrder(o => o === 'desc' ? 'asc' : 'desc')}
@@ -1491,7 +1625,9 @@ function RequestsList({ session }: { session: Session }) {
                   key={r.id}
                   onClick={() => setModalRow(r)}
                   className={`rounded-2xl border bg-white shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.99] overflow-hidden ${
-                    isStaleCard
+                    r.status === 'hidden'
+                      ? 'border-slate-200 opacity-50 hover:opacity-80'
+                      : isStaleCard
                       ? 'border-orange-300 hover:border-orange-400'
                       : 'border-slate-200 hover:border-slate-300'
                   }`}
@@ -1761,9 +1897,31 @@ function RequestsList({ session }: { session: Session }) {
                       </button>
                     )}
                     {r.status === 'in_progress' && (
-                      <button onClick={() => updateStatus(r.id, 'done')}
+                      <button onClick={() => confirmAndUpdate(
+                        r.id, 'done',
+                        '案件を完了にしますか？',
+                        'ステータスを「完了」に変更します。完了後も管理画面から確認できます。',
+                        { confirmLabel: '完了にする' },
+                      )}
                         className="text-xs font-semibold text-emerald-700 bg-white hover:bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 transition-colors">
                         完了にする
+                      </button>
+                    )}
+                    {/* 管理アクション */}
+                    {r.status !== 'hidden' ? (
+                      <button onClick={() => confirmAndUpdate(
+                        r.id, 'hidden',
+                        '案件を非表示にしますか？',
+                        '職人側の案件一覧から非表示になります。管理画面では引き続き確認できます。',
+                        { confirmLabel: '非表示にする', isDanger: true },
+                      )}
+                        className="text-xs font-semibold text-slate-400 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-200 border border-slate-200 rounded-lg px-3 py-1.5 transition-colors">
+                        非表示
+                      </button>
+                    ) : (
+                      <button onClick={() => updateStatus(r.id, 'new')}
+                        className="text-xs font-semibold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-1.5 transition-colors">
+                        再表示
                       </button>
                     )}
                     <span className="ml-auto text-[10px] text-slate-300">詳細 →</span>

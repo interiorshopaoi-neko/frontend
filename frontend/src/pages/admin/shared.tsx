@@ -98,9 +98,10 @@ export function AdminLogin() {
 // ── AdminNav ──────────────────────────────────────────────────────────────────
 
 const NAV_LINKS = [
-  { to: '/admin/dashboard', label: '管理ダッシュボード' },
-  { to: '/admin/requests',  label: '案件一覧' },
-  { to: '/admin',           label: '分析' },
+  { to: '/admin/dashboard',     label: 'ダッシュボード' },
+  { to: '/admin/requests',      label: '案件一覧' },
+  { to: '/admin/help-requests', label: '助っ人管理' },
+  { to: '/admin',               label: '分析' },
 ] as const;
 
 export function AdminNav({ email }: { email?: string }) {

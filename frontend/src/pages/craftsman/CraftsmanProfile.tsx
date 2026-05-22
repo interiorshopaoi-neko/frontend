@@ -973,6 +973,16 @@ export default function CraftsmanProfile() {
           </button>
         </div>
 
+        {/* 不具合・改善報告 */}
+        <div className="mt-4 text-center pb-2">
+          <a
+            href={`mailto:interior.shop.aoi@gmail.com?subject=${encodeURIComponent('PRO MATCH 不具合・改善報告')}&body=${encodeURIComponent('【ページ】' + window.location.href + '\n\n【内容】\n\n')}`}
+            className="text-[11px] text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors"
+          >
+            🐛 不具合・改善を報告する
+          </a>
+        </div>
+
         {/* 保存ボタン（固定フッター） */}
         <div className="fixed bottom-14 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 z-20">
           <div className="max-w-2xl mx-auto">

@@ -97,7 +97,7 @@ function isExpiredByTime(req: HelpRequest): boolean {
 }
 
 function isRequestClosed(req: HelpRequest): boolean {
-  if (req.status === 'closed' || req.status === 'completed') return true;
+  if (req.status === 'closed' || req.status === 'completed' || req.status === 'hidden') return true;
   return isExpiredByTime(req);
 }
 
@@ -617,7 +617,8 @@ export default function HelpListPage() {
       return;
     }
 
-    setRequests(data as HelpRequest[]);
+    // hidden は職人側に表示しない
+    setRequests((data as HelpRequest[]).filter(r => r.status !== 'hidden'));
 
     // 応募数を集計
     const ids = (data as HelpRequest[]).map(r => r.id);
@@ -1191,6 +1192,16 @@ export default function HelpListPage() {
           processingId={processingId}
         />
       )}
+
+      {/* 不具合・改善報告 */}
+      <div className="text-center py-3 pb-20">
+        <a
+          href={`mailto:interior.shop.aoi@gmail.com?subject=${encodeURIComponent('PRO MATCH 不具合・改善報告')}&body=${encodeURIComponent('【ページ】' + window.location.href + '\n\n【内容】\n\n')}`}
+          className="text-[11px] text-slate-300 hover:text-slate-500 underline underline-offset-2 transition-colors"
+        >
+          🐛 不具合・改善を報告する
+        </a>
+      </div>
 
       <BottomNav />
     </div>

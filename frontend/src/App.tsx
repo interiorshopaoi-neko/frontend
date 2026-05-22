@@ -14,6 +14,7 @@ import PolicyPage from './pages/PolicyPage';
 import CorporateRequest from './pages/corporate/CorporateRequest';
 import AdminRequests from './pages/admin/AdminRequests';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import AdminHelpRequestsPage from './pages/admin/AdminHelpRequestsPage';
 import CraftsmanJobsPage from './pages/craftsman/CraftsmanJobsPage';
 import CraftsmanProfile from './pages/craftsman/CraftsmanProfile';
 import HelpRequestPage from './pages/craftsman/HelpRequestPage';
@@ -139,9 +140,10 @@ export default function App() {
         <Route path="/craftsman/estimate/:id" element={<CustomerComingSoonPage />} />
 
         {/* 管理・デモページ */}
-        <Route path="/admin"           element={<AdminDashboard />} />
-        <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-        <Route path="/admin/requests"  element={<AdminRequests />} />
+        <Route path="/admin"                element={<AdminDashboard />} />
+        <Route path="/admin/dashboard"      element={<AdminDashboardPage />} />
+        <Route path="/admin/requests"       element={<AdminRequests />} />
+        <Route path="/admin/help-requests"  element={<AdminHelpRequestsPage />} />
         {/* /demo: 本番では / へリダイレクト。開発環境のみ DemoLauncher を表示 */}
         <Route path="/demo"       element={
           import.meta.env.PROD ? <Navigate to="/" replace /> : <DemoLauncher />
