@@ -101,6 +101,7 @@ const NAV_LINKS = [
   { to: '/admin/dashboard',     label: 'ダッシュボード' },
   { to: '/admin/requests',      label: '案件一覧' },
   { to: '/admin/help-requests', label: '助っ人管理' },
+  { to: '/admin/feedback',      label: '不具合・改善' },
   { to: '/admin',               label: '分析' },
 ] as const;
 

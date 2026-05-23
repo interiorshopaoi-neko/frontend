@@ -1,0 +1,159 @@
+// ================================================================
+// POST /api/feedback
+//
+// 利用者からの不具合・改善報告を受け取る。
+// 1. feedback_reports テーブルに保存（service role key 使用）
+// 2. 運営者へメール通知（失敗してもDB保存成功なら 200 を返す）
+//
+// セキュリティ:
+//   - 運営者メールアドレスはフロントに出さない（サーバーサイドのみ）
+//   - category / message は必須バリデーション
+//   - contactEmail は任意・簡易フォーマットチェックのみ
+// ================================================================
+
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { Resend } from 'resend';
+
+const RESEND_API_KEY = (process.env.RESEND_API_KEY ?? '').trim();
+const SUPABASE_URL   = (
+  process.env.SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  'https://lboskhjidbqxwrenwjdr.supabase.co'
+).trim();
+const SUPABASE_SVC_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
+
+// 運営者メールアドレス（フロントには出さない）
+const ADMIN_EMAIL = 'interior.shop.aoi@gmail.com';
+
+function sbHeaders() {
+  return {
+    'apikey':        SUPABASE_SVC_KEY,
+    'Authorization': `Bearer ${SUPABASE_SVC_KEY}`,
+    'Content-Type':  'application/json',
+    'Prefer':        'return=minimal',
+  };
+}
+
+function isValidEmail(s: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin',  '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(204).end();
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  if (!SUPABASE_URL || !SUPABASE_SVC_KEY) {
+    console.error('[feedback] missing env: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+    return res.status(500).json({ error: 'Server misconfiguration' });
+  }
+
+  const {
+    category,
+    message,
+    contactEmail,
+    pageUrl,
+    userRole,
+    userId,
+  } = (req.body ?? {}) as Record<string, unknown>;
+
+  // ── バリデーション ──────────────────────────────────────────────
+  if (!category || typeof category !== 'string' || !category.trim()) {
+    return res.status(400).json({ error: 'category は必須です' });
+  }
+  if (!message || typeof message !== 'string' || !message.trim()) {
+    return res.status(400).json({ error: 'message は必須です' });
+  }
+  if (message.length > 2000) {
+    return res.status(400).json({ error: 'message は2000文字以内にしてください' });
+  }
+  const contactEmailStr = typeof contactEmail === 'string' ? contactEmail.trim() : '';
+  if (contactEmailStr && !isValidEmail(contactEmailStr)) {
+    return res.status(400).json({ error: 'メールアドレスの形式が正しくありません' });
+  }
+
+  const categoryStr = category.trim();
+  const messageStr  = message.trim();
+  const pageUrlStr  = typeof pageUrl  === 'string' ? pageUrl.trim()  : '';
+  const userRoleStr = typeof userRole === 'string' ? userRole.trim() : '';
+  const userIdStr   = typeof userId   === 'string' ? userId.trim()   : '';
+
+  // ── DB 保存 ────────────────────────────────────────────────────
+  const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/feedback_reports`, {
+    method:  'POST',
+    headers: sbHeaders(),
+    body: JSON.stringify({
+      category:      categoryStr,
+      message:       messageStr,
+      contact_email: contactEmailStr || null,
+      page_url:      pageUrlStr      || null,
+      user_role:     userRoleStr     || null,
+      user_id:       userIdStr       || null,
+    }),
+  });
+
+  if (!insertRes.ok) {
+    const errText = await insertRes.text().catch(() => '');
+    console.error('[feedback] DB insert error:', insertRes.status, errText);
+    return res.status(500).json({ error: 'DB 保存に失敗しました' });
+  }
+
+  // ── 運営者へメール通知（失敗してもDB保存は成功扱い）────────────
+  try {
+    if (!RESEND_API_KEY) throw new Error('RESEND_API_KEY not set');
+    const resend = new Resend(RESEND_API_KEY);
+    const now = new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
+
+    await resend.emails.send({
+      from:    'Aoi Interior <onboarding@resend.dev>',
+      to:      [ADMIN_EMAIL],
+      subject: '【PRO MATCH】不具合・改善報告が届きました',
+      html: `
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px">
+          <h2 style="color:#1e293b;margin-bottom:16px">フィードバック報告</h2>
+          <table style="width:100%;border-collapse:collapse">
+            <tr><td style="padding:8px;background:#f8fafc;font-weight:bold;width:120px">種類</td>
+                <td style="padding:8px;border-bottom:1px solid #e2e8f0">${categoryStr}</td></tr>
+            <tr><td style="padding:8px;background:#f8fafc;font-weight:bold;vertical-align:top">内容</td>
+                <td style="padding:8px;border-bottom:1px solid #e2e8f0;white-space:pre-wrap">${messageStr}</td></tr>
+            <tr><td style="padding:8px;background:#f8fafc;font-weight:bold">連絡先</td>
+                <td style="padding:8px;border-bottom:1px solid #e2e8f0">${contactEmailStr || '（なし）'}</td></tr>
+            <tr><td style="padding:8px;background:#f8fafc;font-weight:bold">ページURL</td>
+                <td style="padding:8px;border-bottom:1px solid #e2e8f0">${pageUrlStr || '（なし）'}</td></tr>
+            <tr><td style="padding:8px;background:#f8fafc;font-weight:bold">利用者種別</td>
+                <td style="padding:8px;border-bottom:1px solid #e2e8f0">${userRoleStr || '（不明）'}</td></tr>
+            <tr><td style="padding:8px;background:#f8fafc;font-weight:bold">投稿日時</td>
+                <td style="padding:8px">${now}</td></tr>
+          </table>
+          <p style="margin-top:20px">
+            <a href="https://promatch-app.jp/admin/feedback" style="color:#2563eb">
+              → 管理画面で確認する
+            </a>
+          </p>
+        </div>
+      `,
+      text: [
+        '【PRO MATCH】フィードバック報告',
+        '',
+        `種類: ${categoryStr}`,
+        `内容:\n${messageStr}`,
+        `連絡先: ${contactEmailStr || 'なし'}`,
+        `ページURL: ${pageUrlStr || 'なし'}`,
+        `利用者種別: ${userRoleStr || '不明'}`,
+        `投稿日時: ${now}`,
+        '',
+        '管理画面: https://promatch-app.jp/admin/feedback',
+      ].join('\n'),
+    });
+  } catch (emailErr) {
+    console.error('[feedback] email notification failed:', emailErr);
+    // メール失敗はログのみ。フロントへは成功を返す。
+  }
+
+  return res.status(200).json({ ok: true });
+}

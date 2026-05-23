@@ -1196,7 +1196,7 @@ export default function HelpListPage() {
       {/* 不具合・改善報告 */}
       <div className="text-center py-3 pb-20">
         <a
-          href={`mailto:interior.shop.aoi@gmail.com?subject=${encodeURIComponent('PRO MATCH 不具合・改善報告')}&body=${encodeURIComponent('【ページ】' + window.location.href + '\n\n【内容】\n\n')}`}
+          href="/feedback?from=/craftsman/help-list"
           className="text-[11px] text-slate-300 hover:text-slate-500 underline underline-offset-2 transition-colors"
         >
           🐛 不具合・改善を報告する

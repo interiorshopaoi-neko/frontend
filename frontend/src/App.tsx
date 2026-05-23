@@ -15,6 +15,8 @@ import CorporateRequest from './pages/corporate/CorporateRequest';
 import AdminRequests from './pages/admin/AdminRequests';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminHelpRequestsPage from './pages/admin/AdminHelpRequestsPage';
+import AdminFeedbackPage from './pages/admin/AdminFeedbackPage';
+import FeedbackPage from './pages/FeedbackPage';
 import CraftsmanJobsPage from './pages/craftsman/CraftsmanJobsPage';
 import CraftsmanProfile from './pages/craftsman/CraftsmanProfile';
 import HelpRequestPage from './pages/craftsman/HelpRequestPage';
@@ -191,6 +193,7 @@ export default function App() {
         <Route path="/admin/dashboard"      element={<AdminDashboardPage />} />
         <Route path="/admin/requests"       element={<AdminRequests />} />
         <Route path="/admin/help-requests"  element={<AdminHelpRequestsPage />} />
+        <Route path="/admin/feedback"       element={<AdminFeedbackPage />} />
         {/* /demo: 本番では / へリダイレクト。開発環境のみ DemoLauncher を表示 */}
         <Route path="/demo"       element={
           import.meta.env.PROD ? <Navigate to="/" replace /> : <DemoLauncher />
@@ -216,6 +219,9 @@ export default function App() {
         {/* 認証フロー */}
         <Route path="/auth/confirmed" element={<AuthConfirmed />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+
+        {/* フィードバックフォーム（公開・認証不要） */}
+        <Route path="/feedback"   element={<FeedbackPage />} />
 
         {/* 公開ページ */}
         <Route path="/complete"   element={<CompletePage />} />

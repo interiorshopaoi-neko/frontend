@@ -1069,7 +1069,7 @@ export default function CraftsmanProfile() {
         {/* 不具合・改善報告 */}
         <div className="mt-4 text-center pb-2">
           <a
-            href={`mailto:interior.shop.aoi@gmail.com?subject=${encodeURIComponent('PRO MATCH 不具合・改善報告')}&body=${encodeURIComponent('【ページ】' + window.location.href + '\n\n【内容】\n\n')}`}
+            href="/feedback?from=/craftsman/profile"
             className="text-[11px] text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors"
           >
             🐛 不具合・改善を報告する
