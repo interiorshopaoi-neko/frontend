@@ -1938,6 +1938,7 @@ export default function CorporateRequest() {
 
   // ── STEP 8（確認画面）：送信確認 ────────────────────────────────────────────
   return (
+    <>
     <PageShell>
       <PageHeader />
       <StepProgress step={7} />
@@ -2100,7 +2101,8 @@ export default function CorporateRequest() {
       />
     </PageShell>
 
-    {/* アップロード中オーバーレイ */}
-    <UploadProgressOverlay visible={submitState === 'sending'} />
+      {/* アップロード中オーバーレイ */}
+      <UploadProgressOverlay visible={submitState === 'sending'} />
+    </>
   );
 }
