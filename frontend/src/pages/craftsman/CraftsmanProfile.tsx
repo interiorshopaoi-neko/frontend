@@ -1072,7 +1072,7 @@ export default function CraftsmanProfile() {
             href="/feedback?from=/craftsman/profile"
             className="text-[11px] text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors"
           >
-            🐛 不具合・改善を報告する
+            🔧 不具合・改善を報告する
           </a>
         </div>
 

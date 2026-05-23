@@ -1199,7 +1199,7 @@ export default function HelpListPage() {
           href="/feedback?from=/craftsman/help-list"
           className="text-[11px] text-slate-300 hover:text-slate-500 underline underline-offset-2 transition-colors"
         >
-          🐛 不具合・改善を報告する
+          🔧 不具合・改善を報告する
         </a>
       </div>
 

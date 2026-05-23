@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 // ── カテゴリー ────────────────────────────────────────────────────────────────
+// feedback category UI intentionally avoids bug/insect imagery
+// to keep PRO MATCH visually clean and approachable
 
 const CATEGORIES = [
-  { value: '不具合',           label: '不具合',           emoji: '🐛', desc: '画面が動かない・エラーが出る' },
+  { value: '不具合',           label: '不具合',           emoji: '🔧', desc: '画面が動かない・エラーが出る' },
   { value: '改善してほしい',   label: '改善してほしい',   emoji: '💡', desc: 'こうなったらもっと使いやすい' },
-  { value: '使い方が分からない', label: '使い方が分からない', emoji: '🤔', desc: '操作方法・機能が分からない' },
+  { value: '使い方が分からない', label: '使い方が分からない', emoji: '❓', desc: '操作方法・機能が分からない' },
   { value: 'その他',           label: 'その他',           emoji: '💬', desc: 'ご意見・ご要望など' },
 ] as const;
 
@@ -144,10 +146,15 @@ export default function FeedbackPage() {
       <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
 
         {/* 説明 */}
-        <div className="rounded-2xl bg-blue-50 border border-blue-100 px-4 py-3.5">
-          <p className="text-sm text-blue-800 leading-relaxed">
-            使いにくいところや不具合があったら、お気軽にお知らせください。
-            いただいた内容は運営が確認し、サービス改善に役立てます。
+        <div className="rounded-2xl bg-blue-50 border border-blue-100 px-4 py-4 space-y-1.5">
+          <p className="text-sm font-semibold text-blue-900 leading-relaxed">
+            気になったことを1行だけでも大丈夫です。
+          </p>
+          <p className="text-sm text-blue-700 leading-relaxed">
+            「ここ分かりにくかった」だけでも改善の助けになります。
+          </p>
+          <p className="text-[11px] text-blue-500 leading-relaxed pt-0.5">
+            いただいた内容は運営が確認し、サービス改善に役立てています。
           </p>
         </div>
 
@@ -167,7 +174,7 @@ export default function FeedbackPage() {
                   className={`text-left rounded-xl border px-3.5 py-3 transition active:scale-95 ${
                     category === value
                       ? 'bg-blue-600 border-blue-600 text-white'
-                      : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300'
+                      : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-blue-50'
                   }`}
                 >
                   <p className="text-base leading-none mb-1">{emoji}</p>
