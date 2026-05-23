@@ -51,20 +51,25 @@ const DEFAULT_RADAR: SiteRadar = {
 // ─── フォーム型定義 ──────────────────────────────────────────────────────────
 
 type Form = {
-  work_date:      string;
-  area:           string;
-  work_type:      string;
-  people_needed:  number;
-  daily_rate:     number;
-  comment:        string;
-  start_time:     string;
-  end_time:       string;
-  has_parking:    boolean;
-  required_tools: string;
-  notes:          string;
-  radar:          SiteRadar;
-  expires_date:   string;
-  expires_time:   string;
+  work_date:        string;
+  area:             string;
+  work_type:        string;
+  people_needed:    number;
+  daily_rate:       number;
+  comment:          string;
+  start_time:       string;
+  end_time:         string;
+  has_parking:      boolean;
+  required_tools:   string;
+  notes:            string;
+  radar:            SiteRadar;
+  expires_date:     string;
+  expires_time:     string;
+  scheduleType:     'single' | 'multiple' | 'continuous';
+  workDates:        string[];
+  contractType:     '' | '人工' | '手間受け' | '材工';
+  invoiceRequired:  '' | '必要' | '不要' | 'どちらでも可';
+  insuranceRequired: '' | '必要' | '不要' | 'どちらでも可';
 };
 
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -79,6 +84,11 @@ const DEFAULT: Form = {
   radar: DEFAULT_RADAR,
   expires_date: TODAY,
   expires_time: '17:00',
+  scheduleType: 'single',
+  workDates: [],
+  contractType: '',
+  invoiceRequired: '',
+  insuranceRequired: '',
 };
 
 // ─── 選択チップコンポーネント ────────────────────────────────────────────────
@@ -153,7 +163,14 @@ export default function HelpRequestPage() {
     setForm(prev => ({ ...prev, radar: { ...prev.radar, [key]: value } }));
 
   async function handleSubmit() {
-    if (!form.work_date || !form.area || !form.work_type) {
+    // scheduleType別のwork_date決定
+    let effectiveWorkDate = form.work_date;
+    if (form.scheduleType === 'multiple' && form.workDates.length > 0) {
+      effectiveWorkDate = form.workDates[0];
+    } else if (form.scheduleType === 'continuous' && form.workDates.length > 0) {
+      effectiveWorkDate = form.workDates[0];
+    }
+    if (!effectiveWorkDate || !form.area || !form.work_type) {
       setError('作業日・エリア・作業内容は必須です');
       return;
     }
@@ -191,10 +208,14 @@ export default function HelpRequestPage() {
       r.siteScale || r.crewSize ||
       r.siteConditions.length > 0 || r.accessCondition ||
       r.requiredTools.length > 0 || r.toolNotes;
-    const meta = (hasRadar || helperImageUrls.length > 0)
+    const meta = (hasRadar || helperImageUrls.length > 0 || form.scheduleType !== 'single' || form.contractType || form.invoiceRequired || form.insuranceRequired)
       ? {
           ...(hasRadar        ? { siteRadar: r }                 : {}),
           ...(helperImageUrls.length > 0 ? { helperImages: helperImageUrls } : {}),
+          ...(form.scheduleType !== 'single' ? { workDates: form.workDates, scheduleType: form.scheduleType } : {}),
+          ...(form.contractType     ? { contractType: form.contractType }         : {}),
+          ...(form.invoiceRequired  ? { invoiceRequired: form.invoiceRequired }   : {}),
+          ...(form.insuranceRequired ? { insuranceRequired: form.insuranceRequired } : {}),
         }
       : null;
 
@@ -203,7 +224,7 @@ export default function HelpRequestPage() {
       : null;
 
     const { error: err } = await supabase.from('help_requests').insert({
-      work_date:      form.work_date,
+      work_date:      effectiveWorkDate,
       area:           form.area,
       work_type:      form.work_type,
       people_needed:  form.people_needed,
@@ -294,12 +315,85 @@ export default function HelpRequestPage() {
           {/* 作業日 */}
           <div>
             <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">作業日 <span className="text-red-400">*</span></p>
-            <input
-              type="date"
-              value={form.work_date}
-              onChange={e => set('work_date', e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
+            {/* スケジュールタイプ切り替え */}
+            <div className="flex gap-1 mb-3">
+              {(['single', 'multiple', 'continuous'] as const).map((t, i) => {
+                const labels = ['単日', '複数日', '継続'];
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => set('scheduleType', t)}
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold border transition active:scale-95 ${
+                      form.scheduleType === t
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                    }`}
+                  >{labels[i]}</button>
+                );
+              })}
+            </div>
+
+            {form.scheduleType === 'single' && (
+              <input
+                type="date"
+                value={form.work_date}
+                onChange={e => set('work_date', e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            )}
+
+            {form.scheduleType === 'multiple' && (
+              <div className="space-y-2">
+                {form.workDates.map((d, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={d}
+                      onChange={e => {
+                        const next = [...form.workDates];
+                        next[i] = e.target.value;
+                        set('workDates', next);
+                      }}
+                      className="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => set('workDates', form.workDates.filter((_, j) => j !== i))}
+                      className="w-8 h-8 rounded-xl border border-slate-200 text-slate-400 hover:text-red-500 flex items-center justify-center text-sm font-bold"
+                    >×</button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => set('workDates', [...form.workDates, ''])}
+                  className="flex items-center gap-1 text-xs text-blue-600 font-bold hover:underline"
+                >+ 日程を追加</button>
+              </div>
+            )}
+
+            {form.scheduleType === 'continuous' && (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-[10px] text-slate-400 mb-1">開始日</p>
+                  <input
+                    type="date"
+                    value={form.workDates[0] ?? ''}
+                    onChange={e => set('workDates', [e.target.value, form.workDates[1] ?? ''])}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400 mb-1">終了日</p>
+                  <input
+                    type="date"
+                    value={form.workDates[1] ?? ''}
+                    onChange={e => set('workDates', [form.workDates[0] ?? '', e.target.value])}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-slate-100" />
@@ -362,7 +456,26 @@ export default function HelpRequestPage() {
 
           <div className="border-t border-slate-100" />
 
-          {/* 必要人数・日当 */}
+          {/* 契約種別 */}
+          <div>
+            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">契約種別</p>
+            <div className="flex flex-wrap gap-2">
+              {(['人工', '手間受け', '材工'] as const).map(ct => (
+                <button
+                  key={ct}
+                  type="button"
+                  onClick={() => set('contractType', form.contractType === ct ? '' : ct)}
+                  className={`px-3.5 py-2 rounded-xl text-sm font-bold border transition active:scale-95 ${
+                    form.contractType === ct
+                      ? 'bg-orange-500 border-orange-500 text-white'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-orange-300'
+                  }`}
+                >{ct}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* 必要人数・金額 */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">必要人数</p>
@@ -380,17 +493,32 @@ export default function HelpRequestPage() {
               <p className="text-[10px] text-slate-400 text-center mt-1">人</p>
             </div>
             <div>
-              <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">日当</p>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">¥</span>
-                <input
-                  type="number"
-                  value={form.daily_rate}
-                  onChange={e => set('daily_rate', Number(e.target.value))}
-                  className="w-full rounded-xl border border-slate-200 pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
+              <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">
+                {form.contractType === '人工' ? '日当' : form.contractType === '手間受け' ? '請負金額' : form.contractType === '材工' ? '材工込み金額' : '金額'}
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => set('daily_rate', Math.max(0, form.daily_rate - 500))}
+                  className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300 flex-shrink-0"
+                >−</button>
+                <div className="relative flex-1">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-slate-400">¥</span>
+                  <input
+                    type="number"
+                    value={form.daily_rate}
+                    step={500}
+                    onChange={e => set('daily_rate', Number(e.target.value))}
+                    className="w-full rounded-xl border border-slate-200 pl-6 pr-2 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => set('daily_rate', form.daily_rate + 500)}
+                  className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300 flex-shrink-0"
+                >＋</button>
               </div>
-              <p className="text-[10px] text-slate-400 text-center mt-1">円 / 日</p>
+              <p className="text-[10px] text-slate-400 text-center mt-1">円</p>
             </div>
           </div>
 
@@ -424,17 +552,26 @@ export default function HelpRequestPage() {
           {/* 駐車場 */}
           <div>
             <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">駐車場</p>
-            <button
-              type="button"
-              onClick={() => set('has_parking', !form.has_parking)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-bold transition ${
-                form.has_parking
-                  ? 'bg-green-50 border-green-300 text-green-700'
-                  : 'bg-white border-slate-200 text-slate-500'
-              }`}
-            >
-              <span>{form.has_parking ? '🚗 駐車場あり' : '🚫 駐車場なし'}</span>
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => set('has_parking', true)}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition active:scale-95 ${
+                  form.has_parking
+                    ? 'bg-green-600 border-green-600 text-white'
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-green-300'
+                }`}
+              >🚗 現場駐車可</button>
+              <button
+                type="button"
+                onClick={() => set('has_parking', false)}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition active:scale-95 ${
+                  !form.has_parking
+                    ? 'bg-amber-500 border-amber-500 text-white'
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-amber-300'
+                }`}
+              >🅿 近隣P・要確認</button>
+            </div>
           </div>
 
           {/* 持参道具 */}
@@ -473,6 +610,46 @@ export default function HelpRequestPage() {
               rows={2}
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
+          </div>
+
+          <div className="border-t border-slate-100" />
+
+          {/* インボイス */}
+          <div>
+            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">インボイス登録</p>
+            <div className="flex flex-wrap gap-2">
+              {(['必要', '不要', 'どちらでも可'] as const).map(opt => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => set('invoiceRequired', form.invoiceRequired === opt ? '' : opt)}
+                  className={`px-3.5 py-2 rounded-xl text-sm font-bold border transition active:scale-95 ${
+                    form.invoiceRequired === opt
+                      ? 'bg-orange-500 border-orange-500 text-white'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-orange-300'
+                  }`}
+                >{opt}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* 保険 */}
+          <div>
+            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">損害保険加入</p>
+            <div className="flex flex-wrap gap-2">
+              {(['必要', '不要', 'どちらでも可'] as const).map(opt => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => set('insuranceRequired', form.insuranceRequired === opt ? '' : opt)}
+                  className={`px-3.5 py-2 rounded-xl text-sm font-bold border transition active:scale-95 ${
+                    form.insuranceRequired === opt
+                      ? 'bg-orange-500 border-orange-500 text-white'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-orange-300'
+                  }`}
+                >{opt}</button>
+              ))}
+            </div>
           </div>
         </div>
 

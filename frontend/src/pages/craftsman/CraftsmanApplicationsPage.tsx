@@ -131,39 +131,36 @@ function formatDate(iso: string) {
 // ─── PreCheckModal ────────────────────────────────────────────────────────────
 // CraftsmanDashboardPage から移植。施工前確認メール文をコピーするモーダル。
 
-const SCOPE_CHIPS = ['壁のみ', '天井含む', '壁＋天井', 'アクセントクロス希望', 'ソフト巾木施工希望'] as const;
-type ScopeChip = typeof SCOPE_CHIPS[number];
-
 function PreCheckModal({ onClose, appId, contactEmail, customerName }: {
   onClose:       () => void;
   appId:         string;
   contactEmail?: string;
   customerName?: string;
 }) {
-  const [dates,     setDates]     = useState(['', '', '']);
-  const [scopes,    setScopes]    = useState<ScopeChip[]>([]);
-  const [material,  setMaterial]  = useState('未定');
-  const [accent,    setAccent]    = useState('未定');
-  const [sokibari,  setSokibari]  = useState('未定');
-  const [matNote,   setMatNote]   = useState('');
-  const [payment,   setPayment]   = useState('どちらでも可');
-  const [parking,   setParking]   = useState('不明');
-  const [furniture, setFurniture] = useState('自分で移動できる');
-  const [memo,      setMemo]      = useState('');
-  const [copied,    setCopied]    = useState(false);
-
-  function toggleScope(s: ScopeChip) {
-    setScopes(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
-  }
+  const [dates,         setDates]         = useState(['', '', '']);
+  const [crossScope,    setCrossScope]    = useState('なし');
+  const [hasCF,         setHasCF]         = useState(false);
+  const [cfMaterial,    setCfMaterial]    = useState('未定');
+  const [material,      setMaterial]      = useState('未定');
+  const [accent,        setAccent]        = useState('未定');
+  const [sokibari,      setSokibari]      = useState('未定');
+  const [estimatedDays, setEstimatedDays] = useState('未定');
+  const [matNote,       setMatNote]       = useState('');
+  const [payment,       setPayment]       = useState('どちらでも可');
+  const [parking,       setParking]       = useState('不明');
+  const [furniture,     setFurniture]     = useState('自分で移動できる');
+  const [memo,          setMemo]          = useState('');
+  const [copied,        setCopied]        = useState(false);
 
   function buildEmail() {
     const d = dates;
-    const scopeStr = scopes.length ? scopes.join('・') : '未定';
+    const greeting = `${customerName || 'お客様'}様`;
     const matStr   = matNote ? `${material}（品番・メモ：${matNote}）` : material;
+    const cfStr    = hasCF ? `施工あり（材料：${cfMaterial}）` : '施工なし';
     return [
       '件名：PRO MATCHの工事前確認について',
       '',
-      '○○様',
+      greeting,
       '',
       'PRO MATCHでご依頼いただいた工事について、施工前に以下をご確認ください。',
       '',
@@ -171,15 +168,19 @@ function PreCheckModal({ onClose, appId, contactEmail, customerName }: {
       `　第1希望：${d[0] || '未定'}`,
       `　第2希望：${d[1] || '未定'}`,
       `　第3希望：${d[2] || '未定'}`,
-      `【施工範囲】${scopeStr}`,
+      `【クロス施工範囲】${crossScope}`,
+      `【CF（クッションフロア）】${cfStr}`,
       `【クロス種類】${matStr}`,
       `【アクセントクロス】${accent}`,
       `【ソフト巾木】${sokibari}`,
+      `【予想作業日数】${estimatedDays}`,
       matNote ? `【品番・URL・メモ】${matNote}` : '【品番・URL・メモ】未定（気になる壁紙のURLや写真でも大丈夫です）',
       `【支払い方法】${payment}`,
       `【駐車場】${parking}`,
       `【家具移動】${furniture}`,
       memo ? `【その他】${memo}` : '',
+      '',
+      '材料や品番が未定の場合は、施工前にメールで相談しながら決められます。',
       '',
       '※ 品番が未定の場合は、気になる壁紙のURLや写真でも大丈夫です。',
       '※ 1000番クロス・柄物・アクセントクロス・機能性クロス・ソフト巾木は、通常クロスより費用が上がる場合があります。',
@@ -195,6 +196,16 @@ function PreCheckModal({ onClose, appId, contactEmail, customerName }: {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  }
+
+  function ChipBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+    return (
+      <button onClick={onClick}
+        className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
+          active ? 'bg-violet-600 border-violet-600 text-white' : 'bg-white border-slate-200 text-slate-600'
+        }`}
+      >{label}</button>
+    );
   }
 
   return (
@@ -238,17 +249,32 @@ function PreCheckModal({ onClose, appId, contactEmail, customerName }: {
             </div>
           </div>
 
-          {/* 施工範囲 */}
+          {/* クロス施工範囲 */}
           <div>
-            <p className="text-xs font-bold text-slate-600 mb-2">🏠 施工範囲</p>
+            <p className="text-xs font-bold text-slate-600 mb-2">🏠 クロス施工範囲</p>
             <div className="flex flex-wrap gap-2">
-              {SCOPE_CHIPS.map(s => (
-                <button key={s} onClick={() => toggleScope(s)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
-                    scopes.includes(s) ? 'bg-violet-600 border-violet-600 text-white' : 'bg-white border-slate-200 text-slate-600'
-                  }`}
-                >{s}</button>
+              {['壁のみ', '天井のみ', '壁＋天井', 'なし'].map(s => (
+                <ChipBtn key={s} label={s} active={crossScope === s} onClick={() => setCrossScope(s)} />
               ))}
+            </div>
+          </div>
+
+          {/* CF（クッションフロア） */}
+          <div>
+            <p className="text-xs font-bold text-slate-600 mb-2">🪵 CF（クッションフロア）</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setHasCF(true)}
+                className={`flex-1 px-3 py-2 rounded-xl text-xs font-bold border transition ${
+                  hasCF ? 'bg-violet-600 border-violet-600 text-white' : 'bg-white border-slate-200 text-slate-600'
+                }`}
+              >施工あり</button>
+              <button
+                onClick={() => setHasCF(false)}
+                className={`flex-1 px-3 py-2 rounded-xl text-xs font-bold border transition ${
+                  !hasCF ? 'bg-violet-600 border-violet-600 text-white' : 'bg-white border-slate-200 text-slate-600'
+                }`}
+              >施工なし</button>
             </div>
           </div>
 
@@ -257,25 +283,29 @@ function PreCheckModal({ onClose, appId, contactEmail, customerName }: {
             <p className="text-xs font-bold text-slate-600 mb-2">🎨 クロス種類</p>
             <div className="flex gap-2 flex-wrap">
               {['量産クロス', '1000番・機能性クロス', '柄物クロス', '未定'].map(opt => (
-                <button key={opt} onClick={() => setMaterial(opt)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
-                    material === opt ? 'bg-violet-600 border-violet-600 text-white' : 'bg-white border-slate-200 text-slate-600'
-                  }`}
-                >{opt}</button>
+                <ChipBtn key={opt} label={opt} active={material === opt} onClick={() => setMaterial(opt)} />
               ))}
             </div>
           </div>
+
+          {/* CF材料（hasCF=trueの時のみ） */}
+          {hasCF && (
+            <div>
+              <p className="text-xs font-bold text-slate-600 mb-2">🛢 CF材料</p>
+              <div className="flex gap-2 flex-wrap">
+                {['一般用', 'ペット対応', '防水・機能性', '未定'].map(opt => (
+                  <ChipBtn key={opt} label={opt} active={cfMaterial === opt} onClick={() => setCfMaterial(opt)} />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* アクセントクロス */}
           <div>
             <p className="text-xs font-bold text-slate-600 mb-2">✨ アクセントクロス</p>
             <div className="flex gap-2 flex-wrap">
               {['希望あり', '希望なし', '未定'].map(opt => (
-                <button key={opt} onClick={() => setAccent(opt)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
-                    accent === opt ? 'bg-violet-600 border-violet-600 text-white' : 'bg-white border-slate-200 text-slate-600'
-                  }`}
-                >{opt}</button>
+                <ChipBtn key={opt} label={opt} active={accent === opt} onClick={() => setAccent(opt)} />
               ))}
             </div>
           </div>
@@ -285,11 +315,17 @@ function PreCheckModal({ onClose, appId, contactEmail, customerName }: {
             <p className="text-xs font-bold text-slate-600 mb-2">📐 ソフト巾木</p>
             <div className="flex gap-2 flex-wrap">
               {['ソフト巾木施工希望', '不要', '未定'].map(opt => (
-                <button key={opt} onClick={() => setSokibari(opt)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
-                    sokibari === opt ? 'bg-violet-600 border-violet-600 text-white' : 'bg-white border-slate-200 text-slate-600'
-                  }`}
-                >{opt}</button>
+                <ChipBtn key={opt} label={opt} active={sokibari === opt} onClick={() => setSokibari(opt)} />
+              ))}
+            </div>
+          </div>
+
+          {/* 予想作業日数 */}
+          <div>
+            <p className="text-xs font-bold text-slate-600 mb-2">⏱ 予想作業日数</p>
+            <div className="flex gap-2 flex-wrap">
+              {['半日', '1日', '2日', '3日以上', '未定'].map(opt => (
+                <ChipBtn key={opt} label={opt} active={estimatedDays === opt} onClick={() => setEstimatedDays(opt)} />
               ))}
             </div>
           </div>
@@ -303,7 +339,7 @@ function PreCheckModal({ onClose, appId, contactEmail, customerName }: {
               placeholder="品番・URL・気になる壁紙のリンクなど"
               className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-300"
             />
-            <p className="text-[10px] text-slate-400 mt-1">品番が分からない場合は、気になる壁紙のURLや写真でも大丈夫です</p>
+            <p className="text-[10px] text-slate-400 mt-1">材料や品番が未定の場合は、施工前にメールで相談しながら決められます。</p>
           </div>
 
           {/* 支払い方法 */}
@@ -311,11 +347,7 @@ function PreCheckModal({ onClose, appId, contactEmail, customerName }: {
             <p className="text-xs font-bold text-slate-600 mb-2">💴 支払い方法</p>
             <div className="flex gap-2 flex-wrap">
               {['現金', '振込', 'どちらでも可'].map(opt => (
-                <button key={opt} onClick={() => setPayment(opt)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
-                    payment === opt ? 'bg-violet-600 border-violet-600 text-white' : 'bg-white border-slate-200 text-slate-600'
-                  }`}
-                >{opt}</button>
+                <ChipBtn key={opt} label={opt} active={payment === opt} onClick={() => setPayment(opt)} />
               ))}
             </div>
           </div>
@@ -325,11 +357,7 @@ function PreCheckModal({ onClose, appId, contactEmail, customerName }: {
             <p className="text-xs font-bold text-slate-600 mb-2">🚗 駐車場</p>
             <div className="flex gap-2 flex-wrap">
               {['あり', '近隣P利用', '不明'].map(opt => (
-                <button key={opt} onClick={() => setParking(opt)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
-                    parking === opt ? 'bg-violet-600 border-violet-600 text-white' : 'bg-white border-slate-200 text-slate-600'
-                  }`}
-                >{opt}</button>
+                <ChipBtn key={opt} label={opt} active={parking === opt} onClick={() => setParking(opt)} />
               ))}
             </div>
           </div>
@@ -339,11 +367,7 @@ function PreCheckModal({ onClose, appId, contactEmail, customerName }: {
             <p className="text-xs font-bold text-slate-600 mb-2">🪑 家具移動</p>
             <div className="flex gap-2 flex-wrap">
               {['自分で移動できる', '一部手伝ってほしい', '難しい'].map(opt => (
-                <button key={opt} onClick={() => setFurniture(opt)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
-                    furniture === opt ? 'bg-violet-600 border-violet-600 text-white' : 'bg-white border-slate-200 text-slate-600'
-                  }`}
-                >{opt}</button>
+                <ChipBtn key={opt} label={opt} active={furniture === opt} onClick={() => setFurniture(opt)} />
               ))}
             </div>
           </div>

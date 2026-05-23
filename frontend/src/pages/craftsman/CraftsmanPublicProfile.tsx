@@ -11,6 +11,13 @@ type WorkItem = {
   caption: string | null;
 };
 
+type ReviewRow = {
+  rating: number;
+  tags: string[];
+  comment: string;
+  created_at: string;
+};
+
 type Craftsman = {
   user_id: string;
   shop_name: string | null;
@@ -32,6 +39,7 @@ type Craftsman = {
   avg_rating: string | null;
   review_count: number | null;
   top_tags: string[] | null;
+  meta?: Record<string, unknown> | null;
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -84,6 +92,7 @@ export default function CraftsmanPublicProfile() {
   const navigate = useNavigate();
   const [craftsman, setCraftsman] = useState<Craftsman | null>(null);
   const [works,     setWorks]     = useState<WorkItem[]>([]);
+  const [reviews,   setReviews]   = useState<ReviewRow[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [notFound,  setNotFound]  = useState(false);
 
@@ -91,7 +100,7 @@ export default function CraftsmanPublicProfile() {
     if (!userId) { setNotFound(true); setLoading(false); return; }
 
     (async () => {
-      const [{ data: rows }, { data: worksData }] = await Promise.all([
+      const [{ data: rows }, { data: worksData }, { data: reviewsData }] = await Promise.all([
         supabase.rpc('get_craftsman_public_profile', { p_user_id: userId }),
         supabase
           .from('craftsman_works')
@@ -99,6 +108,7 @@ export default function CraftsmanPublicProfile() {
           .eq('craftsman_id', userId)
           .order('sort_order', { ascending: true })
           .limit(4),
+        supabase.rpc('get_craftsman_reviews', { p_user_id: userId }),
       ]);
       const data = rows?.[0] ?? null;
 
@@ -108,6 +118,7 @@ export default function CraftsmanPublicProfile() {
         setCraftsman(data as Craftsman);
       }
       if (worksData) setWorks(worksData as WorkItem[]);
+      if (reviewsData) setReviews(reviewsData as ReviewRow[]);
       setLoading(false);
     })();
   }, [userId]);
@@ -193,6 +204,12 @@ export default function CraftsmanPublicProfile() {
               )}
               {c.has_car && <Chip color="green">🚗 車あり</Chip>}
               {c.has_tools && <Chip color="green">🔧 道具あり</Chip>}
+              {c.meta?.businessType && typeof c.meta.businessType === 'string' && (
+                <Chip color="slate">{c.meta.businessType}</Chip>
+              )}
+              {c.meta?.formType && typeof c.meta.formType === 'string' && (
+                <Chip color="slate">{c.meta.formType}</Chip>
+              )}
             </div>
           </div>
         </div>
@@ -201,6 +218,20 @@ export default function CraftsmanPublicProfile() {
         {c.bio && (
           <Section title="一言プロフィール">
             <p className="text-sm text-slate-700 leading-relaxed">{c.bio}</p>
+          </Section>
+        )}
+
+        {/* ── アピールポイント（meta） ── */}
+        {c.meta?.appealPoint && typeof c.meta.appealPoint === 'string' && (
+          <Section title="アピールポイント">
+            <p className="text-sm text-slate-700 leading-relaxed">{c.meta.appealPoint}</p>
+          </Section>
+        )}
+
+        {/* ── 資格・許可（meta） ── */}
+        {c.meta?.qualifications && typeof c.meta.qualifications === 'string' && (
+          <Section title="資格・許可">
+            <p className="text-sm text-slate-700 leading-relaxed">{c.meta.qualifications}</p>
           </Section>
         )}
 
@@ -322,6 +353,36 @@ export default function CraftsmanPublicProfile() {
             </div>
           )}
         </Section>
+
+        {/* ── レビューコメント ── */}
+        {reviews.length > 0 && (
+          <Section title="レビューコメント">
+            <div className="space-y-4">
+              {reviews.map((rv, idx) => {
+                const d = new Date(rv.created_at);
+                const dateStr = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+                return (
+                  <div key={idx} className="border border-slate-100 rounded-xl p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-amber-500 font-bold text-sm">
+                        {'★'.repeat(rv.rating)}{'☆'.repeat(5 - rv.rating)}
+                      </span>
+                      <span className="text-[10px] text-slate-400">{dateStr}</span>
+                    </div>
+                    {rv.tags && rv.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {rv.tags.map(tag => (
+                          <Chip key={tag} color="amber">👍 {tag}</Chip>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-sm text-slate-700 leading-relaxed">{rv.comment}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        )}
 
         {/* 注意書き */}
         <div className="rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3">

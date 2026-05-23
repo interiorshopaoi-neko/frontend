@@ -38,7 +38,8 @@ type Room = {
   floorWork: boolean;      // クッションフロア ON/OFF
   size: string;
   condition: string[];
-  materialPref: string;
+  materialPref: string;    // クロス材料の希望
+  cfMaterialPref: string;  // CF（床）材料の希望
   customName: string;
   customSize: string;
   roomVideoFiles: File[];
@@ -49,7 +50,8 @@ const ROOM_NAMES = ['LDK', '洋室', '寝室', '廊下', '玄関', '階段', '�
 const ROOM_WORKS = ['壁紙・クロス', '天井クロス', '壁＋天井', 'クッションフロア', '両方'] as const;
 const ROOM_SIZES = ['4.5畳', '6畳', '8畳', '10畳', '12畳', '12畳以上', '15畳以上', '20畳以上', '不明'] as const;
 const ROOM_CONDS = ['汚れ', 'めくれ', '傷', '穴', 'カビ', 'ペット臭', '不明'] as const;
-const ROOM_MATERIAL_PREFS = ['量産クロスでよい', '1000番・機能性クロスも検討', 'まだ決まっていない'] as const;
+const ROOM_MATERIAL_PREFS    = ['量産クロスでよい', '1000番・機能性クロスも検討', 'まだ決まっていない'] as const;
+const ROOM_CF_MATERIAL_PREFS = ['汎用CF（費用抑えめ）', '木目・大理石調CF', 'まだ決まっていない'] as const;
 
 // 初期表示に見せる優先チップ（それ以外は折りたたみ内）
 const PRIMARY_ROOM_NAMES: readonly string[] = ['LDK', '洋室', '寝室', '廊下', '玄関', 'トイレ', 'その他'];
@@ -126,6 +128,75 @@ const globalStyles = `
 @keyframes recBlink{0%,100%{opacity:1}50%{opacity:.2}}
 `;
 
+// ── UploadProgressOverlay ─────────────────────────────────────────────────────
+
+const UPLOAD_MESSAGES = [
+  '動画をアップロードしています…',
+  '通信状況により30秒ほどかかる場合があります',
+  '画面を閉じずにそのままお待ちください',
+  'もう少しで完了します…',
+  '職人への依頼を準備しています',
+  'データを送信中です。少しお待ちください',
+] as const;
+
+function UploadProgressOverlay({ visible }: { visible: boolean }) {
+  const [msgIdx, setMsgIdx] = React.useState(0);
+  const [progress, setProgress] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!visible) { setMsgIdx(0); setProgress(0); return; }
+
+    // Rotate messages every 3 seconds
+    const msgTimer = setInterval(() => {
+      setMsgIdx(prev => (prev + 1) % UPLOAD_MESSAGES.length);
+    }, 3000);
+
+    // Fake progress: 0→90% over 30 seconds
+    const startTime = Date.now();
+    const progressTimer = setInterval(() => {
+      const elapsed = (Date.now() - startTime) / 1000; // seconds
+      const pct = Math.min(90, Math.round((elapsed / 30) * 90));
+      setProgress(pct);
+    }, 200);
+
+    return () => {
+      clearInterval(msgTimer);
+      clearInterval(progressTimer);
+    };
+  }, [visible]);
+
+  if (!visible) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
+      <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-8 flex flex-col items-center gap-5">
+        {/* Spinner */}
+        <div className="w-14 h-14 border-4 border-violet-100 border-t-violet-600 rounded-full animate-spin" />
+
+        {/* Message */}
+        <p className="text-sm font-bold text-slate-700 text-center leading-relaxed min-h-[2.5rem] transition-all">
+          {UPLOAD_MESSAGES[msgIdx]}
+        </p>
+
+        {/* Progress bar */}
+        <div className="w-full">
+          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-200 ease-out"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-slate-400 text-right mt-1">{progress}%</p>
+        </div>
+
+        <p className="text-[10px] text-slate-400 text-center leading-relaxed">
+          ※ 画面を閉じると送信がキャンセルされます
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── PageShell ─────────────────────────────────────────────────────────────────
 
 function PageShell({ children }: { children: React.ReactNode }) {
@@ -144,6 +215,15 @@ function PageShell({ children }: { children: React.ReactNode }) {
 function PageHeader() {
   return (
     <div className="px-6 pt-8 pb-6 border-b border-slate-100 flex-shrink-0">
+      <a
+        href="/"
+        className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors mb-4"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+        トップページ
+      </a>
       <div className="flex items-center gap-2 mb-4">
         <img src="/logo-full.png" alt="PRO MATCH" className="h-7 object-contain" />
       </div>
@@ -360,6 +440,7 @@ function RoomCard({
   const hasDetailValues = !!(
     room.condition.length > 0 ||
     room.materialPref ||
+    room.cfMaterialPref ||
     room.roomVideoFiles.length > 0 ||
     room.roomImageFiles.length > 0
   );
@@ -545,24 +626,68 @@ function RoomCard({
             </div>
           </div>
 
-          {/* 材料の希望 */}
-          <div>
-            <p className="text-[11px] font-bold text-slate-500 mb-1">材料の希望 <span className="font-normal text-slate-300">（任意）</span></p>
-            <div className="flex flex-wrap gap-1.5 mb-1">
-              {ROOM_MATERIAL_PREFS.map(m => (
-                <button key={m} type="button"
-                  onClick={() => onUpdate({ materialPref: room.materialPref === m ? '' : m })}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                    room.materialPref === m
-                      ? 'bg-teal-600 text-white border-teal-600'
-                      : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
-                  }`}>
-                  {m}
-                </button>
-              ))}
+          {/* クロス材料の希望 */}
+          {room.wallWorkScope && (
+            <div>
+              <p className="text-[11px] font-bold text-slate-500 mb-1">クロス材料の希望 <span className="font-normal text-slate-300">（任意）</span></p>
+              <div className="flex flex-wrap gap-1.5 mb-1">
+                {ROOM_MATERIAL_PREFS.map(m => (
+                  <button key={m} type="button"
+                    onClick={() => onUpdate({ materialPref: room.materialPref === m ? '' : m })}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                      room.materialPref === m
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
+                    }`}>
+                    {m}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 leading-relaxed">1000番・機能性クロスは通常クロスより費用が上がる場合があります。品番は後でも相談できます。</p>
             </div>
-            <p className="text-[10px] text-slate-400 leading-relaxed">詳しい品番は、職人が決まった後でも追加で相談できます。1000番・機能性クロスは通常クロスより費用が上がる場合があります。</p>
-          </div>
+          )}
+
+          {/* CF（床）材料の希望 */}
+          {room.floorWork && (
+            <div>
+              <p className="text-[11px] font-bold text-slate-500 mb-1">CF（床）の希望 <span className="font-normal text-slate-300">（任意）</span></p>
+              <div className="flex flex-wrap gap-1.5 mb-1">
+                {ROOM_CF_MATERIAL_PREFS.map(m => (
+                  <button key={m} type="button"
+                    onClick={() => onUpdate({ cfMaterialPref: room.cfMaterialPref === m ? '' : m })}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                      room.cfMaterialPref === m
+                        ? 'bg-amber-500 text-white border-amber-500'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-amber-300'
+                    }`}>
+                    {m}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 leading-relaxed">木目・大理石調など柄物CFは費用が上がる場合があります。</p>
+            </div>
+          )}
+
+          {/* 材料の希望（クロス・CF両方なし時のフォールバック）*/}
+          {!room.wallWorkScope && !room.floorWork && (
+            <div>
+              <p className="text-[11px] font-bold text-slate-500 mb-1">材料の希望 <span className="font-normal text-slate-300">（任意）</span></p>
+              <div className="flex flex-wrap gap-1.5 mb-1">
+                {ROOM_MATERIAL_PREFS.map(m => (
+                  <button key={m} type="button"
+                    onClick={() => onUpdate({ materialPref: room.materialPref === m ? '' : m })}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                      room.materialPref === m
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
+                    }`}>
+                    {m}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 leading-relaxed">詳しい品番は、職人が決まった後でも追加で相談できます。</p>
+            </div>
+          )}
 
           {/* この部屋の動画・写真 */}
           <div className="space-y-2 border-t border-slate-200 pt-3">
@@ -720,12 +845,12 @@ export default function CorporateRequest() {
 
   // 複数部屋
   const [rooms, setRooms] = useState<Room[]>([
-    { name: 'LDK', workType: '', wallWorkScope: '', floorWork: false, size: '', condition: [], materialPref: '', customName: '', customSize: '', roomVideoFiles: [], roomImageFiles: [] },
+    { name: 'LDK', workType: '', wallWorkScope: '', floorWork: false, size: '', condition: [], materialPref: '', cfMaterialPref: '', customName: '', customSize: '', roomVideoFiles: [], roomImageFiles: [] },
   ]);
   const [expandedRooms, setExpandedRooms] = useState<boolean[]>([false]);
 
   function addRoom() {
-    setRooms(prev => [...prev, { name: '洋室', workType: '', wallWorkScope: '', floorWork: false, size: '', condition: [], materialPref: '', customName: '', customSize: '', roomVideoFiles: [], roomImageFiles: [] }]);
+    setRooms(prev => [...prev, { name: '洋室', workType: '', wallWorkScope: '', floorWork: false, size: '', condition: [], materialPref: '', cfMaterialPref: '', customName: '', customSize: '', roomVideoFiles: [], roomImageFiles: [] }]);
     setExpandedRooms(prev => [...prev, false]);
   }
   function removeRoom(idx: number) {
@@ -793,7 +918,8 @@ export default function CorporateRequest() {
             ...r,
             wallWorkScope,
             floorWork,
-            workType: (r as any).workType ?? deriveWorkType(wallWorkScope, floorWork),
+            workType:       (r as any).workType ?? deriveWorkType(wallWorkScope, floorWork),
+            cfMaterialPref: (r as any).cfMaterialPref ?? '',
             roomVideoFiles: [],
             roomImageFiles: [],
           };
@@ -835,15 +961,16 @@ export default function CorporateRequest() {
         const draft: DraftData = {
           step,
           rooms: rooms.map(r => ({
-            name:          r.name,
-            workType:      r.workType,
-            wallWorkScope: r.wallWorkScope,
-            floorWork:     r.floorWork,
-            size:          r.size,
-            condition:     r.condition,
-            materialPref:  r.materialPref,
-            customName:    r.customName,
-            customSize:    r.customSize,
+            name:           r.name,
+            workType:       r.workType,
+            wallWorkScope:  r.wallWorkScope,
+            floorWork:      r.floorWork,
+            size:           r.size,
+            condition:      r.condition,
+            materialPref:   r.materialPref,
+            cfMaterialPref: r.cfMaterialPref,
+            customName:     r.customName,
+            customSize:     r.customSize,
           })),
           wallpaperPreference,
           wallpaperAccentPreferences,
@@ -989,15 +1116,16 @@ export default function CorporateRequest() {
       setUploadPhase('依頼を送信中...');
       // File オブジェクトは meta に含めず、URLのみ保存する
       const roomsForMeta = hasRoomInfo ? rooms.map(r => ({
-        name:          r.name,
-        customName:    r.customName,
-        workType:      r.workType,
-        wallWorkScope: r.wallWorkScope,
-        floorWork:     r.floorWork,
-        size:          r.size,
-        customSize:    r.customSize,
-        condition:     r.condition,
-        materialPref:  r.materialPref,
+        name:           r.name,
+        customName:     r.customName,
+        workType:       r.workType,
+        wallWorkScope:  r.wallWorkScope,
+        floorWork:      r.floorWork,
+        size:           r.size,
+        customSize:     r.customSize,
+        condition:      r.condition,
+        materialPref:   r.materialPref,
+        cfMaterialPref: r.cfMaterialPref,
       })) : null;
 
       const metaPayload = {
@@ -1971,5 +2099,8 @@ export default function CorporateRequest() {
         loadingText={uploadPhase || '送信中...'}
       />
     </PageShell>
+
+    {/* アップロード中オーバーレイ */}
+    <UploadProgressOverlay visible={submitState === 'sending'} />
   );
 }

@@ -8,6 +8,14 @@ import LogoutConfirmModal from '../../components/LogoutConfirmModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type CraftsmanMeta = {
+  businessType?:  string;  // 個人事業主 / 法人 / その他
+  formType?:      string;  // 1人親方 / 従業員あり / 応援中心 / その他
+  qualifications?: string; // 資格・許可（free text）
+  hobby?:         string;  // 趣味・特技
+  appealPoint?:   string;  // アピールポイント
+};
+
 type WorkItem = {
   id: string;
   image_url: string;
@@ -134,6 +142,7 @@ export default function CraftsmanProfile() {
   const { logout } = useAuth();
   const [showLogout,         setShowLogout]         = useState(false);
   const [form,               setForm]               = useState<ProfileForm>(DEFAULT_FORM);
+  const [profileMeta,        setProfileMeta]        = useState<CraftsmanMeta>({});
   const [loading,            setLoading]            = useState(true);
   const [saving,             setSaving]             = useState(false);
   const [saved,              setSaved]              = useState(false);
@@ -190,6 +199,7 @@ export default function CraftsmanProfile() {
           has_tools:            data.has_tools           ?? false,
           public_profile_enabled: data.public_profile_enabled ?? true,
         });
+        setProfileMeta(((data as any).meta as CraftsmanMeta) ?? {});
       }
       setLoading(false);
     })();
@@ -235,12 +245,16 @@ export default function CraftsmanProfile() {
         p_public_profile_enabled: form.public_profile_enabled,
       });
 
-    setSaving(false);
-
     if (upsertError) {
+      setSaving(false);
       setError('保存に失敗しました。Supabase の craftsmen テーブルが作成済みか確認してください。');
       return;
     }
+
+    // meta保存（fire-and-forget）
+    void supabase.rpc('update_craftsman_meta', { p_user_id: userId, p_meta: profileMeta });
+
+    setSaving(false);
 
     // referred_by 保存（初回のみ・自己紹介防止はRPC側で実施）— fire-and-forget
     const storedRef = localStorage.getItem('promatch_referral_code');
@@ -926,6 +940,85 @@ export default function CraftsmanProfile() {
               {worksError}
             </p>
           )}
+        </div>
+
+        {/* ── プロフィール詳細 ──────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-1 mb-4">
+          <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-4">
+            プロフィール詳細
+          </p>
+
+          <Field label="事業所区分">
+            <div className="flex flex-wrap gap-2">
+              {['個人事業主', '法人', 'その他'].map(opt => {
+                const active = profileMeta.businessType === opt;
+                return (
+                  <button
+                    key={opt}
+                    onClick={() => setProfileMeta(prev => ({ ...prev, businessType: active ? undefined : opt }))}
+                    className={`px-4 py-2 rounded-full text-sm font-bold border transition ${
+                      active
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                    }`}
+                  >{opt}</button>
+                );
+              })}
+            </div>
+          </Field>
+
+          <div className="border-t border-slate-100 my-4" />
+
+          <Field label="形態区分">
+            <div className="flex flex-wrap gap-2">
+              {['1人親方', '従業員あり', '応援中心', 'その他'].map(opt => {
+                const active = profileMeta.formType === opt;
+                return (
+                  <button
+                    key={opt}
+                    onClick={() => setProfileMeta(prev => ({ ...prev, formType: active ? undefined : opt }))}
+                    className={`px-4 py-2 rounded-full text-sm font-bold border transition ${
+                      active
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                    }`}
+                  >{opt}</button>
+                );
+              })}
+            </div>
+          </Field>
+
+          <div className="border-t border-slate-100 my-4" />
+
+          <Field label="資格・許可">
+            <textarea
+              value={profileMeta.qualifications ?? ''}
+              onChange={e => setProfileMeta(prev => ({ ...prev, qualifications: e.target.value || undefined }))}
+              placeholder="例：石綿作業主任者、足場特別教育修了など"
+              rows={2}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </Field>
+
+          <Field label="アピールポイント">
+            <textarea
+              value={profileMeta.appealPoint ?? ''}
+              onChange={e => setProfileMeta(prev => ({ ...prev, appealPoint: e.target.value || undefined }))}
+              placeholder="例：丁寧な仕上がりと分かりやすい説明が強みです"
+              rows={3}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </Field>
+
+          <Field label="趣味・特技">
+            <input
+              type="text"
+              value={profileMeta.hobby ?? ''}
+              onChange={e => setProfileMeta(prev => ({ ...prev, hobby: e.target.value || undefined }))}
+              placeholder="例：釣り、DIY"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </Field>
         </div>
 
         {/* サポート */}
