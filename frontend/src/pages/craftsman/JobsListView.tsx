@@ -54,9 +54,7 @@ function getFreshnessBadge(job: Job): FreshnessBadge | null {
   return null;
 }
 
-// ─── Revenue estimator ─── 共通ユーティリティに統一 ──────────────────────────
-// calcRevenueRange: min/max/label をまとめて返す（売上・サービス料・手取りのレンジ表示用）
-
+// ─── Revenue estimator ─── lib/revenueEstimate の getRevenueDisplay() に統一 ──
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getPriority(job: Job) {
@@ -199,7 +197,6 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
               const isTomorrow = job.urgency === 'tomorrow';
               const isSoon     = job.urgency === 'soon';
               const hasVideo   = job.has_video || !!job.video_url; // DB video_url も考慮
-              const hasMedia   = hasVideo || job.has_photos || job.has_floor_plan;
               const freshness  = getFreshnessBadge(job);
               const postedAt   = timeAgo(job.created_at);
               // 新着かどうか（24時間以内）
