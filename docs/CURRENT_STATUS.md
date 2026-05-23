@@ -1,159 +1,150 @@
 # PRO MATCH — 現在の実装状況
 
-> 最終更新：2026年5月17日（Phase60 完了時点）
+> 最終更新：2026年5月23日（安定運用・事故防止 Phase 完了時点）
 
 ---
 
-## 🚀 実運用テストフェーズに入っています
+## 🌐 本番URL
 
-Phase52 をもって、通知・RLS・本番デプロイまで到達しました。
-実ユーザーが使い始めた後も安全にアップデートできるよう、この状態を記録します。
+```
+https://promatch-app.jp
+```
+
+- Vercel Hobby プラン（serverless function 12本上限に注意）
+- Supabase project: `lboskhjidbqxwrenwjdr`
+- メール送信: Resend（`noreply@promatch-app.jp`）
+
+---
+
+## 💰 収益モデル
+
+### 通常案件（職人 ←→ お客様）
+
+| 項目 | 内容 |
+|---|---|
+| 応募 | 無料 |
+| 成約時手数料 | `calculateServiceFee(revenue)` で計算（`frontend/src/lib/serviceFee.ts`） |
+| 支払い方法 | Stripe Checkout |
+| 無料枠 | 初回2成約無料 / 紹介ボーナスで+1無料 |
+| 連絡先開示 | 成約 → Stripe決済 → Webhook → `unlock_contact()` RPC |
+
+### 助っ人募集（職人 ←→ 職人）
+
+| 項目 | 内容 |
+|---|---|
+| 現在の課金 | **なし**（無料） |
+| 将来 | 課金化予定（`docs/BACKLOG.md` 参照） |
 
 ---
 
 ## ✅ 実装済み機能
 
 ### お客様側
-| ページ | ルート | 説明 |
+
+| ページ/機能 | ルート | 状態 |
 |---|---|---|
-| トップページ | `/` | 動画ファーストLP。BottomNav(subtle)あり |
-| 動画フォーム依頼 | `/corporate` | マルチステップ7ステップ依頼フォーム（動画・写真・複数部屋対応） |
-| 受付完了メール | Supabase Edge Function: `send-customer-email` | `noreply@promatch-app.jp` から送信。request_id 付きリンク2本含む |
-| 追加情報入力 | `/request/:id/extra-info` | 依頼送信後の任意情報（家具・駐車・材料等）。meta JSONB 保存 |
-| レビューページ | `/request/:id/review` | 星評価・確認チェックリスト（UIのみ・DB保存なし） |
+| トップページ | `/` | ✅ 本番稼働 |
+| 依頼フォーム | `/corporate` | ✅ 7ステップ・動画・写真・複数部屋 |
+| 追加情報入力 | `/request/:id/extra-info` | ✅ meta JSONB 保存 |
+| 依頼詳細 | `/request/:id` | ✅ |
+| 応募者一覧 | `/request/:id/applications` | ✅ |
+| レビュー | `/request/:id/review` | ✅ UIのみ（DB保存なし） |
+| 受付完了メール | `send-customer-email` Edge Function | ✅ 本番稼働 |
 
 ### 職人側
-| ページ | ルート | 説明 |
+
+| ページ/機能 | ルート | 状態 |
 |---|---|---|
-| 案件一覧 | `/craftsman/jobs` | 動画タブ優先・想定売上/手取り表示 |
-| 応募ページ | `/craftsman/apply/:id` | 概算金額入力・手数料プレビュー |
-| 応募管理ダッシュボード | `/craftsman/dashboard` | ステータス管理・レビュー待ちバナー |
-| プロフィール | `/craftsman/profile` | 編集画面・職人ツール導線 |
-| 公開プロフィール | `/craftsman/profile/:userId` | 閲覧専用・通報リンク |
-| 助っ人募集 | `/craftsman/help` | 職人同士の応援募集フォーム |
-| 助っ人一覧 | `/craftsman/help-list` | 応援案件一覧・参加ボタン |
-| 職人ツール | `/tools` | 利益管理・簡単見積計算（ローカルstateのみ） |
+| 案件一覧 | `/craftsman/jobs` | ✅ 未認証は売上プレビューのみ |
+| 案件応募 | `/craftsman/apply/:id` | ✅ |
+| ダッシュボード | `/craftsman/dashboard` | ✅ ステータス管理 |
+| プロフィール編集 | `/craftsman/profile` | ✅ アバター・施工事例4枚 |
+| 公開プロフィール | `/craftsman/profile/:userId` | ✅ |
+| 助っ人募集フォーム | `/craftsman/help` | ✅ |
+| 助っ人一覧 | `/craftsman/help-list` | ✅ 承認制 |
+| 職人ツール | `/tools` | ✅ ローカルstateのみ |
+| 職人登録 | `/pro-signup`, `/for-pros` | ✅ |
 
 ### 管理者側
-| ページ | ルート | 説明 |
-|---|---|---|
-| 管理ダッシュボード | `/admin/dashboard` | 依頼・職人・応募データ取得・分析。null owner 助っ人警告あり |
-| 依頼一覧 | `/admin/requests` | 依頼一覧・ログアウト確認モーダルあり |
 
-### 認証
-- `/pro-signup` — 職人登録（メール確認フロー、SECURITY DEFINER RPC で craftsmen 行自動作成）
-- `/auth/login`、`/auth/verify`、`/reset-password` — Supabase Auth + localStorage 並列運用
+| ページ/機能 | ルート | 状態 |
+|---|---|---|
+| ダッシュボード | `/admin/dashboard` | ✅ |
+| 依頼一覧 | `/admin/requests` | ✅ hidden管理含む |
+| 助っ人管理 | `/admin/help-requests` | ✅ 承認・完了操作 |
+| 改善報告 | `/admin/feedback` | ✅ スクショ・meta・通知ON/OFF |
 
 ### 通知（Resend 本番稼働中）
-- 見積もり依頼受付 → 管理者・お客様・職人へのメール
-- 助っ人応募 → 管理者・募集主へのメール（Phase51 で修正）
-- 助っ人承認 → 応募者へのメール（募集主の連絡先を開示、Phase51 で修正）
-- 送信元は `PRO MATCH <noreply@promatch-app.jp>` に統一
 
-### セキュリティ
-- Supabase RLS：各テーブルに適切な policy あり
-- SECURITY DEFINER RPC：`get_craftsman_contact(text)`、`ensure_craftsman_for_auth_user(...)` など
-- anon に craftsmen 直接 SELECT を開けない設計を維持
-
----
-
-## 🏗️ API 配置ルール（必読）
-
-| 項目 | 内容 |
-|---|---|
-| **本番 API の source of truth** | `root api/` のみ（`frontend/api/` は本番では動かない） |
-| **`frontend/api/`** | Phase60 で削除済み（WARNING.md のみ残存）。編集しても本番に反映されない |
-| **デプロイ前必須チェック** | `npm run check:deploy-safety`（tsc + API route 確認） |
-| **本番反映後確認** | `npm run check:production-health` または curl で 405 でないことを確認 |
-| **Vercel Current commit** | Vercel ダッシュボードで意図した commit が Production に反映されているか確認 |
-
----
-
-## 🐛 Phase51 / Phase52 で解決したこと
-
-| 問題 | 解決策 |
-|---|---|
-| 募集主への助っ人応募通知が届かなかった | craftsmen.name → full_name カラム名 typo 修正 |
-| anon key で craftsmen が空配列になった | SECURITY DEFINER RPC `get_craftsman_contact` 経由に切替 |
-| Resend 送信制限（onboarding@resend.dev） | 職人宛メール全てを `noreply@promatch-app.jp` に統一 |
-| リファクタ後の ReferenceError（rows.length） | 変数名 contact に合わせて修正 |
-| ログアウット誤タップ | LogoutConfirmModal（ワンクッション確認）を4箇所に実装 |
-| 承認通知のレスポンスが不透明 | `applicantOk`/`applicantReason`/`requesterEmailFound` を追加 |
-| craftsman_id=null の古い助っ人募集 | 管理画面でアンバー警告として一覧表示 |
-
----
-
-## ⚠️ 残るリスク・未完了
-
-| 項目 | 状況 |
-|---|---|
-| `craftsman_id=null` の旧助っ人募集 | 管理画面で警告表示中。通知は送れない（設計上の限界） |
-| レビュー DB 保存 | UIのみ・Supabase 保存なし |
-| お問い合わせ・通報 | UIあり・Supabase 保存なし |
-| Stripe 決済 | 未着手（手数料 UI のみ） |
-| 職人ツール（利益管理・現場メモ） | ローカルstateのみ・DB保存なし |
-
----
-
-## Supabase テーブル
-
-| テーブル | 用途 |
-|---|---|
-| `estimate_requests` | 依頼者からの工事依頼 |
-| `job_applications` | 職人からの応募 |
-| `craftsmen` | 職人プロフィール |
-| `help_requests` | 助っ人募集 |
-| `help_applications` | 助っ人応募 |
-| `admin_notification_settings` | 管理者通知のオン/オフ設定（singleton id=1） |
-| `reviews` | レビュー（テーブルはあるが UI 保存は未実装） |
-| `billing_events` | 課金イベント（将来のStripe連携用） |
-| `referrals` | 紹介コード管理 |
-
----
-
-## メール送信（2026-05-16 確認済み）
-
-| 用途 | FROM | 手段 |
+| トリガー | 実装場所 | 送信先 |
 |---|---|---|
-| お客様受付確認 | `noreply@promatch-app.jp` | Supabase Edge Function |
-| 職人新着案件通知 | `noreply@promatch-app.jp` | Supabase Edge Function |
-| 管理者通知（全般） | `noreply@promatch-app.jp` | Vercel API Route |
-| 助っ人応募通知（管理者・募集主） | `noreply@promatch-app.jp` | Vercel API Route |
-| 助っ人承認通知（応募者） | `noreply@promatch-app.jp` | Vercel API Route |
+| 依頼受付 | `send-customer-email` Edge Fn | お客様・管理者 |
+| 職人通知 | `send-craftsman-notification` Edge Fn | 対象職人 |
+| 応募通知 | `api/notify-application.ts` | 管理者 |
+| 成約通知 | `api/notify-contracted.ts` | 職人・お客様 |
+| レビュー依頼 | `api/notify-review.ts` | お客様 |
+| 助っ人通知 | `api/notify-helper.ts` | 募集主・応募者 |
 
-> `onboarding@resend.dev` は**絶対に本番で使わない**（Resend アカウントオーナー宛にしか届かない）
+### 決済（Stripe）
+
+| 項目 | 状態 |
+|---|---|
+| Checkout Session 作成 | `api/create-checkout-session.ts` ✅ |
+| Webhook 受信・連絡先開示 | `api/stripe-webhook.ts` ✅ |
+| 請求確認 | `api/check-billing.ts` ✅ |
+| 本番モード | ⚠️ 環境変数を本番キーに切替済みか確認必須 |
+
+### フィードバック（改善報告）
+
+| 項目 | 状態 |
+|---|---|
+| `/feedback` フォーム | ✅ スクショ添付・meta自動収集 |
+| `api/feedback.ts` | ✅ service role保存・admin_settings連動 |
+| `api/upload-feedback-image.ts` | ✅ 5MB以下 jpg/png/webp |
+| `/admin/feedback` 管理画面 | ✅ ステータス管理・通知ON/OFF |
+| `feedback_reports` テーブル | ⚠️ **Supabase SQL Editorで実行必須** |
+| `admin_settings` テーブル | ⚠️ **Supabase SQL Editorで実行必須** |
 
 ---
 
-## ⚠️ Legacy API 呼び出し（Supabase 直接統合前の旧 REST API）
+## 🗃️ Supabase Migration 適用状況
 
-以下のページは Supabase 直接統合前の REST API（`/api/estimates/*`）を呼んでいます。
-これらの serverless function は root `api/` に存在しないため、**本番では動作しません**（既知・放置中）。
+| ファイル | 内容 | 本番適用 |
+|---|---|---|
+| `20260509_create_craftsmen.sql` | craftsmen テーブル基本 | ✅ 済 |
+| `20260512_add_job_applications_columns.sql` | applications列追加 | ✅ 済 |
+| `20260512_create_reviews.sql` | reviews テーブル | ✅ 済 |
+| `20260512_fix_job_applications_rls.sql` | RLS修正 | ✅ 済 |
+| `20260513_billing_events.sql` | 請求イベント | ✅ 済 |
+| `20260513_referral_system.sql` | 紹介コード | ✅ 済 |
+| `20260513_fix_anon_update_job_applications.sql` | anon更新RLS | ✅ 済 |
+| `20260513_fix_rls_p0.sql` | RLS強化 | ✅ 済 |
+| `20260516_help_requests_meta.sql` | 助っ人meta | ✅ 済 |
+| `20260517_contact_disclosure_tables.sql` | 連絡先開示テーブル | ✅ 済 |
+| `20260517_fix_contact_id_type.sql` | 型修正 | ✅ 済 |
+| `20260517_unlock_contact_rpc.sql` | unlock_contact RPC | ✅ 済 |
+| `20260520_add_supported_prefectures.sql` | 対応都道府県 | ✅ 済 |
+| `20260520_help_requests_status.sql` | 助っ人ステータス | ✅ 済 |
+| `20260522_referral_bonus_grant.sql` | 紹介ボーナス付与 | ✅ 済 |
+| `20260522_referral_bonus_on_first_unlock.sql` | 初回unlock時ボーナス | ✅ 済 |
+| `20260523_craftsmen_meta_and_update_fn.sql` | craftsmen meta/fn | ✅ 済 |
+| `20260523_get_craftsman_reviews.sql` | レビュー取得RPC | ✅ 済 |
+| `20260523_feedback_reports.sql` | feedback_reports v1 | ⚠️ 要確認 |
+| **`20260523_feedback_reports_v2.sql`** | v2（screenshot_url/meta/admin_settings） | ❌ **要実行** |
 
-| ファイル | ルート | 呼び出し | 状態 |
-|---|---|---|---|
-| `CustomerDashboard.tsx` | `/customer` | `api.get('/estimates/my')` | ⚠️ Phase62で準備中ページに差し替え済み |
-| `NewEstimate.tsx` | `/customer/estimate/new` | `api.post('/estimates')` | ⚠️ Phase62で準備中ページに差し替え済み |
-| `EstimateDetail.tsx` | `/customer/estimate/:id` | `api.get/post/put('/estimates/:id/*')` | ⚠️ Phase62で準備中ページに差し替え済み |
-| `ReviewEstimate.tsx` | `/craftsman/estimate/:id` | `api.put('/estimates/:id/confirm')` など | ⚠️ Phase62で準備中ページに差し替え済み |
+---
 
-**Phase62 対応：** 上記4ルートは `CustomerComingSoonPage.tsx` に差し替え。ユーザーは壊れた API 画面ではなく「準備中・見積もり依頼フォームへ」ページに誘導される。ファイル本体は削除していない（Supabase 直接統合後に復活予定）。
+## ⚠️ 本番前に必ず確認すること
 
-**Phase61 で削除済み（dead file）：**
-
-| ファイル | 削除理由 |
-|---|---|
-| `CraftsmanDashboard.tsx` | App.tsx に import・route なし。`CraftsmanDashboardPage.tsx` が現行 |
-| `LandingPage.tsx` | App.tsx に import・route なし。`/request` route は存在しない |
-| `LandingEstimate.tsx` | App.tsx に import・route なし（旧見積もり LP） |
-| `pages/pro/ProJobs.tsx` | App.tsx で import されていたが一度も render されず。`/pro/jobs` は `/craftsman/jobs` へリダイレクト |
-
-**残す4ファイルの移行方針（次Phase）：**
-現在のお客様導線は `/corporate`（匿名フォーム → `estimate_requests` テーブル直接保存）に移行済み。
-`/customer` ログイン体系は旧フロー。Supabase client 直接統合で以下の代替を実装する予定：
-- `CustomerDashboard` → `estimate_requests` を `user_id` or `contact_email` で取得
-- `NewEstimate` → `/corporate` フローに統合または廃止
-- `EstimateDetail` → `estimate_requests/:id` + `job_applications` を Supabase client で取得
-- `ReviewEstimate` → `job_applications` の承認処理を Supabase client で実装
-
-それまでは `check-api-routes.mjs` の `LEGACY_ROUTES` に登録済みで、デプロイチェックからは除外されています。
+1. **`20260523_feedback_reports_v2.sql` を Supabase SQL Editor で実行**
+   → feedback保存・スクショ・通知ON/OFFが機能する
+2. **Stripe キーを本番モードに切替確認**
+   → `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_CONTACT_UNLOCK`
+3. **Storage bucket `estimate-videos` が public に設定済み**
+   → 画像・動画の公開URLが正しく表示される
+4. **`feedback-images/` prefix のファイルが公開URL返却される**
+   → スクショ表示テスト
+5. **Vercel serverless function 本数確認**
+   → Hobby プランは12本上限。`ls api/` で確認（現在20本前後→要確認）
+6. **メール送信テスト**
+   → 本番ドメインからの受信確認（Resend送信ドメイン認証済みか）

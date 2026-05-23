@@ -101,8 +101,10 @@ const LEGACY_ROUTES = new Set([
 function normalize(ep) {
   return ep
     .split('?')[0]
+    .replace(/\$\{[^}]+\}/g, '')   // 末尾の ${qs} 等テンプレートリテラルを除去
     .replace(/\/\$\{[^}]+\}/g, '/:param')
-    .replace(/\/\d+/g, '/:id');
+    .replace(/\/\d+/g, '/:id')
+    .replace(/\/$/, '');           // 末尾スラッシュ除去
 }
 
 function routeExists(normalized, rootRoutes) {
