@@ -282,11 +282,16 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
         ) : (
           <div className="space-y-4">
             {sortedJobs.map(job => {
-              const range   = calcRevenueRange(job);
-              const feeMin  = calculateServiceFee(range.min);
-              const feeMax  = calculateServiceFee(range.max);
-              const takeMin = range.min - feeMin;
-              const takeMax = range.max - feeMax;
+              const range    = calcRevenueRange(job);
+              // ラベル表示（¥8〜11万）と手取り計算を一致させるため、
+              // label が丸めた万円単位の値を基準に fee / take を計算する。
+              // 例: range.min=76,000 → label "8万" → labelMin=80,000 → fee=1,500 → take=78,500→7.8万
+              const labelMin = Math.round(range.min / 10000) * 10000;
+              const labelMax = Math.round(range.max / 10000) * 10000;
+              const feeMin   = calculateServiceFee(labelMin);
+              const feeMax   = calculateServiceFee(labelMax);
+              const takeMin  = labelMin - feeMin;
+              const takeMax  = labelMax - feeMax;
 
               const isToday    = job.urgency === 'today';
               const isTomorrow = job.urgency === 'tomorrow';
