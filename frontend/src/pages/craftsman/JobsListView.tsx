@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { calculateServiceFee } from '../../lib/serviceFee';
 import { FEE_TABLE } from '../../constants/fees';
 import type { Job } from './CraftsmanJobsPage';
-import { calcRevenueNum, calcRevenueStr } from '../../lib/revenueEstimate';
+import { calcRevenueRange } from '../../lib/revenueEstimate';
 import { getRoomMedia, getRoomAdditionalInfo, hasCeilingWork } from '../../lib/requestMeta';
 import { getRoomWorkSummaries } from '../../utils/requestSummary';
 import SiteRadar from '../../components/SiteRadar';
@@ -57,10 +57,7 @@ function getFreshnessBadge(job: Job): FreshnessBadge | null {
 }
 
 // ─── Revenue estimator ─── 共通ユーティリティに統一 ──────────────────────────
-// calcRevenueNum: 手数料計算など数値が必要な処理に使用
-// calcRevenueStr: 表示用レンジ文字列（JobsSwipeView と統一）
-const estimateRevenue    = calcRevenueNum; // fee/手取り計算用
-const estimateRevenueStr = calcRevenueStr; // 表示用
+// calcRevenueRange: min/max/label をまとめて返す（売上・サービス料・手取りのレンジ表示用）
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -113,9 +110,18 @@ type Props = { jobs: Job[]; loading: boolean; isLoggedIn?: boolean };
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
+// 手取りレンジを「¥7.9〜11.7万」形式で返す
+function fmtTakeRange(min: number, max: number): string {
+  const minW = Math.round(min / 1000) / 10;   // 千円→万円1桁
+  const maxW = Math.round(max / 1000) / 10;
+  return `¥${minW}〜${maxW}万`;
+}
+
 export default function JobsListView({ jobs, loading, isLoggedIn = false }: Props) {
   const navigate   = useNavigate();
   const [filter, setFilter] = useState<JobFilter>('all');
+  const [showFeeModal, setShowFeeModal] = useState(false);
+  const closeFeeModal = useCallback(() => setShowFeeModal(false), []);
 
   // フィルター別の件数（チップに表示）
   const filterCounts = useMemo((): Partial<Record<JobFilter, number>> => {
@@ -160,12 +166,78 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
     <div className="h-full overflow-y-auto bg-slate-50 px-4 py-4">
       <div className="mx-auto max-w-3xl">
 
-        {/* 収益モデル説明 */}
-        <div className="mb-3 rounded-xl bg-slate-100 px-4 py-2.5 text-[11px] text-slate-500 leading-relaxed space-y-0.5">
-          <p>・工事代金は依頼者と直接やり取りします</p>
-          <p>・PRO MATCHは工事代金をお預かりしません</p>
-          <p>・成約後に連絡先が開示されます</p>
+        {/* 収益モデル説明 + 手数料ボタン */}
+        <div className="mb-3 rounded-xl bg-slate-100 px-4 py-2.5 flex items-center justify-between gap-3">
+          <div className="text-[11px] text-slate-500 leading-relaxed space-y-0.5">
+            <p>・工事代金は依頼者と直接やり取りします</p>
+            <p>・PRO MATCHは工事代金をお預かりしません</p>
+            <p>・成約後に連絡先が開示されます</p>
+          </div>
+          <button
+            onClick={() => setShowFeeModal(true)}
+            className="flex-shrink-0 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition whitespace-nowrap shadow-sm"
+          >
+            手数料?
+          </button>
         </div>
+
+        {/* 手数料モーダル */}
+        {showFeeModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4"
+            onClick={closeFeeModal}
+          >
+            <div
+              className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[85vh]"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100 flex-shrink-0">
+                <h2 className="text-base font-extrabold text-slate-800">💡 職人向け手数料について</h2>
+                <button onClick={closeFeeModal} className="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
+              </div>
+              <div className="overflow-y-auto px-5 py-4 space-y-4 flex-1">
+                <ul className="space-y-2">
+                  {[
+                    '応募しただけでは料金は発生しません。',
+                    'お客様と成約した場合のみ、成約時点の概算金額に応じて手数料が確定します。',
+                    '工事後に金額が増減しても、原則として再計算は行いません。',
+                    '工事代金は依頼者と職人が直接やり取りし、PRO MATCHは工事代金を預かりません。',
+                  ].map(text => (
+                    <li key={text} className="flex items-start gap-2 text-sm text-slate-600 leading-relaxed">
+                      <span className="text-blue-400 flex-shrink-0 mt-0.5">·</span>
+                      {text}
+                    </li>
+                  ))}
+                </ul>
+                <div className="border-t border-slate-100 pt-3">
+                  <p className="text-xs font-extrabold text-slate-700 mb-2">手数料の目安</p>
+                  <div className="rounded-xl overflow-hidden border border-slate-200">
+                    {FEE_TABLE.map(({ label, feeLabel }, i) => (
+                      <div
+                        key={label}
+                        className={`flex items-center justify-between px-4 py-2.5 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}
+                      >
+                        <span className="text-sm text-slate-600">{label}</span>
+                        <span className="text-sm font-extrabold text-slate-800">{feeLabel}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="px-5 py-4 border-t border-slate-100 flex-shrink-0">
+                <p className="text-[11px] text-slate-400 text-center leading-relaxed">
+                  ※ 応募は無料です。手数料は成約時のみ発生します。
+                </p>
+                <button
+                  onClick={closeFeeModal}
+                  className="mt-3 w-full py-3 rounded-2xl bg-slate-100 text-sm font-bold text-slate-600 hover:bg-slate-200 transition active:scale-95"
+                >
+                  閉じる
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* フィルター（横スクロール） */}
         <div className="mb-4 -mx-4 px-4 overflow-x-auto">
@@ -209,10 +281,11 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
         ) : (
           <div className="space-y-4">
             {sortedJobs.map(job => {
-              const revenue    = estimateRevenue(job);    // 数値: fee/手取り計算用
-              const revenueStr = estimateRevenueStr(job); // 文字列: 表示用レンジ
-              const fee        = calculateServiceFee(revenue);
-              const takHome    = revenue - fee;
+              const range   = calcRevenueRange(job);
+              const feeMin  = calculateServiceFee(range.min);
+              const feeMax  = calculateServiceFee(range.max);
+              const takeMin = range.min - feeMin;
+              const takeMax = range.max - feeMax;
 
               const isToday    = job.urgency === 'today';
               const isTomorrow = job.urgency === 'tomorrow';
@@ -421,15 +494,19 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                   <div className="mx-4 mb-3 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white px-4 py-3.5 shadow-sm shadow-blue-200">
                     <div className="flex items-center justify-between mb-1.5">
                       <p className="text-[11px] text-blue-200 font-bold">想定売上</p>
-                      <p className="text-2xl font-extrabold tracking-tight">{revenueStr}</p>
+                      <p className="text-2xl font-extrabold tracking-tight">{range.label}</p>
                     </div>
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-[11px] text-blue-300">サービス料</p>
-                      <p className="text-sm text-blue-200">− {fmt(fee)}</p>
+                      <p className="text-sm text-blue-200">
+                        − {feeMin === feeMax ? fmt(feeMin) : `${fmt(feeMin)}〜${fmt(feeMax)}`}
+                      </p>
                     </div>
                     <div className="flex items-center justify-between pt-2 border-t border-white/20">
                       <p className="text-[11px] text-blue-200 font-bold">手取り目安</p>
-                      <p className="text-xl font-extrabold text-emerald-300">{fmt(takHome)}</p>
+                      <p className="text-xl font-extrabold text-emerald-300">
+                        {takeMin === takeMax ? fmt(takeMin) : fmtTakeRange(takeMin, takeMax)}
+                      </p>
                     </div>
                   </div>
 
@@ -532,34 +609,17 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
           </div>
         )}
 
-        {/* 職人向け手数料について */}
-        <div className="mt-6 bg-white rounded-2xl ring-1 ring-slate-200 p-5">
-          <p className="text-xs font-extrabold text-slate-700 mb-3">💡 職人向け手数料について</p>
-          <ul className="space-y-1.5 mb-4">
-            {[
-              'PRO MATCHでは、応募しただけでは料金は発生しません。',
-              'お客様と成約した場合のみ、成約時点の概算金額に応じて手数料が確定します。',
-              '工事後に金額が増減しても、原則として再計算は行いません。',
-              '手数料は、案件掲載・通知・マッチング運営のための費用です。',
-              '工事代金は依頼者と職人が直接やり取りし、PRO MATCHは工事代金を預かりません。',
-            ].map(text => (
-              <li key={text} className="flex items-start gap-2 text-xs text-slate-600 leading-relaxed">
-                <span className="text-blue-400 flex-shrink-0 mt-0.5">·</span>
-                {text}
-              </li>
-            ))}
-          </ul>
-          <div className="border-t border-slate-100 pt-3">
-            <p className="text-[10px] font-bold text-slate-500 mb-2">手数料の目安</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              {FEE_TABLE.map(({ label, feeLabel }) => (
-                <div key={label} className="flex items-center justify-between">
-                  <span className="text-[11px] text-slate-500">{label}</span>
-                  <span className="text-[11px] font-bold text-slate-700">{feeLabel}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* 下部フッター注記（簡略版）*/}
+        <div className="mt-6 rounded-2xl bg-slate-100 px-4 py-3 text-center">
+          <p className="text-[11px] text-slate-500 leading-relaxed">
+            応募無料 · 手数料は成約時のみ発生 ·{' '}
+            <button
+              onClick={() => setShowFeeModal(true)}
+              className="underline text-blue-500 font-bold hover:text-blue-700"
+            >
+              手数料の詳細
+            </button>
+          </p>
         </div>
       </div>
     </div>

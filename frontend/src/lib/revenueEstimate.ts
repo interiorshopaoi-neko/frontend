@@ -51,3 +51,11 @@ export function calcRevenueStr(job: Job): string {
   if (minW === 0 && maxW === 0) return `¥${Math.round(min / 1000)}〜${Math.round(max / 1000)}千`;
   return `¥${minW}〜${maxW}万`;
 }
+
+/** min/max/label を返す（サービス料・手取りのレンジ計算用） */
+export function calcRevenueRange(job: Job): { min: number; max: number; label: string } {
+  const min   = calcRevenueNum(job);
+  const max   = Math.round((min * 1.5) / 1000) * 1000;
+  const label = calcRevenueStr(job);
+  return { min, max, label };
+}
