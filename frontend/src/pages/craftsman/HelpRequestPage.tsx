@@ -476,51 +476,65 @@ export default function HelpRequestPage() {
           </div>
 
           {/* 必要人数・金額 */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">必要人数</p>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => set('people_needed', Math.max(1, form.people_needed - 1))}
-                  className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300"
-                >−</button>
-                <span className="flex-1 text-center font-extrabold text-lg text-slate-900">{form.people_needed}</span>
-                <button
-                  onClick={() => set('people_needed', form.people_needed + 1)}
-                  className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300"
-                >＋</button>
-              </div>
-              <p className="text-[10px] text-slate-400 text-center mt-1">人</p>
-            </div>
-            <div>
-              <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">
-                {form.contractType === '人工' ? '日当' : form.contractType === '手間受け' ? '請負金額' : form.contractType === '材工' ? '材工込み金額' : '金額'}
-              </p>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => set('daily_rate', Math.max(0, form.daily_rate - 500))}
-                  className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300 flex-shrink-0"
-                >−</button>
-                <div className="relative flex-1">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-slate-400">¥</span>
-                  <input
-                    type="number"
-                    value={form.daily_rate}
-                    step={500}
-                    onChange={e => set('daily_rate', Number(e.target.value))}
-                    className="w-full rounded-xl border border-slate-200 pl-6 pr-2 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
+          {(() => {
+            const ct = form.contractType;
+            const peopleLabel = ct === '手間受け' || ct === '材工' ? '作業人数の目安' : '必要人数';
+            const rateLabel   = ct === '人工' ? '日当'
+                              : ct === '手間受け' ? '手間受け金額'
+                              : ct === '材工'    ? '材工込み金額'
+                              : '金額';
+            const rateSub     = ct === '人工' ? '1人あたりの1日単価'
+                              : ct === '手間受け' ? '材料なし・施工手間のみの総額'
+                              : ct === '材工'    ? '材料代込みの総額'
+                              : '';
+            const rateUnit    = ct === '人工' ? '円 / 人日' : '円';
+            return (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">{peopleLabel}</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => set('people_needed', Math.max(1, form.people_needed - 1))}
+                      className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300"
+                    >−</button>
+                    <span className="flex-1 text-center font-extrabold text-lg text-slate-900">{form.people_needed}</span>
+                    <button
+                      onClick={() => set('people_needed', form.people_needed + 1)}
+                      className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300"
+                    >＋</button>
+                  </div>
+                  <p className="text-[10px] text-slate-400 text-center mt-1">人</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => set('daily_rate', form.daily_rate + 500)}
-                  className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300 flex-shrink-0"
-                >＋</button>
+                <div>
+                  <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">{rateLabel}</p>
+                  {rateSub && <p className="text-[10px] text-slate-400 mb-1.5 leading-snug">{rateSub}</p>}
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => set('daily_rate', Math.max(0, form.daily_rate - 500))}
+                      className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300 flex-shrink-0"
+                    >−</button>
+                    <div className="relative flex-1">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-slate-400">¥</span>
+                      <input
+                        type="number"
+                        value={form.daily_rate}
+                        step={500}
+                        onChange={e => set('daily_rate', Number(e.target.value))}
+                        className="w-full rounded-xl border border-slate-200 pl-6 pr-2 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => set('daily_rate', form.daily_rate + 500)}
+                      className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300 flex-shrink-0"
+                    >＋</button>
+                  </div>
+                  <p className="text-[10px] text-slate-400 text-center mt-1">{rateUnit}</p>
+                </div>
               </div>
-              <p className="text-[10px] text-slate-400 text-center mt-1">円</p>
-            </div>
-          </div>
+            );
+          })()}
 
           <div className="border-t border-slate-100" />
 

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { calculateServiceFee } from '../../lib/serviceFee';
 import { FEE_TABLE } from '../../constants/fees';
 import type { Job } from './CraftsmanJobsPage';
-import { calcRevenueNum } from '../../lib/revenueEstimate';
+import { calcRevenueNum, calcRevenueStr } from '../../lib/revenueEstimate';
 import { getRoomMedia, getRoomAdditionalInfo, hasCeilingWork } from '../../lib/requestMeta';
 import { getRoomWorkSummaries } from '../../utils/requestSummary';
 import SiteRadar from '../../components/SiteRadar';
@@ -57,8 +57,10 @@ function getFreshnessBadge(job: Job): FreshnessBadge | null {
 }
 
 // ─── Revenue estimator ─── 共通ユーティリティに統一 ──────────────────────────
-
-const estimateRevenue = calcRevenueNum;
+// calcRevenueNum: 手数料計算など数値が必要な処理に使用
+// calcRevenueStr: 表示用レンジ文字列（JobsSwipeView と統一）
+const estimateRevenue    = calcRevenueNum; // fee/手取り計算用
+const estimateRevenueStr = calcRevenueStr; // 表示用
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -207,9 +209,10 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
         ) : (
           <div className="space-y-4">
             {sortedJobs.map(job => {
-              const revenue = estimateRevenue(job);
-              const fee     = calculateServiceFee(revenue);
-              const takHome = revenue - fee;
+              const revenue    = estimateRevenue(job);    // 数値: fee/手取り計算用
+              const revenueStr = estimateRevenueStr(job); // 文字列: 表示用レンジ
+              const fee        = calculateServiceFee(revenue);
+              const takHome    = revenue - fee;
 
               const isToday    = job.urgency === 'today';
               const isTomorrow = job.urgency === 'tomorrow';
@@ -418,7 +421,7 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                   <div className="mx-4 mb-3 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white px-4 py-3.5 shadow-sm shadow-blue-200">
                     <div className="flex items-center justify-between mb-1.5">
                       <p className="text-[11px] text-blue-200 font-bold">想定売上</p>
-                      <p className="text-2xl font-extrabold tracking-tight">{fmt(revenue)}</p>
+                      <p className="text-2xl font-extrabold tracking-tight">{revenueStr}</p>
                     </div>
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-[11px] text-blue-300">サービス料</p>
