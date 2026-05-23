@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 // ── カテゴリー ────────────────────────────────────────────────────────────────
@@ -6,13 +6,48 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 // to keep PRO MATCH visually clean and approachable
 
 const CATEGORIES = [
-  { value: '不具合',           label: '不具合',           emoji: '🔧', desc: '画面が動かない・エラーが出る' },
+  { value: '不具合',           label: '不具合',           emoji: '⚠️', desc: '画面が動かない・エラーが出る' },
   { value: '改善してほしい',   label: '改善してほしい',   emoji: '💡', desc: 'こうなったらもっと使いやすい' },
   { value: '使い方が分からない', label: '使い方が分からない', emoji: '❓', desc: '操作方法・機能が分からない' },
   { value: 'その他',           label: 'その他',           emoji: '💬', desc: 'ご意見・ご要望など' },
 ] as const;
 
 type Category = typeof CATEGORIES[number]['value'];
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function getUserInfo(): { role: string; id: string } {
+  try {
+    const u = JSON.parse(localStorage.getItem('user') ?? '{}');
+    return { role: u?.role ?? '', id: u?.id ?? '' };
+  } catch { return { role: '', id: '' }; }
+}
+
+function collectMeta() {
+  return {
+    pathname:    window.location.pathname,
+    userAgent:   navigator.userAgent,
+    viewport:    { width: window.innerWidth, height: window.innerHeight },
+    submittedAt: new Date().toISOString(),
+  };
+}
+
+// base64変換（FileReader wrapper）
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // "data:image/jpeg;base64,XXXX" → "XXXX"
+      resolve(result.split(',')[1] ?? '');
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -24,11 +59,19 @@ export default function FeedbackPage() {
   const [message,      setMessage]      = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [pageUrl,      setPageUrl]      = useState('');
-  const [sending,      setSending]      = useState(false);
-  const [sent,         setSent]         = useState(false);
-  const [error,        setError]        = useState('');
 
-  // ページURL を自動取得（from クエリ優先 → referrer フォールバック）
+  // スクショ添付
+  const [imageFile,     setImageFile]     = useState<File | null>(null);
+  const [imagePreview,  setImagePreview]  = useState<string>('');
+  const [imageError,    setImageError]    = useState('');
+  const [uploading,     setUploading]     = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [sending, setSending] = useState(false);
+  const [sent,    setSent]    = useState(false);
+  const [error,   setError]   = useState('');
+
+  // ページURL自動取得
   useEffect(() => {
     const from = searchParams.get('from');
     if (from) {
@@ -41,24 +84,33 @@ export default function FeedbackPage() {
     }
   }, [searchParams]);
 
-  // 利用者種別（localStorage から取得）
-  function getUserRole(): string {
-    try {
-      const stored = localStorage.getItem('user');
-      if (!stored) return '';
-      const u = JSON.parse(stored);
-      return u?.role ?? '';
-    } catch { return ''; }
-  }
-  function getUserId(): string {
-    try {
-      const stored = localStorage.getItem('user');
-      if (!stored) return '';
-      const u = JSON.parse(stored);
-      return u?.id ?? '';
-    } catch { return ''; }
-  }
+  // ── 画像選択ハンドラ ──────────────────────────────────────────────
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setImageError('');
+    const file = e.target.files?.[0];
+    if (!file) return;
 
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setImageError('jpg / png / webp のみ添付できます');
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setImageError('5MB 以下の画像を選んでください');
+      return;
+    }
+
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview('');
+    setImageError('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // ── 送信 ─────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!category) { setError('種類を選んでください'); return; }
@@ -67,6 +119,33 @@ export default function FeedbackPage() {
     setSending(true);
 
     try {
+      // 1. スクショがあればアップロード
+      let screenshotUrl: string | undefined;
+      if (imageFile) {
+        setUploading(true);
+        try {
+          const base64   = await fileToBase64(imageFile);
+          const uploadRes = await fetch('/api/upload-feedback-image', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ base64, mimeType: imageFile.type }),
+          });
+          const uploadData = await uploadRes.json().catch(() => ({}));
+          if (uploadRes.ok && uploadData.publicUrl) {
+            screenshotUrl = uploadData.publicUrl;
+          } else {
+            // アップロード失敗はスクショなしで続行
+            console.warn('[feedback] screenshot upload failed, continuing without it', uploadData);
+          }
+        } catch (uploadErr) {
+          console.warn('[feedback] screenshot upload error, continuing without it', uploadErr);
+        } finally {
+          setUploading(false);
+        }
+      }
+
+      // 2. フィードバック本体を送信
+      const { role: userRole, id: userId } = getUserInfo();
       const res = await fetch('/api/feedback', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -75,38 +154,42 @@ export default function FeedbackPage() {
           message:      message.trim(),
           contactEmail: contactEmail.trim() || undefined,
           pageUrl:      pageUrl.trim()      || undefined,
-          userRole:     getUserRole()        || undefined,
-          userId:       getUserId()          || undefined,
+          userRole:     userRole            || undefined,
+          userId:       userId              || undefined,
+          screenshotUrl,
+          meta: collectMeta(),
         }),
       });
+
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? '送信に失敗しました。時間をおいて再試行してください。');
+        console.error('[feedback] submit error:', data);
+        setError('送信できませんでした。通信状態をご確認の上、もう一度お試しください。');
         return;
       }
       setSent(true);
-    } catch {
-      setError('ネットワークエラーが発生しました。時間をおいて再試行してください。');
+    } catch (err) {
+      console.error('[feedback] network error:', err);
+      setError('送信できませんでした。通信状態をご確認の上、もう一度お試しください。');
     } finally {
       setSending(false);
     }
   };
 
-  // ── 送信完了画面 ──────────────────────────────────────────────────────────
+  // ── 送信完了画面 ──────────────────────────────────────────────────
   if (sent) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-4 py-12">
         <div className="w-full max-w-sm text-center">
           <div className="inline-flex w-16 h-16 rounded-full bg-emerald-100 items-center justify-center mb-5 text-3xl">
-            ✅
+            ✓
           </div>
-          <h1 className="text-xl font-extrabold text-slate-900 mb-2">送信しました</h1>
-          <p className="text-sm text-slate-600 leading-relaxed mb-2">
-            改善に役立てます。ありがとうございます。
+          <h1 className="text-xl font-extrabold text-slate-900 mb-2">ご報告ありがとうございます</h1>
+          <p className="text-sm text-slate-600 leading-relaxed mb-1">
+            いただいた内容は運営に送信されました。
           </p>
-          <p className="text-xs text-slate-400 leading-relaxed mb-8">
-            いただいた内容は運営が確認します。<br />
-            返信が必要な場合のみ、入力いただいたメールアドレスへご連絡します。
+          <p className="text-sm text-slate-600 leading-relaxed mb-8">
+            改善に活用させていただきます。
           </p>
           <div className="flex flex-col gap-3">
             <button
@@ -116,8 +199,22 @@ export default function FeedbackPage() {
               ← 前のページへ戻る
             </button>
             <button
+              onClick={() => {
+                setCategory('');
+                setMessage('');
+                setContactEmail('');
+                setImageFile(null);
+                setImagePreview('');
+                setImageError('');
+                setSent(false);
+              }}
+              className="w-full py-3 rounded-2xl bg-slate-100 text-slate-700 text-sm font-bold hover:bg-slate-200 transition active:scale-95"
+            >
+              続けて送る
+            </button>
+            <button
               onClick={() => navigate('/')}
-              className="w-full py-3 rounded-2xl bg-slate-100 text-slate-600 text-sm font-bold hover:bg-slate-200 transition active:scale-95"
+              className="w-full py-3 rounded-2xl text-slate-400 text-sm font-semibold hover:text-slate-600 hover:bg-slate-100 transition active:scale-95"
             >
               トップページへ
             </button>
@@ -127,7 +224,7 @@ export default function FeedbackPage() {
     );
   }
 
-  // ── フォーム画面 ──────────────────────────────────────────────────────────
+  // ── フォーム画面 ──────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50">
       {/* ヘッダー */}
@@ -148,13 +245,14 @@ export default function FeedbackPage() {
         {/* 説明 */}
         <div className="rounded-2xl bg-blue-50 border border-blue-100 px-4 py-4 space-y-1.5">
           <p className="text-sm font-semibold text-blue-900 leading-relaxed">
-            気になったことを1行だけでも大丈夫です。
+            1行だけでも大丈夫です。
           </p>
           <p className="text-sm text-blue-700 leading-relaxed">
-            「ここ分かりにくかった」だけでも改善の助けになります。
+            「ここが分かりにくかった」だけでも改善の助けになります。
           </p>
           <p className="text-[11px] text-blue-500 leading-relaxed pt-0.5">
-            いただいた内容は運営が確認し、サービス改善に役立てています。
+            いただいた内容は運営が確認し、サービス改善に役立てています。<br />
+            返信が必要な場合のみ、入力いただいたメールアドレスへご連絡します。
           </p>
         </div>
 
@@ -197,10 +295,56 @@ export default function FeedbackPage() {
               onChange={e => setMessage(e.target.value)}
               rows={5}
               maxLength={2000}
-              placeholder="どの画面で、何が起きたかを教えてください。「〇〇ボタンを押したら動かなかった」など、できるだけ具体的に書いていただけると助かります。"
+              placeholder="どの画面で、何が気になりましたか？「〇〇ボタンを押したら動かなかった」など、1行だけでも大丈夫です。"
               className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none leading-relaxed"
             />
             <p className="text-right text-[10px] text-slate-300 mt-1">{message.length}/2000</p>
+          </div>
+
+          {/* スクショ添付（任意） */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-1.5">
+              スクリーンショット
+              <span className="ml-2 text-[11px] font-normal text-slate-400">任意・1枚・5MB以下</span>
+            </label>
+
+            {imagePreview ? (
+              <div className="relative">
+                <img
+                  src={imagePreview}
+                  alt="添付プレビュー"
+                  className="w-full max-h-48 object-cover rounded-xl border border-slate-200"
+                />
+                <button
+                  type="button"
+                  onClick={removeImage}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-slate-900/60 text-white flex items-center justify-center text-xs hover:bg-slate-900 transition"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full rounded-xl border-2 border-dashed border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50 px-4 py-5 text-center transition"
+              >
+                <p className="text-2xl mb-1">📎</p>
+                <p className="text-xs font-bold text-slate-500">タップして画像を選ぶ</p>
+                <p className="text-[10px] text-slate-300 mt-0.5">jpg / png / webp</p>
+              </button>
+            )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              className="hidden"
+              onChange={handleImageSelect}
+            />
+            {imageError && (
+              <p className="text-xs text-red-500 mt-1">{imageError}</p>
+            )}
           </div>
 
           {/* 連絡先（任意） */}
@@ -244,7 +388,7 @@ export default function FeedbackPage() {
                 : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm shadow-blue-200'
             }`}
           >
-            {sending ? '送信中...' : '送信する'}
+            {uploading ? '画像をアップロード中...' : sending ? '送信中...' : '送信する'}
           </button>
 
           <p className="text-center text-[11px] text-slate-400 leading-relaxed">

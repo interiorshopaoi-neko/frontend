@@ -7,23 +7,32 @@ import { AdminNav, AdminLogin, AdminUnauthorized, isAdminRole } from './shared';
 
 type FeedbackStatus = 'new' | 'reviewing' | 'done';
 
+type Meta = {
+  pathname?:    string;
+  userAgent?:   string;
+  viewport?:    { width?: number; height?: number };
+  submittedAt?: string;
+};
+
 type FeedbackReport = {
-  id:            string;
-  created_at:    string;
-  category:      string;
-  message:       string;
-  contact_email: string | null;
-  page_url:      string | null;
-  user_role:     string | null;
-  user_id:       string | null;
-  status:        FeedbackStatus;
-  admin_note:    string | null;
+  id:             string;
+  created_at:     string;
+  category:       string;
+  message:        string;
+  contact_email:  string | null;
+  page_url:       string | null;
+  user_role:      string | null;
+  user_id:        string | null;
+  status:         FeedbackStatus;
+  admin_note:     string | null;
+  screenshot_url: string | null;
+  meta:           Meta;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const STATUS_LABELS: Record<FeedbackStatus, { label: string; cls: string }> = {
-  new:       { label: '未対応',   cls: 'bg-red-100 text-red-700 border-red-200' },
+  new:       { label: '未対応',   cls: 'bg-rose-100 text-rose-700 border-rose-200' },
   reviewing: { label: '確認中',   cls: 'bg-amber-100 text-amber-700 border-amber-200' },
   done:      { label: '対応済み', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
 };
@@ -44,7 +53,62 @@ function formatDate(s: string): string {
   });
 }
 
-// ── Row component ──────────────────────────────────────────────────────────────
+// ── 通知トグル ────────────────────────────────────────────────────────────────
+
+function NotificationToggle() {
+  const [enabled,  setEnabled]  = useState<boolean | null>(null);
+  const [loading,  setLoading]  = useState(true);
+  const [saving,   setSaving]   = useState(false);
+
+  useEffect(() => {
+    fetch('/api/admin-feedback?settings=1')
+      .then(r => r.ok ? r.json() : Promise.reject(r))
+      .then(d => { setEnabled(d.feedbackEmailEnabled ?? true); })
+      .catch(() => setEnabled(true))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const toggle = async () => {
+    if (enabled === null) return;
+    setSaving(true);
+    const next = !enabled;
+    try {
+      await fetch('/api/admin-feedback?settings=1', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ feedbackEmailEnabled: next }),
+      });
+      setEnabled(next);
+    } catch { /* ignore */ }
+    finally { setSaving(false); }
+  };
+
+  if (loading) return null;
+
+  return (
+    <div className="flex items-center justify-between bg-white rounded-2xl border border-slate-200 px-4 py-3 mb-5">
+      <div>
+        <p className="text-xs font-bold text-slate-700">改善報告メール通知</p>
+        <p className="text-[10px] text-slate-400 mt-0.5">
+          {enabled ? 'ONのとき、報告が届くたびに運営者へメールを送信します' : 'OFF のとき、DB保存のみ（メール通知なし）'}
+        </p>
+      </div>
+      <button
+        onClick={toggle}
+        disabled={saving}
+        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ml-4 ${
+          enabled ? 'bg-blue-600' : 'bg-slate-300'
+        } ${saving ? 'opacity-50' : ''}`}
+      >
+        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+          enabled ? 'translate-x-5' : 'translate-x-0'
+        }`} />
+      </button>
+    </div>
+  );
+}
+
+// ── Row component ─────────────────────────────────────────────────────────────
 
 function FeedbackRow({
   report,
@@ -68,6 +132,8 @@ function FeedbackRow({
     setSavingNote(false);
   };
 
+  const meta: Meta = report.meta ?? {};
+
   return (
     <div className={`rounded-2xl border bg-white shadow-sm overflow-hidden transition ${
       report.status === 'done' ? 'opacity-60' : ''
@@ -88,6 +154,11 @@ function FeedbackRow({
             {report.user_role && (
               <span className="text-[10px] text-slate-400">{report.user_role}</span>
             )}
+            {report.screenshot_url && (
+              <span className="text-[10px] bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full border border-blue-100">
+                📎 スクショ
+              </span>
+            )}
             <span className="text-[10px] text-slate-300 ml-auto shrink-0">
               {formatDate(report.created_at)}
             </span>
@@ -95,6 +166,9 @@ function FeedbackRow({
           <p className="text-sm text-slate-800 leading-snug line-clamp-2 pr-2">
             {report.message}
           </p>
+          {report.page_url && (
+            <p className="text-[10px] text-slate-400 mt-0.5 truncate">{report.page_url}</p>
+          )}
         </div>
         <span className="text-slate-300 text-sm flex-shrink-0 mt-1">
           {open ? '▲' : '▼'}
@@ -112,6 +186,20 @@ function FeedbackRow({
               {report.message}
             </p>
           </div>
+
+          {/* スクショ */}
+          {report.screenshot_url && (
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wide">スクリーンショット</p>
+              <a href={report.screenshot_url} target="_blank" rel="noopener noreferrer">
+                <img
+                  src={report.screenshot_url}
+                  alt="スクリーンショット"
+                  className="w-full max-h-64 object-contain rounded-xl border border-slate-200 bg-white hover:opacity-90 transition"
+                />
+              </a>
+            </div>
+          )}
 
           {/* メタ情報 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
@@ -135,6 +223,30 @@ function FeedbackRow({
               <span className="font-bold text-slate-400">ユーザーID: </span>
               <span className="text-slate-700 font-mono text-[10px]">{report.user_id ?? '（なし）'}</span>
             </div>
+            {meta.pathname && (
+              <div>
+                <span className="font-bold text-slate-400">パス: </span>
+                <span className="text-slate-700 break-all">{meta.pathname}</span>
+              </div>
+            )}
+            {meta.viewport && (
+              <div>
+                <span className="font-bold text-slate-400">Viewport: </span>
+                <span className="text-slate-700">{meta.viewport.width}×{meta.viewport.height}</span>
+              </div>
+            )}
+            {meta.userAgent && (
+              <div className="sm:col-span-2">
+                <span className="font-bold text-slate-400">UA: </span>
+                <span className="text-slate-500 break-all text-[10px]">{meta.userAgent}</span>
+              </div>
+            )}
+            {meta.submittedAt && (
+              <div>
+                <span className="font-bold text-slate-400">送信日時: </span>
+                <span className="text-slate-700">{formatDate(meta.submittedAt)}</span>
+              </div>
+            )}
           </div>
 
           {/* ステータス変更 */}
@@ -268,6 +380,9 @@ export default function AdminFeedbackPage() {
             更新
           </button>
         </div>
+
+        {/* 通知ON/OFF */}
+        <NotificationToggle />
 
         {/* フィルター */}
         <div className="flex gap-2 mb-5 overflow-x-auto pb-1">

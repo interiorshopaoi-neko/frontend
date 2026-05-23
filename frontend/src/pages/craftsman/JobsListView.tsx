@@ -397,20 +397,23 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
 
                   {/* ── 売上ブロック（メイン） ── */}
                   <div className="mx-4 mb-3 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white px-4 py-4 shadow-sm shadow-blue-200">
-                    {/* 想定売上（主役・一番大きく） */}
+                    {/* 手取り目安（主役・一番大きく） */}
                     <div className="mb-3">
-                      <p className="text-[10px] text-blue-300 font-bold uppercase tracking-wide mb-0.5">想定売上</p>
-                      <p className="text-3xl font-extrabold tracking-tight leading-none">{revenueLabel}</p>
-                    </div>
-                    {/* サービス料（小さめ） */}
-                    <div className="flex items-center gap-2 mb-3 pb-3 border-b border-white/15">
-                      <p className="text-[10px] text-blue-300">サービス料</p>
-                      <p className="text-[11px] text-blue-200 font-semibold">{feeLabel}</p>
-                    </div>
-                    {/* 手取り目安（緑・大きめ） */}
-                    <div>
                       <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-wide mb-0.5">手取り目安</p>
-                      <p className="text-2xl font-extrabold text-emerald-300 leading-none">{netLabel}</p>
+                      <p className="text-3xl font-extrabold text-emerald-300 tracking-tight leading-none">{netLabel}</p>
+                    </div>
+                    {/* 区切り */}
+                    <div className="border-b border-white/15 mb-3" />
+                    {/* 想定売上 + 成約時手数料（補足・小さめ） */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] text-blue-300 mb-0.5">想定売上</p>
+                        <p className="text-sm font-bold leading-none">{revenueLabel}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-blue-300 mb-0.5">成約時手数料</p>
+                        <p className="text-sm font-bold leading-none text-blue-200">{feeLabel}</p>
+                      </div>
                     </div>
                   </div>
 

@@ -38,6 +38,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
+  // ── GET /api/admin-feedback?settings=1 → admin_settings 取得 ──
+  if (req.method === 'GET' && req.query.settings === '1') {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/admin_settings?key=eq.feedback_email_notification&select=key,value`,
+      { headers: sbHeaders() },
+    );
+    if (!r.ok) {
+      const text = await r.text().catch(() => '');
+      return res.status(502).json({ error: 'Supabase fetch failed', detail: text });
+    }
+    const rows = await r.json() as Array<{ key: string; value: { enabled?: boolean } }>;
+    const enabled = rows.length > 0 ? rows[0].value?.enabled !== false : true;
+    return res.status(200).json({ feedbackEmailEnabled: enabled });
+  }
+
+  // ── PATCH /api/admin-feedback?settings=1 → admin_settings 更新 ─
+  if (req.method === 'PATCH' && req.query.settings === '1') {
+    const { feedbackEmailEnabled } = (req.body ?? {}) as { feedbackEmailEnabled?: boolean };
+    if (typeof feedbackEmailEnabled !== 'boolean') {
+      return res.status(400).json({ error: 'feedbackEmailEnabled (boolean) は必須です' });
+    }
+    const upsertUrl = `${SUPABASE_URL}/rest/v1/admin_settings?key=eq.feedback_email_notification`;
+    const r = await fetch(upsertUrl, {
+      method:  'PATCH',
+      headers: sbHeaders({ 'Prefer': 'return=minimal' }),
+      body:    JSON.stringify({ value: { enabled: feedbackEmailEnabled }, updated_at: new Date().toISOString() }),
+    });
+    if (!r.ok) {
+      const text = await r.text().catch(() => '');
+      return res.status(502).json({ error: 'Supabase update failed', detail: text });
+    }
+    return res.status(200).json({ ok: true, feedbackEmailEnabled });
+  }
+
   if (!SUPABASE_URL || !SUPABASE_SVC_KEY) {
     return res.status(500).json({ error: 'Server misconfiguration' });
   }
