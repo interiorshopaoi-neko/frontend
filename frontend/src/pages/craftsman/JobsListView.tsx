@@ -1,9 +1,7 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { calculateServiceFee } from '../../lib/serviceFee';
-import { FEE_TABLE } from '../../constants/fees';
 import type { Job } from './CraftsmanJobsPage';
-import { calcRevenueRange } from '../../lib/revenueEstimate';
+import { getRevenueDisplay } from '../../lib/revenueEstimate';
 import { getRoomMedia, getRoomAdditionalInfo, hasCeilingWork } from '../../lib/requestMeta';
 import { getRoomWorkSummaries } from '../../utils/requestSummary';
 import SiteRadar from '../../components/SiteRadar';
@@ -71,10 +69,6 @@ function getPriority(job: Job) {
   return Math.min(5, score);
 }
 
-function fmt(n: number) {
-  return `¥${n.toLocaleString()}`;
-}
-
 // ─── Filter helpers ───────────────────────────────────────────────────────────
 
 function isUrgent(job: Job): boolean {
@@ -110,19 +104,9 @@ type Props = { jobs: Job[]; loading: boolean; isLoggedIn?: boolean };
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-// 手取りレンジを「¥7.8〜11.7万」形式で返す
-// min は切り捨て（Math.floor）、max は四捨五入（Math.round）
-function fmtTakeRange(min: number, max: number): string {
-  const minW = Math.floor(min / 1000) / 10;   // 切り捨て：78500→7.8
-  const maxW = Math.round(max / 1000) / 10;   // 四捨五入：107500→10.8
-  return `¥${minW}〜${maxW}万`;
-}
-
 export default function JobsListView({ jobs, loading, isLoggedIn = false }: Props) {
-  const navigate   = useNavigate();
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<JobFilter>('all');
-  const [showFeeModal, setShowFeeModal] = useState(false);
-  const closeFeeModal = useCallback(() => setShowFeeModal(false), []);
 
   // フィルター別の件数（チップに表示）
   const filterCounts = useMemo((): Partial<Record<JobFilter, number>> => {
@@ -167,79 +151,6 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
     <div className="h-full overflow-y-auto bg-slate-50 px-4 py-4">
       <div className="mx-auto max-w-3xl">
 
-        {/* 収益モデル説明 + 手数料ボタン */}
-        <div className="mb-3 rounded-xl bg-slate-100 px-4 py-2.5 flex items-center justify-between gap-3">
-          <div className="text-[11px] text-slate-500 leading-relaxed space-y-0.5">
-            <p>・工事代金は依頼者と直接やり取りします</p>
-            <p>・PRO MATCHは工事代金をお預かりしません</p>
-            <p>・成約後に連絡先が開示されます</p>
-          </div>
-          <button
-            onClick={() => setShowFeeModal(true)}
-            className="flex-shrink-0 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition whitespace-nowrap shadow-sm"
-          >
-            手数料について
-          </button>
-        </div>
-
-        {/* 手数料モーダル */}
-        {showFeeModal && (
-          <div
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4"
-            onClick={closeFeeModal}
-          >
-            <div
-              className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[85vh]"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100 flex-shrink-0">
-                <h2 className="text-base font-extrabold text-slate-800">💡 職人向け手数料について</h2>
-                <button onClick={closeFeeModal} className="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
-              </div>
-              <div className="overflow-y-auto px-5 py-4 space-y-4 flex-1">
-                <ul className="space-y-2">
-                  {[
-                    '応募しただけでは料金は発生しません。',
-                    'お客様と成約した場合のみ、成約時点の概算金額に応じて手数料が確定します。',
-                    '工事後に金額が増減しても、原則として再計算は行いません。',
-                    '工事代金は依頼者と職人が直接やり取りし、PRO MATCHは工事代金を預かりません。',
-                  ].map(text => (
-                    <li key={text} className="flex items-start gap-2 text-sm text-slate-600 leading-relaxed">
-                      <span className="text-blue-400 flex-shrink-0 mt-0.5">·</span>
-                      {text}
-                    </li>
-                  ))}
-                </ul>
-                <div className="border-t border-slate-100 pt-3">
-                  <p className="text-xs font-extrabold text-slate-700 mb-2">手数料の目安</p>
-                  <div className="rounded-xl overflow-hidden border border-slate-200">
-                    {FEE_TABLE.map(({ label, feeLabel }, i) => (
-                      <div
-                        key={label}
-                        className={`flex items-center justify-between px-4 py-2.5 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}
-                      >
-                        <span className="text-sm text-slate-600">{label}</span>
-                        <span className="text-sm font-extrabold text-slate-800">{feeLabel}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="px-5 py-4 border-t border-slate-100 flex-shrink-0">
-                <p className="text-[11px] text-slate-400 text-center leading-relaxed">
-                  ※ 応募は無料です。手数料は成約時のみ発生します。
-                </p>
-                <button
-                  onClick={closeFeeModal}
-                  className="mt-3 w-full py-3 rounded-2xl bg-slate-100 text-sm font-bold text-slate-600 hover:bg-slate-200 transition active:scale-95"
-                >
-                  閉じる
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* フィルター（横スクロール） */}
         <div className="mb-4 -mx-4 px-4 overflow-x-auto">
           <div className="flex gap-2 pb-1" style={{ minWidth: 'max-content' }}>
@@ -282,16 +193,7 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
         ) : (
           <div className="space-y-4">
             {sortedJobs.map(job => {
-              const range    = calcRevenueRange(job);
-              // ラベル表示（¥8〜11万）と手取り計算を一致させるため、
-              // label が丸めた万円単位の値を基準に fee / take を計算する。
-              // 例: range.min=76,000 → label "8万" → labelMin=80,000 → fee=1,500 → take=78,500→7.8万
-              const labelMin = Math.round(range.min / 10000) * 10000;
-              const labelMax = Math.round(range.max / 10000) * 10000;
-              const feeMin   = calculateServiceFee(labelMin);
-              const feeMax   = calculateServiceFee(labelMax);
-              const takeMin  = labelMin - feeMin;
-              const takeMax  = labelMax - feeMax;
+              const { revenueLabel, feeLabel, netLabel } = getRevenueDisplay(job);
 
               const isToday    = job.urgency === 'today';
               const isTomorrow = job.urgency === 'tomorrow';
@@ -501,21 +403,17 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                     {/* 想定売上（主役・一番大きく） */}
                     <div className="mb-3">
                       <p className="text-[10px] text-blue-300 font-bold uppercase tracking-wide mb-0.5">想定売上</p>
-                      <p className="text-3xl font-extrabold tracking-tight leading-none">{range.label}</p>
+                      <p className="text-3xl font-extrabold tracking-tight leading-none">{revenueLabel}</p>
                     </div>
                     {/* サービス料（小さめ） */}
                     <div className="flex items-center gap-2 mb-3 pb-3 border-b border-white/15">
                       <p className="text-[10px] text-blue-300">サービス料</p>
-                      <p className="text-[11px] text-blue-200 font-semibold">
-                        − {feeMin === feeMax ? fmt(feeMin) : `${fmt(feeMin)}〜${fmt(feeMax)}`}
-                      </p>
+                      <p className="text-[11px] text-blue-200 font-semibold">{feeLabel}</p>
                     </div>
                     {/* 手取り目安（緑・大きめ） */}
                     <div>
                       <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-wide mb-0.5">手取り目安</p>
-                      <p className="text-2xl font-extrabold text-emerald-300 leading-none">
-                        {takeMin === takeMax ? fmt(takeMin) : fmtTakeRange(takeMin, takeMax)}
-                      </p>
+                      <p className="text-2xl font-extrabold text-emerald-300 leading-none">{netLabel}</p>
                     </div>
                   </div>
 
@@ -618,17 +516,8 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
           </div>
         )}
 
-        {/* 下部フッター注記（簡略版）*/}
-        <div className="mt-6 rounded-2xl bg-slate-100 px-4 py-3 text-center">
-          <p className="text-[11px] text-slate-500 leading-relaxed">
-            応募無料 · 手数料は成約時のみ発生 ·{' '}
-            <button
-              onClick={() => setShowFeeModal(true)}
-              className="underline text-blue-500 font-bold hover:text-blue-700"
-            >
-              手数料の詳細
-            </button>
-          </p>
+        <div className="mt-4 pb-2 text-center">
+          <p className="text-[11px] text-slate-400">応募無料 · 手数料は成約時のみ発生</p>
         </div>
       </div>
     </div>

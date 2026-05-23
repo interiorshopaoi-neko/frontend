@@ -5,6 +5,7 @@
 // 文字列表示は calcRevenueStr() でラップする。
 
 import type { Job } from '../pages/craftsman/CraftsmanJobsPage';
+import { calculateServiceFee } from './serviceFee';
 
 // 工事種別→ベース単価
 function roomBase(workType: string): number {
@@ -58,4 +59,38 @@ export function calcRevenueRange(job: Job): { min: number; max: number; label: s
   const max   = Math.round((min * 1.5) / 1000) * 1000;
   const label = calcRevenueStr(job);
   return { min, max, label };
+}
+
+/**
+ * 売上カード用の表示値を一括で返す。
+ * ラベル（¥8〜11万）と計算値を完全一致させるため、
+ * 万円単位に丸めた値を基準に fee / net を計算する。
+ *
+ * 例: calcRevenueNum→76,000
+ *   → rMin=80,000, rMax=110,000
+ *   → fMin=1,500, fMax=3,000
+ *   → netMin=78,500→7.8万, netMax=107,000→10.7万
+ */
+export function getRevenueDisplay(job: Job): {
+  revenueLabel: string;
+  feeLabel: string;
+  netLabel: string;
+} {
+  const { min, max, label: revenueLabel } = calcRevenueRange(job);
+  const rMin = Math.round(min / 10000) * 10000;
+  const rMax = Math.round(max / 10000) * 10000;
+  const fMin = calculateServiceFee(rMin);
+  const fMax = calculateServiceFee(rMax);
+  const nMin = rMin - fMin;
+  const nMax = rMax - fMax;
+
+  const feeLabel = fMin === fMax
+    ? `−¥${fMin.toLocaleString()}`
+    : `−¥${fMin.toLocaleString()}〜¥${fMax.toLocaleString()}`;
+
+  const nMinW  = Math.floor(nMin / 1000) / 10;   // 切り捨て: 78500→7.8
+  const nMaxW  = Math.round(nMax / 1000) / 10;   // 四捨五入: 107000→10.7
+  const netLabel = nMin === nMax ? `¥${nMinW}万` : `¥${nMinW}〜${nMaxW}万`;
+
+  return { revenueLabel, feeLabel, netLabel };
 }
