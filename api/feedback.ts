@@ -84,23 +84,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userIdStr   = typeof userId   === 'string' ? userId.trim()   : '';
 
   // ── DB 保存 ────────────────────────────────────────────────────
+  const insertBody = {
+    category:      categoryStr,
+    message:       messageStr,
+    contact_email: contactEmailStr || null,
+    page_url:      pageUrlStr      || null,
+    user_role:     userRoleStr     || null,
+    user_id:       userIdStr       || null,
+    status:        'new',          // DEFAULT に頼らず明示指定
+  };
   const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/feedback_reports`, {
     method:  'POST',
     headers: sbHeaders(),
-    body: JSON.stringify({
-      category:      categoryStr,
-      message:       messageStr,
-      contact_email: contactEmailStr || null,
-      page_url:      pageUrlStr      || null,
-      user_role:     userRoleStr     || null,
-      user_id:       userIdStr       || null,
-    }),
+    body: JSON.stringify(insertBody),
   });
 
   if (!insertRes.ok) {
-    const errText = await insertRes.text().catch(() => '');
-    console.error('[feedback] DB insert error:', insertRes.status, errText);
-    return res.status(500).json({ error: 'DB 保存に失敗しました' });
+    const errText = await insertRes.text().catch(() => '(empty)');
+    // 実際の Supabase エラーを Vercel Logs に出力して診断しやすくする
+    console.error(
+      '[feedback] DB insert failed',
+      '\n  status:', insertRes.status,
+      '\n  body:'  , insertBody,
+      '\n  supabase error:', errText,
+    );
+    // テーブル未作成の場合は 404 / "relation does not exist" が errText に入る
+    const isTableMissing = errText.includes('does not exist') || insertRes.status === 404;
+    const userMsg = isTableMissing
+      ? '一時的にご利用できません。しばらく経ってから再度お試しください。'
+      : 'お気持ちは届いていますが、保存に失敗しました。時間をおいて再試行してください。';
+    return res.status(500).json({ error: userMsg });
   }
 
   // ── 運営者へメール通知（失敗してもDB保存は成功扱い）────────────
