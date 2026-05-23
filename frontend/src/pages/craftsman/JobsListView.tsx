@@ -110,10 +110,11 @@ type Props = { jobs: Job[]; loading: boolean; isLoggedIn?: boolean };
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-// 手取りレンジを「¥7.9〜11.7万」形式で返す
+// 手取りレンジを「¥7.8〜11.7万」形式で返す
+// min は切り捨て（Math.floor）、max は四捨五入（Math.round）
 function fmtTakeRange(min: number, max: number): string {
-  const minW = Math.round(min / 1000) / 10;   // 千円→万円1桁
-  const maxW = Math.round(max / 1000) / 10;
+  const minW = Math.floor(min / 1000) / 10;   // 切り捨て：78500→7.8
+  const maxW = Math.round(max / 1000) / 10;   // 四捨五入：107500→10.8
   return `¥${minW}〜${maxW}万`;
 }
 
@@ -177,7 +178,7 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
             onClick={() => setShowFeeModal(true)}
             className="flex-shrink-0 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition whitespace-nowrap shadow-sm"
           >
-            手数料?
+            手数料について
           </button>
         </div>
 
@@ -491,20 +492,23 @@ export default function JobsListView({ jobs, loading, isLoggedIn = false }: Prop
                   })()}
 
                   {/* ── 売上ブロック（メイン） ── */}
-                  <div className="mx-4 mb-3 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white px-4 py-3.5 shadow-sm shadow-blue-200">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <p className="text-[11px] text-blue-200 font-bold">想定売上</p>
-                      <p className="text-2xl font-extrabold tracking-tight">{range.label}</p>
+                  <div className="mx-4 mb-3 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white px-4 py-4 shadow-sm shadow-blue-200">
+                    {/* 想定売上（主役・一番大きく） */}
+                    <div className="mb-3">
+                      <p className="text-[10px] text-blue-300 font-bold uppercase tracking-wide mb-0.5">想定売上</p>
+                      <p className="text-3xl font-extrabold tracking-tight leading-none">{range.label}</p>
                     </div>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-[11px] text-blue-300">サービス料</p>
-                      <p className="text-sm text-blue-200">
+                    {/* サービス料（小さめ） */}
+                    <div className="flex items-center gap-2 mb-3 pb-3 border-b border-white/15">
+                      <p className="text-[10px] text-blue-300">サービス料</p>
+                      <p className="text-[11px] text-blue-200 font-semibold">
                         − {feeMin === feeMax ? fmt(feeMin) : `${fmt(feeMin)}〜${fmt(feeMax)}`}
                       </p>
                     </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-white/20">
-                      <p className="text-[11px] text-blue-200 font-bold">手取り目安</p>
-                      <p className="text-xl font-extrabold text-emerald-300">
+                    {/* 手取り目安（緑・大きめ） */}
+                    <div>
+                      <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-wide mb-0.5">手取り目安</p>
+                      <p className="text-2xl font-extrabold text-emerald-300 leading-none">
                         {takeMin === takeMax ? fmt(takeMin) : fmtTakeRange(takeMin, takeMax)}
                       </p>
                     </div>
