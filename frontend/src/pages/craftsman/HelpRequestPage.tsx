@@ -244,7 +244,13 @@ export default function HelpRequestPage() {
     setSaving(false);
 
     if (err) {
-      setError('送信に失敗しました。Supabase の help_requests テーブルを確認してください。');
+      console.error('[HelpRequestPage] help_requests insert failed:', {
+        code:    err.code,
+        message: err.message,
+        details: err.details,
+        hint:    err.hint,
+      });
+      setError('送信できませんでした。通信状態をご確認の上、もう一度お試しください。');
       return;
     }
 
