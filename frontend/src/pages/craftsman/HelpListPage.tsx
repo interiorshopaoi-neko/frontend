@@ -852,7 +852,18 @@ export default function HelpListPage() {
     return true;
   }
 
-  const filteredRequests = requests.filter(req => matchFilter(req, activeFilter));
+  const filteredRequests = [...requests]
+    .filter(req => matchFilter(req, activeFilter))
+    .sort((a, b) => {
+      const aExpired = isRequestClosed(a);
+      const bExpired = isRequestClosed(b);
+      // 期限切れを後ろへ
+      if (aExpired !== bExpired) return aExpired ? 1 : -1;
+      // 同じ区分内：作業日が近い順、なければ作成日が新しい順
+      const aDate = new Date(a.work_date || a.created_at || 0).getTime();
+      const bDate = new Date(b.work_date || b.created_at || 0).getTime();
+      return aDate - bDate;
+    });
 
   function chipCount(chip: FilterChip): number {
     if (chip === 'すべて') return requests.length;
