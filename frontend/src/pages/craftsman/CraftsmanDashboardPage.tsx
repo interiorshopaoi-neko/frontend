@@ -663,13 +663,16 @@ export default function CraftsmanDashboardPage() {
       const res = await fetch('/api/trial-get-contact', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ estimate_request_id: estimateRequestId }),
+        body:    JSON.stringify({ craftsman_id: userId, estimate_request_id: estimateRequestId }),
       });
       const data = await res.json().catch(() => ({}));
       if (data.status === 'ok') {
         setContactState(appId, { kind: 'unlocked', email: data.email });
       } else if (data.status === 'no_email') {
         setContactState(appId, { kind: 'no_email' });
+      } else if (res.status === 403) {
+        console.error('[trial-get-contact] 403 forbidden:', data);
+        setContactState(appId, { kind: 'error', message: '成約済みの案件のみ連絡先を確認できます' });
       } else {
         console.error('[trial-get-contact] error:', data);
         setContactState(appId, { kind: 'error', message: '連絡先の取得に失敗しました' });
