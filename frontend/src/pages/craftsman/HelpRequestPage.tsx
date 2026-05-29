@@ -177,32 +177,41 @@ export default function HelpRequestPage() {
     setSaving(true);
     setError(null);
 
-    // 現場写真をアップロード
+    // 現場写真をアップロード（service role API 経由 — クライアント Storage セッション不要）
     const helperImageUrls: string[] = [];
     if (helperImageFiles.length > 0) {
-      const ts = Date.now();
       for (let i = 0; i < helperImageFiles.length; i++) {
         try {
+          // 1. 圧縮（WebP blob）
           const blob = await compressImage(helperImageFiles[i], 1200, 0.80);
-          const path = `helper-images/${ts}/${i}.webp`;  // WebP blob に合わせた拡張子
-          const { error: uploadErr } = await supabase.storage
-            .from('estimate-videos')
-            .upload(path, blob, { contentType: 'image/webp' });  // compressImage は WebP を返す
-          if (!uploadErr) {
-            const { data: { publicUrl } } = supabase.storage
-              .from('estimate-videos')
-              .getPublicUrl(path);
-            helperImageUrls.push(publicUrl);
+
+          // 2. base64 変換
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload  = () => resolve((reader.result as string).split(',')[1] ?? '');
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+
+          // 3. API 経由でアップロード（service role でセッションに依存しない）
+          const res  = await fetch('/api/upload-helper-image', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ base64, mimeType: blob.type || 'image/webp', index: i }),
+          });
+          const data = await res.json().catch(() => ({})) as { ok?: boolean; publicUrl?: string; error?: string };
+
+          if (data.ok && data.publicUrl) {
+            helperImageUrls.push(data.publicUrl);
           } else {
             console.error('[HelpRequestPage] 画像アップロード失敗:', {
-              index:      i,
-              path,
-              message:    uploadErr.message,
-              statusCode: (uploadErr as { statusCode?: string }).statusCode ?? 'unknown',
+              index:    i,
+              status:   res.status,
+              apiError: data.error ?? '(unknown)',
             });
             setSaving(false);
             setError('写真のアップロードに失敗しました。通信状態を確認して、もう一度お試しください。');
-            return;  // 1枚でも失敗したら即中止（部分成功を防ぐ）
+            return; // 1枚でも失敗したら即中止（部分成功を防ぐ）
           }
         } catch (imgErr) {
           console.error('[HelpRequestPage] 画像処理エラー:', { index: i, error: imgErr });
