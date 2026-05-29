@@ -184,20 +184,31 @@ export default function HelpRequestPage() {
       for (let i = 0; i < helperImageFiles.length; i++) {
         try {
           const blob = await compressImage(helperImageFiles[i], 1200, 0.80);
-          const path = `helper-images/${ts}/${i}.jpg`;
+          const path = `helper-images/${ts}/${i}.webp`;  // WebP blob に合わせた拡張子
           const { error: uploadErr } = await supabase.storage
             .from('estimate-videos')
-            .upload(path, blob, { contentType: 'image/jpeg' });
+            .upload(path, blob, { contentType: 'image/webp' });  // compressImage は WebP を返す
           if (!uploadErr) {
             const { data: { publicUrl } } = supabase.storage
               .from('estimate-videos')
               .getPublicUrl(path);
             helperImageUrls.push(publicUrl);
           } else {
-            console.error('[HelpRequestPage] 画像アップロード失敗:', uploadErr);
+            console.error('[HelpRequestPage] 画像アップロード失敗:', {
+              index:      i,
+              path,
+              message:    uploadErr.message,
+              statusCode: (uploadErr as { statusCode?: string }).statusCode ?? 'unknown',
+            });
+            setSaving(false);
+            setError('写真のアップロードに失敗しました。通信状態を確認して、もう一度お試しください。');
+            return;  // 1枚でも失敗したら即中止（部分成功を防ぐ）
           }
         } catch (imgErr) {
-          console.error('[HelpRequestPage] 画像処理エラー:', imgErr);
+          console.error('[HelpRequestPage] 画像処理エラー:', { index: i, error: imgErr });
+          setSaving(false);
+          setError('写真のアップロードに失敗しました。通信状態を確認して、もう一度お試しください。');
+          return;
         }
       }
     }
@@ -276,7 +287,7 @@ export default function HelpRequestPage() {
               募集一覧を見る
             </a>
             <button
-              onClick={() => { setForm(DEFAULT); setDone(false); }}
+              onClick={() => { setForm(DEFAULT); setHelperImageFiles([]); setDone(false); }}
               className="w-full text-slate-400 text-sm py-2 font-medium"
             >
               続けて募集する
