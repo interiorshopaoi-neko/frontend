@@ -703,10 +703,11 @@ export default function HomePage() {
       <footer style={{ background: '#0f172a', color: '#64748b', textAlign: 'center', padding: '20px 16px' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '4px 20px', marginBottom: 8 }}>
           {[
-            { href: '/privacy', label: 'プライバシーポリシー' },
-            { href: '/terms',   label: '利用規約' },
-            { href: '/policy',  label: '料金ポリシー' },
-            { href: '/support', label: 'お問い合わせ' },
+            { href: '/privacy',  label: 'プライバシーポリシー' },
+            { href: '/terms',    label: '利用規約' },
+            { href: '/policy',   label: '料金ポリシー' },
+            { href: '/support',  label: 'お問い合わせ' },
+            { href: '/feedback', label: '改善報告' },
             { href: '/craftsman/jobs', label: '職人の方はこちら' },
           ].map(({ href, label }) => (
             <a key={href} href={href}

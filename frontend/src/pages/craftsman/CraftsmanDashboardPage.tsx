@@ -5,6 +5,11 @@ import BottomNav from '../../components/BottomNav';
 import { useAuth } from '../../hooks/useAuth';
 import LogoutConfirmModal from '../../components/LogoutConfirmModal';
 
+// ─── 試験運用モード ──────────────────────────────────────────────────────────
+// true のとき: Stripe 決済・unlock_contact RPC をスキップして連絡先を開示。
+// 本番課金再開時: TRIAL_FREE_ACCESS = false に戻すだけ。Stripe コードは残る。
+const TRIAL_FREE_ACCESS = true;
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type DashboardRow = {
@@ -39,8 +44,9 @@ type ContactState =
   | { kind: 'error'; message: string };
 
 type ContactModal =
-  | { kind: 'free'; appId: string; estimateRequestId: string }
-  | { kind: 'paid'; appId: string; estimateRequestId: string };
+  | { kind: 'free';  appId: string; estimateRequestId: string }
+  | { kind: 'paid';  appId: string; estimateRequestId: string }
+  | { kind: 'trial'; appId: string; estimateRequestId: string };
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
@@ -546,8 +552,12 @@ export default function CraftsmanDashboardPage() {
         setContactState(appId, { kind: 'unlocked', email: data.email });
       } else if (data.status === 'not_unlocked') {
         setContactState(appId, { kind: 'idle' });
-        const total = (freeCredits?.remaining ?? 0) + (freeCredits?.bonus ?? 0);
-        setModal({ kind: total > 0 ? 'free' : 'paid', appId, estimateRequestId });
+        if (TRIAL_FREE_ACCESS) {
+          setModal({ kind: 'trial', appId, estimateRequestId });
+        } else {
+          const total = (freeCredits?.remaining ?? 0) + (freeCredits?.bonus ?? 0);
+          setModal({ kind: total > 0 ? 'free' : 'paid', appId, estimateRequestId });
+        }
       } else if (data.status === 'no_email') {
         setContactState(appId, { kind: 'no_email' });
       } else {
@@ -638,6 +648,32 @@ export default function CraftsmanDashboardPage() {
         return;
       }
       setContactState(appId, { kind: 'error', message: '決済の開始に失敗しました' });
+    } catch {
+      setContactState(appId, { kind: 'error', message: '通信エラーが発生しました' });
+    }
+  }
+
+  // 試験運用: unlock_contact / Stripe をスキップして連絡先を直接取得
+  async function handleTrialConfirm() {
+    if (!modal || modal.kind !== 'trial') return;
+    const { appId, estimateRequestId } = modal;
+    setModal(null);
+    setContactState(appId, { kind: 'loading' });
+    try {
+      const res = await fetch('/api/trial-get-contact', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ estimate_request_id: estimateRequestId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.status === 'ok') {
+        setContactState(appId, { kind: 'unlocked', email: data.email });
+      } else if (data.status === 'no_email') {
+        setContactState(appId, { kind: 'no_email' });
+      } else {
+        console.error('[trial-get-contact] error:', data);
+        setContactState(appId, { kind: 'error', message: '連絡先の取得に失敗しました' });
+      }
     } catch {
       setContactState(appId, { kind: 'error', message: '通信エラーが発生しました' });
     }
@@ -977,44 +1013,49 @@ export default function CraftsmanDashboardPage() {
           </div>
         )}
 
-        {/* 無料枠残数バナー */}
-        {freeCredits !== null && (() => {
-          const total = freeCredits.remaining + freeCredits.bonus;
-          return (
-            <>
-              <div className={`mx-4 mt-4 rounded-xl px-3 py-2.5 flex items-center justify-between ${
-                total > 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-100 border border-slate-200'
-              }`}>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">{total > 0 ? '🎁' : '🔒'}</span>
-                  <div>
-                    <p className={`text-xs font-bold ${total > 0 ? 'text-emerald-800' : 'text-slate-600'}`}>
-                      {total > 0 ? `無料連絡先確認 残り ${total} 件` : '無料枠を使い切りました'}
-                    </p>
-                    <p className={`text-[10px] mt-0.5 ${total > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
-                      {total > 0
-                        ? freeCredits.bonus > 0
-                          ? `初回${freeCredits.remaining}件 + 紹介ボーナス${freeCredits.bonus}件`
-                          : '成約案件の応募状況ページから確認できます'
-                        : '決済後に連絡先を確認できます'}
-                    </p>
+        {/* 無料枠残数バナー / 試験運用バナー */}
+        {TRIAL_FREE_ACCESS ? (
+          <div className="mx-4 mt-4 rounded-xl bg-blue-50 border border-blue-200 px-3 py-2.5">
+            <p className="text-xs font-bold text-blue-800">🎁 現在は試験運用中のため、連絡先確認は無料です</p>
+            <p className="text-[10px] mt-0.5 text-blue-600">正式版では一部機能が有料になる予定です</p>
+          </div>
+        ) : (
+          freeCredits !== null && (() => {
+            const total = freeCredits.remaining + freeCredits.bonus;
+            return (
+              <>
+                <div className={`mx-4 mt-4 rounded-xl px-3 py-2.5 flex items-center justify-between ${
+                  total > 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-100 border border-slate-200'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{total > 0 ? '🎁' : '🔒'}</span>
+                    <div>
+                      <p className={`text-xs font-bold ${total > 0 ? 'text-emerald-800' : 'text-slate-600'}`}>
+                        {total > 0 ? `無料連絡先確認 残り ${total} 件` : '無料枠を使い切りました'}
+                      </p>
+                      <p className={`text-[10px] mt-0.5 ${total > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                        {total > 0
+                          ? freeCredits.bonus > 0
+                            ? `初回${freeCredits.remaining}件 + 紹介ボーナス${freeCredits.bonus}件`
+                            : '成約案件の応募状況ページから確認できます'
+                          : '決済後に連絡先を確認できます'}
+                      </p>
+                    </div>
                   </div>
+                  {total > 0 && (
+                    <span className="text-xl font-extrabold text-emerald-600">{total}</span>
+                  )}
                 </div>
-                {total > 0 && (
-                  <span className="text-xl font-extrabold text-emerald-600">{total}</span>
+                {total === 1 && (
+                  <div className="mx-4 mt-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 flex items-center gap-2">
+                    <span className="text-amber-500 text-xs">⚠</span>
+                    <p className="text-xs text-amber-700 font-semibold">あと1件で無料枠が終了します</p>
+                  </div>
                 )}
-              </div>
-
-              {/* 残数警告: あと1件以下 */}
-              {total === 1 && (
-                <div className="mx-4 mt-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 flex items-center gap-2">
-                  <span className="text-amber-500 text-xs">⚠</span>
-                  <p className="text-xs text-amber-700 font-semibold">あと1件で無料枠が終了します</p>
-                </div>
-              )}
-            </>
-          );
-        })()}
+              </>
+            );
+          })()
+        )}
 
         {/* 紹介コード（折りたたみ） — 無料枠の直下に配置して「無料枠を増やす方法」として案内 */}
         {referralCode && (() => {
@@ -1052,7 +1093,7 @@ export default function CraftsmanDashboardPage() {
                     </button>
                   </div>
                   <p className="text-[10px] text-blue-500 leading-relaxed">
-                    紹介した職人が初めて連絡先を確認すると、無料枠が +2件 追加されます。
+                    紹介すると、正式版でも使える特典枠が増えます（初回連絡先確認で +2件）。
                   </p>
                   <a
                     href={lineUrl}
@@ -1495,7 +1536,32 @@ export default function CraftsmanDashboardPage() {
       {modal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-4 pb-4 sm:pb-0">
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl">
-            {modal.kind === 'free' ? (
+            {modal.kind === 'trial' ? (
+              <>
+                <h3 className="text-base font-extrabold text-slate-900 mb-3">連絡先を確認しますか？</h3>
+                <div className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2.5 mb-4">
+                  <p className="text-xs font-bold text-blue-800">🎁 現在は試験運用中のため、連絡先確認は無料です</p>
+                  <p className="text-[10px] mt-0.5 text-blue-600">正式版では一部機能が有料になる予定です</p>
+                </div>
+                <p className="text-sm text-slate-600 leading-relaxed mb-5">
+                  お客様のメールアドレスを確認して、直接やり取りできます。
+                </p>
+                <div className="space-y-2">
+                  <button
+                    onClick={handleTrialConfirm}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-3 text-sm font-extrabold transition active:scale-95"
+                  >
+                    無料で連絡先を見る
+                  </button>
+                  <button
+                    onClick={() => setModal(null)}
+                    className="w-full text-slate-500 hover:text-slate-700 text-sm py-2.5 transition"
+                  >
+                    キャンセル
+                  </button>
+                </div>
+              </>
+            ) : modal.kind === 'free' ? (
               <>
                 <h3 className="text-base font-extrabold text-slate-900 mb-3">連絡先を開示しますか？</h3>
                 <p className="text-sm text-slate-600 leading-relaxed mb-1">

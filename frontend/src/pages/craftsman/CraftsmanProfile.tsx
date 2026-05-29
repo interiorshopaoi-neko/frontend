@@ -155,6 +155,7 @@ export default function CraftsmanProfile() {
   const [worksUploading,    setWorksUploading]    = useState(false);
   const [worksError,        setWorksError]        = useState<string | null>(null);
   const [openRegions,       setOpenRegions]       = useState<Set<string>>(new Set(['関東', '中部']));
+  const [agreedToTerms,    setAgreedToTerms]    = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const worksInputRef  = useRef<HTMLInputElement>(null);
   const userId = getUserId();
@@ -219,6 +220,10 @@ export default function CraftsmanProfile() {
   }, [userId]);
 
   async function handleSave() {
+    if (!agreedToTerms) {
+      setError('利用規約とプライバシーポリシーへの同意が必要です。');
+      return;
+    }
     setSaving(true);
     setError(null);
 
@@ -253,6 +258,13 @@ export default function CraftsmanProfile() {
 
     // meta保存（fire-and-forget）
     void supabase.rpc('update_craftsman_meta', { p_user_id: userId, p_meta: profileMeta });
+
+    // 利用規約同意を記録（fire-and-forget・カラム未作成でも無視される）
+    void supabase
+      .from('craftsmen')
+      .update({ agreed_to_terms: true, agreed_to_terms_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .then(() => {/* ignore error — column may not exist yet */});
 
     setSaving(false);
 
@@ -1079,9 +1091,24 @@ export default function CraftsmanProfile() {
         {/* 保存ボタン（固定フッター） */}
         <div className="fixed bottom-14 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 z-20">
           <div className="max-w-2xl mx-auto">
+            {/* 利用規約・プライバシーポリシー同意チェック */}
+            <label className="flex items-start gap-2 mb-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={e => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400 flex-shrink-0"
+              />
+              <span className="text-[11px] text-slate-600 leading-relaxed">
+                <a href="/terms"   target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-bold">利用規約</a>
+                および
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-bold">プライバシーポリシー</a>
+                に同意します
+              </span>
+            </label>
             <button
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || !agreedToTerms}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl py-3.5 font-extrabold text-base shadow-sm shadow-blue-200 transition active:scale-[0.98] disabled:opacity-60"
             >
               {saving ? (
