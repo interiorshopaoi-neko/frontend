@@ -159,6 +159,8 @@ export default function CraftsmanProfile() {
   const [referralCode,     setReferralCode]     = useState<string | null>(null);
   const [showReferral,     setShowReferral]     = useState(false);
   const [copiedCode,       setCopiedCode]       = useState(false);
+  const [profitMemo,       setProfitMemo]       = useState({ sales: '', materials: '', parking: '', other: '' });
+  const [profitSaved,      setProfitSaved]      = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const worksInputRef  = useRef<HTMLInputElement>(null);
   const userId = getUserId();
@@ -207,6 +209,11 @@ export default function CraftsmanProfile() {
       }
       setLoading(false);
     })();
+    // 今日の利益メモを localStorage から復元
+    try {
+      const saved = localStorage.getItem('promatch_daily_profit_memo');
+      if (saved) setProfitMemo(JSON.parse(saved));
+    } catch { /* ignore */ }
     // 紹介コード取得（fire-and-forget）
     void (async () => {
       try {
@@ -234,6 +241,14 @@ export default function CraftsmanProfile() {
     navigator.clipboard.writeText(code).catch(() => {});
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
+  }
+
+  function handleSaveProfit() {
+    try {
+      localStorage.setItem('promatch_daily_profit_memo', JSON.stringify(profitMemo));
+      setProfitSaved(true);
+      setTimeout(() => setProfitSaved(false), 2000);
+    } catch { /* ignore */ }
   }
 
   async function handleSave() {
@@ -491,6 +506,93 @@ export default function CraftsmanProfile() {
           </a>
         )}
 
+        {/* ── 今日の利益メモ ─────────────────────────────────────────── */}
+        {(() => {
+          const sales     = Number(profitMemo.sales)     || 0;
+          const materials = Number(profitMemo.materials) || 0;
+          const parking   = Number(profitMemo.parking)   || 0;
+          const other     = Number(profitMemo.other)     || 0;
+          const net       = sales - materials - parking - other;
+          return (
+            <div className="mb-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm font-extrabold text-slate-800">今日の利益メモ</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">日当・材料費・経費をざっくり記録</p>
+                </div>
+                <span className="text-lg">📝</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                {([
+                  { key: 'sales',     label: '売上',       color: 'text-slate-700' },
+                  { key: 'materials', label: '材料費',     color: 'text-rose-500'  },
+                  { key: 'parking',   label: '駐車場代',   color: 'text-rose-500'  },
+                  { key: 'other',     label: 'その他経費', color: 'text-rose-500'  },
+                ] as const).map(({ key, label, color }) => (
+                  <div key={key}>
+                    <label className={`block text-[10px] font-bold mb-0.5 ${color}`}>{label}</label>
+                    <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min="0"
+                        value={profitMemo[key]}
+                        onChange={e => setProfitMemo(prev => ({ ...prev, [key]: e.target.value }))}
+                        className="flex-1 min-w-0 bg-transparent px-2.5 py-2 text-sm text-slate-800 focus:outline-none"
+                        placeholder="0"
+                      />
+                      <span className="pr-2 text-[11px] text-slate-400">円</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* 手残り */}
+              <div className={`rounded-xl px-3 py-2 mb-3 flex items-center justify-between ${net >= 0 ? 'bg-emerald-50 border border-emerald-100' : 'bg-rose-50 border border-rose-100'}`}>
+                <p className={`text-xs font-bold ${net >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>手残り</p>
+                <p className={`text-base font-extrabold ${net >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                  {net >= 0 ? '+' : ''}{net.toLocaleString()}円
+                </p>
+              </div>
+              <button
+                onClick={handleSaveProfit}
+                className={`w-full py-2.5 rounded-xl text-xs font-bold transition active:scale-95 ${
+                  profitSaved
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-slate-800 text-white hover:bg-slate-700'
+                }`}
+              >
+                {profitSaved ? '✅ 保存しました' : 'このデバイスに保存する'}
+              </button>
+              <p className="mt-1.5 text-center text-[10px] text-slate-300">今日だけのメモです。端末内にのみ保存されます</p>
+            </div>
+          );
+        })()}
+
+        {/* ── 応援・助っ人を探す ──────────────────────────────────────── */}
+        <div className="mb-3 bg-orange-50 rounded-2xl border border-orange-200 px-4 py-3.5">
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <p className="text-sm font-extrabold text-orange-800">応援・助っ人を探す</p>
+              <p className="text-[11px] text-orange-600 mt-0.5 leading-relaxed">
+                人手が足りない現場を、写真付きで募集できます。
+              </p>
+            </div>
+            <span className="text-xl flex-shrink-0">🤝</span>
+          </div>
+          <button
+            onClick={() => navigate('/craftsman/help/request')}
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white text-xs font-extrabold py-2.5 rounded-xl transition active:scale-95 mb-2"
+          >
+            助っ人を募集する
+          </button>
+          <button
+            onClick={() => navigate('/craftsman/help')}
+            className="w-full text-orange-600 text-xs font-bold py-1.5 rounded-xl hover:bg-orange-100 transition"
+          >
+            募集中の応援を見る →
+          </button>
+        </div>
+
         {/* 紹介コード（折りたたみ） */}
         {referralCode && (() => {
           const shareUrl  = `https://promatch-app.jp/pro-signup?ref=${referralCode}`;
@@ -552,14 +654,14 @@ export default function CraftsmanProfile() {
             <span className="text-lg">🧮</span>
             <div>
               <p className="text-xs font-extrabold text-violet-800">現場ツール</p>
-              <p className="text-[11px] text-violet-500">簡単見積・材料計算・発注長さ</p>
+              <p className="text-[11px] text-violet-500">簡単見積・材料計算・作業メモをまとめて使えます</p>
             </div>
           </div>
           <button
             onClick={() => navigate('/tools')}
             className="flex-shrink-0 text-xs bg-violet-600 text-white font-bold px-3 py-1.5 rounded-xl transition active:scale-95"
           >
-            ツールを開く
+            現場ツールを開く
           </button>
         </div>
 
