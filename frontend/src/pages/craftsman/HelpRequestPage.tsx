@@ -889,8 +889,6 @@ export default function HelpRequestPage() {
               </span>
             ) : '助っ人を募集する'}
           </button>
-          <p className="mt-1.5 text-center text-xs text-slate-400">現在は無料で募集できます</p>
-          <p className="mt-0.5 text-center text-xs text-slate-400">正式版では募集側・参加側それぞれ300円の利用料を予定しています</p>
           <p className="mt-1 text-center text-[11px] text-slate-300 leading-relaxed">
             当サービスはマッチングの場の提供であり、施工内容・品質・トラブルについては当事者間でご確認ください。
           </p>

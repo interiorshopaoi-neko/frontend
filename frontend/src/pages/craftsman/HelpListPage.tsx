@@ -1167,7 +1167,6 @@ export default function HelpListPage() {
                       </div>
                     )}
 
-                    <p className="mt-1.5 text-center text-xs text-slate-400">現在は無料で利用できます</p>
                     <p className="mt-1 text-center">
                       <a href="/support?type=report" className="text-[10px] text-slate-300 hover:text-red-400 transition-colors underline">問題を報告</a>
                     </p>
