@@ -959,13 +959,15 @@ export default function HelpListPage() {
               const appCount    = appCounts[req.id] ?? 0;
               const days        = daysUntil(req.work_date);
               const isToday     = days === 0;
-              const isSoon      = days <= 2 && !isToday;
+              const isTomorrow  = days === 1;
+              const isUrgent    = days === 2;
               const isLastSlot  = req.people_needed === 1;
               const isCompleted = req.status === 'completed';
               const isManualClosed = req.status === 'closed';
               const isExpired   = !isCompleted && !isManualClosed && isExpiredByTime(req);
               const isClosed    = isCompleted || isManualClosed || isExpired;
               const isActioning = actioningId === req.id;
+              const cardImgs    = getHelperImages(req.meta);
 
               return (
                 <article key={req.id} className={`bg-white rounded-3xl shadow-sm overflow-hidden transition-opacity ${
@@ -979,18 +981,14 @@ export default function HelpListPage() {
                   )}
 
                   {/* 現場写真（1枚目） */}
-                  {(() => {
-                    const imgs = getHelperImages(req.meta);
-                    if (imgs.length === 0) return null;
-                    return (
-                      <img
-                        src={imgs[0]}
-                        alt="現場写真"
-                        className="w-full h-40 object-cover"
-                        loading="lazy"
-                      />
-                    );
-                  })()}
+                  {cardImgs.length > 0 && (
+                    <img
+                      src={cardImgs[0]}
+                      alt="現場写真"
+                      className="w-full h-40 object-cover"
+                      loading="lazy"
+                    />
+                  )}
 
                   {/* ヘッダー */}
                   <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-b border-slate-100 px-4 py-3 flex items-center justify-between">
@@ -1004,8 +1002,9 @@ export default function HelpListPage() {
 
                   <div className="p-4">
                     {/* バッジ行 */}
-                    {(isClosed || isToday || isLastSlot || isSoon || appCount > 0) && (
+                    {(isClosed || isToday || isTomorrow || isUrgent || isLastSlot || appCount > 0 || cardImgs.length > 0) && (
                       <div className="flex flex-wrap gap-1.5 mb-3">
+                        {/* 状態バッジ */}
                         {isCompleted && (
                           <span className="bg-emerald-600 text-white text-xs font-extrabold px-2.5 py-1 rounded-full">
                             ✅ 作業完了
@@ -1021,9 +1020,20 @@ export default function HelpListPage() {
                             ⏰ 期限切れ
                           </span>
                         )}
+                        {/* 緊急度バッジ（非クローズのみ） */}
                         {!isClosed && isToday && (
                           <span className="bg-red-500 text-white text-xs font-extrabold px-2.5 py-1 rounded-full animate-pulse">
-                            🔥 今日の募集
+                            🔥 今日
+                          </span>
+                        )}
+                        {!isClosed && isTomorrow && (
+                          <span className="bg-orange-500 text-white text-xs font-extrabold px-2.5 py-1 rounded-full">
+                            📅 明日
+                          </span>
+                        )}
+                        {!isClosed && isUrgent && (
+                          <span className="bg-orange-400 text-white text-xs font-extrabold px-2.5 py-1 rounded-full">
+                            ⚡ 急募
                           </span>
                         )}
                         {!isClosed && isLastSlot && (
@@ -1031,11 +1041,13 @@ export default function HelpListPage() {
                             🔥 残り1枠
                           </span>
                         )}
-                        {!isClosed && isSoon && (
-                          <span className="bg-orange-500 text-white text-xs font-extrabold px-2.5 py-1 rounded-full">
-                            ⚡ 早い人優先
+                        {/* 写真枚数バッジ */}
+                        {cardImgs.length > 0 && (
+                          <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">
+                            📷 写真{cardImgs.length}枚
                           </span>
                         )}
+                        {/* 応募数バッジ */}
                         {appCount > 0 && (
                           <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">
                             👀 {appCount}名が応募中
@@ -1072,35 +1084,44 @@ export default function HelpListPage() {
                     {/* 現場レーダー（カードではコンパクトに重要な情報だけ） */}
                     {(() => {
                       const radar = getSiteRadar(req.meta);
-                      if (!radar) return null;
                       const PRIORITY_CONDITIONS = ['朝礼あり', '駐車場あり', '駐車場なし', 'エレベーターあり', '階段メイン', '荷物多め'];
+                      // radarにない場合は has_parking フィールドで補完
+                      const parkingFromField = req.has_parking != null
+                        && !(radar?.siteConditions ?? []).some(c => c.includes('駐車場'))
+                        ? (req.has_parking ? '🚗 駐車場あり' : '🚫 駐車場なし')
+                        : null;
                       const chips = [
-                        radar.buildingType ?? radar.siteType,
-                        radar.workCategory,
-                        radar.siteStatus,
-                        radar.siteScale,
-                        ...(radar.siteConditions?.filter(c => PRIORITY_CONDITIONS.includes(c)) ?? []),
-                        radar.accessCondition && radar.accessCondition !== '未確認'
-                          ? radar.accessCondition : null,
+                        ...(radar ? [
+                          radar.buildingType ?? radar.siteType,
+                          radar.workCategory,
+                          radar.siteStatus,
+                          radar.siteScale,
+                          ...(radar.siteConditions?.filter(c => PRIORITY_CONDITIONS.includes(c)) ?? []),
+                          radar.accessCondition && radar.accessCondition !== '未確認'
+                            ? radar.accessCondition : null,
+                        ] : []),
+                        parkingFromField,
                       ].filter(Boolean) as string[];
-                      if (chips.length === 0) return null;
+                      if (chips.length === 0 && (!radar || (radar.requiredTools ?? []).length === 0)) return null;
                       return (
                         <div className="mb-3">
-                          <p className="text-[10px] text-indigo-500 font-bold mb-1.5">📡 現場レーダー</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {chips.slice(0, 6).map(chip => (
-                              <span
-                                key={chip}
-                                className="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded-lg border border-indigo-100"
-                              >
-                                {chip}
-                              </span>
-                            ))}
-                            {chips.length > 6 && (
-                              <span className="text-[10px] text-slate-400 py-1">+{chips.length - 6}</span>
-                            )}
-                          </div>
-                          {radar.requiredTools && radar.requiredTools.length > 0 && (
+                          <p className="text-[10px] text-indigo-500 font-bold mb-1.5">📡 現場情報</p>
+                          {chips.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {chips.slice(0, 6).map(chip => (
+                                <span
+                                  key={chip}
+                                  className="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded-lg border border-indigo-100"
+                                >
+                                  {chip}
+                                </span>
+                              ))}
+                              {chips.length > 6 && (
+                                <span className="text-[10px] text-slate-400 py-1">+{chips.length - 6}</span>
+                              )}
+                            </div>
+                          )}
+                          {radar?.requiredTools && radar.requiredTools.length > 0 && (
                             <p className="text-[10px] text-slate-500 mt-1.5">
                               🔧 {radar.requiredTools.join('・')}
                             </p>
