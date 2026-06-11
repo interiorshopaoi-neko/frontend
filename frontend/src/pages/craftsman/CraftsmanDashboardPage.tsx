@@ -1019,8 +1019,8 @@ export default function CraftsmanDashboardPage() {
         {/* 無料枠残数バナー / 試験運用バナー */}
         {TRIAL_FREE_ACCESS ? (
           <div className="mx-4 mt-4 rounded-xl bg-blue-50 border border-blue-200 px-3 py-2.5">
-            <p className="text-xs font-bold text-blue-800">🎁 現在は試験運用中のため、連絡先確認は無料です</p>
-            <p className="text-[10px] mt-0.5 text-blue-600">正式版では一部機能が有料になる予定です</p>
+            <p className="text-xs font-bold text-blue-800">🎁 現在は試験運用中のため、お客様案件の連絡先確認も無料開放中です</p>
+            <p className="text-[10px] mt-0.5 text-blue-600">正式版では無料枠・紹介特典枠を使って確認できます。助っ人募集は引き続き無料です</p>
           </div>
         ) : (
           freeCredits !== null && (() => {
@@ -1039,8 +1039,8 @@ export default function CraftsmanDashboardPage() {
                       <p className={`text-[10px] mt-0.5 ${total > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
                         {total > 0
                           ? freeCredits.bonus > 0
-                            ? `初回${freeCredits.remaining}件 + 紹介ボーナス${freeCredits.bonus}件`
-                            : '成約案件の応募状況ページから確認できます'
+                            ? `初回${freeCredits.remaining}件 + 紹介特典${freeCredits.bonus}件（お客様案件専用）`
+                            : 'お客様案件の連絡先確認に使えます'
                           : '決済後に連絡先を確認できます'}
                       </p>
                     </div>
@@ -1059,6 +1059,64 @@ export default function CraftsmanDashboardPage() {
             );
           })()
         )}
+
+        {/* 紹介コード・特典枠（お客様案件専用であることを明示） */}
+        {referralCode && (() => {
+          const shareUrl  = `https://promatch-app.jp/pro-signup?ref=${referralCode}`;
+          const shareText = `内装職人向けマッチングサービスPRO MATCH。\n無料で案件に応募できます。\n\n${shareUrl}`;
+          const lineUrl   = `https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`;
+          return (
+            <div className="mx-4 mt-3 rounded-xl border border-blue-200 overflow-hidden">
+              <button
+                onClick={() => setShowReferral(s => !s)}
+                className="w-full bg-blue-50 px-4 py-2.5 flex items-center justify-between gap-3 text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">🔗</span>
+                  <div>
+                    <p className="text-xs font-extrabold text-blue-800">紹介コードをシェア</p>
+                    <p className="text-[10px] text-blue-500 mt-0.5">紹介すると、お客様案件の特典枠が増えます</p>
+                  </div>
+                </div>
+                <span className="text-[10px] text-blue-400 font-bold flex-shrink-0">
+                  {showReferral ? '▲ 閉じる' : '▼ 開く'}
+                </span>
+              </button>
+              {showReferral && (
+                <div className="bg-white px-4 pb-3 pt-2 space-y-2 border-t border-blue-100">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-slate-50 border border-blue-200 rounded-xl px-3 py-2">
+                      <p className="text-[10px] text-blue-400 font-bold">あなたの紹介コード</p>
+                      <p className="text-sm font-extrabold text-blue-700 tracking-wider">{referralCode}</p>
+                    </div>
+                    <button
+                      onClick={() => copyReferralCode(referralCode)}
+                      className={`text-xs font-bold px-3 py-2 rounded-xl transition active:scale-95 ${
+                        copiedCode ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                      }`}
+                    >
+                      {copiedCode ? '✅ コピー済み' : '📋 コピー'}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-blue-500 leading-relaxed">
+                    紹介特典はお客様案件の連絡先確認に使えます（+2件）。助っ人募集では枠を消費しません。
+                  </p>
+                  <a
+                    href={lineUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full rounded-xl bg-[#06C755] text-white text-xs font-bold py-2.5 hover:opacity-90 transition-opacity"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.630 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63h2.386c.349 0 .63.285.63.630 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.630v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.630 0 .344-.281.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314" />
+                    </svg>
+                    LINEでシェアする
+                  </a>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* 手数料ルールnotice */}
         <div className="mx-4 mt-4 rounded-xl bg-slate-100 px-3 py-2.5 space-y-0.5">
@@ -1173,9 +1231,6 @@ export default function CraftsmanDashboardPage() {
                       </p>
                       <p className="text-green-100 text-[11px] mt-1 leading-relaxed">
                         まずは現場内容を確認し、依頼者へメールで日程調整してください。
-                      </p>
-                      <p className="text-green-200 text-[10px] mt-0.5">
-                        ※ 無料枠を1件使用して連絡先を開示します
                       </p>
                     </div>
                   )}
@@ -1471,8 +1526,8 @@ export default function CraftsmanDashboardPage() {
               <>
                 <h3 className="text-base font-extrabold text-slate-900 mb-3">連絡先を確認しますか？</h3>
                 <div className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2.5 mb-4">
-                  <p className="text-xs font-bold text-blue-800">🎁 現在は試験運用中のため、連絡先確認は無料です</p>
-                  <p className="text-[10px] mt-0.5 text-blue-600">正式版では一部機能が有料になる予定です</p>
+                  <p className="text-xs font-bold text-blue-800">🎁 現在は試験運用中のため、お客様案件の連絡先確認も無料開放中です</p>
+                  <p className="text-[10px] mt-0.5 text-blue-600">正式版では無料枠・紹介特典枠を使って確認できます</p>
                 </div>
                 <p className="text-sm text-slate-600 leading-relaxed mb-5">
                   お客様のメールアドレスを確認して、直接やり取りできます。
