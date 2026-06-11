@@ -31,7 +31,8 @@ const SITE_STATUSES:   readonly string[] = ['空室・入居前', '在宅', '営
 const SITE_SCALES: readonly string[] = ['半日くらい', '1日', '2〜3日', '1週間以上'];
 const CREW_SIZES:  readonly string[] = ['1人現場', '2〜3人', '4人以上'];
 const SITE_CONDITIONS: readonly string[] = [
-  '朝礼あり', '駐車場あり', '駐車場なし', 'エレベーターあり', '階段メイン',
+  // 駐車場はフォーム「駐車場」セクションで入力するためここには含めない
+  '朝礼あり', 'エレベーターあり', '階段メイン',
   '荷物多め', '糊付けスペースあり', '天井高め', '残業の可能性あり',
 ];
 const ACCESS_CONDITIONS: readonly string[] = [
@@ -51,25 +52,29 @@ const DEFAULT_RADAR: SiteRadar = {
 // ─── フォーム型定義 ──────────────────────────────────────────────────────────
 
 type Form = {
-  work_date:        string;
-  area:             string;
-  work_type:        string;
-  people_needed:    number;
-  daily_rate:       number;
-  comment:          string;
-  start_time:       string;
-  end_time:         string;
-  has_parking:      boolean;
-  required_tools:   string;
-  notes:            string;
-  radar:            SiteRadar;
-  expires_date:     string;
-  expires_time:     string;
-  scheduleType:     'single' | 'multiple' | 'continuous';
-  workDates:        string[];
-  contractType:     '' | '人工' | '手間受け' | '材工';
-  invoiceRequired:  '' | '必要' | '不要' | 'どちらでも可';
+  work_date:         string;
+  area:              string;
+  work_type:         string;
+  people_needed:     number;
+  daily_rate:        number;
+  comment:           string;
+  start_time:        string;
+  end_time:          string;
+  parkingStatus:     'site' | 'nearby' | 'none';  // 3択（has_parkingはhandleSubmitで導出）
+  required_tools:    string;
+  notes:             string;
+  radar:             SiteRadar;
+  expires_date:      string;
+  expires_time:      string;
+  scheduleType:      'single' | 'multiple' | 'continuous';
+  workDates:         string[];
+  contractType:      '' | '人工' | '手間受け' | '材工';
+  materialQty:       number;                        // 材工: 数量
+  materialUnit:      '㎡' | 'm' | '一式';           // 材工: 単位
+  materialUnitPrice: number;                        // 材工: 単価（一式のときは未使用）
+  invoiceRequired:   '' | '必要' | '不要' | 'どちらでも可';
   insuranceRequired: '' | '必要' | '不要' | 'どちらでも可';
+  paymentNote:       string;                        // 支払い条件の補足 → meta.paymentNote
 };
 
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -80,15 +85,19 @@ const DEFAULT: Form = {
   work_date: '', area: '', work_type: '',
   people_needed: 1, daily_rate: 15000,
   comment: '', start_time: '08:00', end_time: '17:00',
-  has_parking: false, required_tools: '', notes: '',
+  parkingStatus: 'nearby', required_tools: '', notes: '',
   radar: DEFAULT_RADAR,
   expires_date: TODAY,
   expires_time: '17:00',
   scheduleType: 'single',
   workDates: [],
   contractType: '',
+  materialQty: 1,
+  materialUnit: '㎡',
+  materialUnitPrice: 0,
   invoiceRequired: '',
   insuranceRequired: '',
+  paymentNote: '',
 };
 
 // ─── 選択チップコンポーネント ────────────────────────────────────────────────
@@ -228,16 +237,31 @@ export default function HelpRequestPage() {
       r.siteScale || r.crewSize ||
       r.siteConditions.length > 0 || r.accessCondition ||
       r.requiredTools.length > 0 || r.toolNotes;
-    const meta = (hasRadar || helperImageUrls.length > 0 || form.scheduleType !== 'single' || form.contractType || form.invoiceRequired || form.insuranceRequired)
-      ? {
-          ...(hasRadar        ? { siteRadar: r }                 : {}),
-          ...(helperImageUrls.length > 0 ? { helperImages: helperImageUrls } : {}),
-          ...(form.scheduleType !== 'single' ? { workDates: form.workDates, scheduleType: form.scheduleType } : {}),
-          ...(form.contractType     ? { contractType: form.contractType }         : {}),
-          ...(form.invoiceRequired  ? { invoiceRequired: form.invoiceRequired }   : {}),
-          ...(form.insuranceRequired ? { insuranceRequired: form.insuranceRequired } : {}),
-        }
+
+    // 材工: 数量×単価 で daily_rate を自動計算（一式は daily_rate をそのまま使用）
+    const effectiveDailyRate = form.contractType === '材工' && form.materialUnit !== '一式'
+      ? form.materialQty * form.materialUnitPrice
+      : form.daily_rate;
+
+    // 材工詳細: meta.materialDetail に保存
+    const materialDetail = form.contractType === '材工'
+      ? (form.materialUnit === '一式'
+        ? { unit: '一式' as const, total: form.daily_rate }
+        : { qty: form.materialQty, unit: form.materialUnit, unitPrice: form.materialUnitPrice, total: effectiveDailyRate })
       : null;
+
+    // meta は常に非 null — parkingStatus を必ず記録する
+    const meta: Record<string, unknown> = {
+      ...(hasRadar        ? { siteRadar: r }                 : {}),
+      ...(helperImageUrls.length > 0 ? { helperImages: helperImageUrls } : {}),
+      ...(form.scheduleType !== 'single' ? { workDates: form.workDates, scheduleType: form.scheduleType } : {}),
+      ...(form.contractType     ? { contractType: form.contractType }         : {}),
+      ...(materialDetail        ? { materialDetail }                           : {}),
+      ...(form.invoiceRequired  ? { invoiceRequired: form.invoiceRequired }   : {}),
+      ...(form.insuranceRequired ? { insuranceRequired: form.insuranceRequired } : {}),
+      ...(form.paymentNote.trim() ? { paymentNote: form.paymentNote.trim() } : {}),
+      parkingStatus: form.parkingStatus,
+    };
 
     const expires_at = form.expires_date
       ? new Date(`${form.expires_date}T${form.expires_time}:00`).toISOString()
@@ -248,12 +272,12 @@ export default function HelpRequestPage() {
       area:           form.area,
       work_type:      form.work_type,
       people_needed:  form.people_needed,
-      daily_rate:     form.daily_rate,
+      daily_rate:     effectiveDailyRate,
       comment:        form.comment || null,
       craftsman_id:   currentUserId || null,
       start_time:     form.start_time || null,
       end_time:       form.end_time || null,
-      has_parking:    form.has_parking,
+      has_parking:    form.parkingStatus === 'site',
       required_tools: form.required_tools || null,
       notes:          form.notes || null,
       meta,
@@ -504,14 +528,159 @@ export default function HelpRequestPage() {
           {/* 必要人数・金額 */}
           {(() => {
             const ct = form.contractType;
-            const peopleLabel = ct === '手間受け' || ct === '材工' ? '作業人数の目安' : '必要人数';
+
+            // ── 材工：単位選択＋詳細入力 ──────────────────────────────────
+            if (ct === '材工') {
+              const isSqm    = form.materialUnit !== '一式';
+              const autoTotal = form.materialQty * form.materialUnitPrice;
+              return (
+                <div className="space-y-4">
+                  {/* 材工の単位 */}
+                  <div>
+                    <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">材工の単位</p>
+                    <div className="flex gap-2">
+                      {(['㎡', 'm', '一式'] as const).map(u => (
+                        <button
+                          key={u}
+                          type="button"
+                          onClick={() => set('materialUnit', u)}
+                          className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition active:scale-95 ${
+                            form.materialUnit === u
+                              ? 'bg-orange-500 border-orange-500 text-white'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-orange-300'
+                          }`}
+                        >{u}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 作業人数の目安 */}
+                  <div>
+                    <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">作業人数の目安</p>
+                    <div className="flex items-center gap-2 max-w-[180px]">
+                      <button
+                        type="button"
+                        onClick={() => set('people_needed', Math.max(1, form.people_needed - 1))}
+                        className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300"
+                      >−</button>
+                      <span className="flex-1 text-center font-extrabold text-lg text-slate-900">{form.people_needed}</span>
+                      <button
+                        type="button"
+                        onClick={() => set('people_needed', form.people_needed + 1)}
+                        className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300"
+                      >＋</button>
+                      <span className="text-xs text-slate-400 ml-1">人</span>
+                    </div>
+                  </div>
+
+                  {isSqm ? (
+                    /* ㎡ / m の場合：数量・単価 → 自動計算 */
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* 数量 */}
+                        <div>
+                          <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">数量</p>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => set('materialQty', Math.max(0.5, Math.round((form.materialQty - 1) * 2) / 2))}
+                              className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300 flex-shrink-0"
+                            >−</button>
+                            <input
+                              type="number"
+                              value={form.materialQty}
+                              step={0.5}
+                              min={0.5}
+                              onChange={e => set('materialQty', Math.max(0.5, Number(e.target.value)))}
+                              className="flex-1 rounded-xl border border-slate-200 px-2 py-2.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => set('materialQty', Math.round((form.materialQty + 1) * 2) / 2)}
+                              className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300 flex-shrink-0"
+                            >＋</button>
+                          </div>
+                          <p className="text-[10px] text-slate-400 text-center mt-1">{form.materialUnit}</p>
+                        </div>
+                        {/* 単価 */}
+                        <div>
+                          <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">単価（{form.materialUnit}あたり）</p>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => set('materialUnitPrice', Math.max(0, form.materialUnitPrice - 100))}
+                              className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300 flex-shrink-0"
+                            >−</button>
+                            <div className="relative flex-1">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-slate-400">¥</span>
+                              <input
+                                type="number"
+                                value={form.materialUnitPrice}
+                                step={100}
+                                min={0}
+                                onChange={e => set('materialUnitPrice', Number(e.target.value))}
+                                className="w-full rounded-xl border border-slate-200 pl-6 pr-2 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => set('materialUnitPrice', form.materialUnitPrice + 100)}
+                              className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300 flex-shrink-0"
+                            >＋</button>
+                          </div>
+                          <p className="text-[10px] text-slate-400 text-center mt-1">円 / {form.materialUnit}</p>
+                        </div>
+                      </div>
+                      {/* 自動計算合計 */}
+                      <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+                        <p className="text-[10px] text-amber-700 font-extrabold mb-1">材工合計金額（自動計算）</p>
+                        <p className="text-2xl font-extrabold text-slate-900">¥{autoTotal.toLocaleString()}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {form.materialQty}{form.materialUnit} × ¥{form.materialUnitPrice.toLocaleString()} = ¥{autoTotal.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    /* 一式の場合：合計金額のみ入力 */
+                    <div>
+                      <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">材工合計金額（一式）</p>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => set('daily_rate', Math.max(0, form.daily_rate - 1000))}
+                          className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300 flex-shrink-0"
+                        >−</button>
+                        <div className="relative flex-1">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-slate-400">¥</span>
+                          <input
+                            type="number"
+                            value={form.daily_rate}
+                            step={1000}
+                            min={0}
+                            onChange={e => set('daily_rate', Number(e.target.value))}
+                            className="w-full rounded-xl border border-slate-200 pl-6 pr-2 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => set('daily_rate', form.daily_rate + 1000)}
+                          className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300 flex-shrink-0"
+                        >＋</button>
+                      </div>
+                      <p className="text-[10px] text-slate-400 text-center mt-1">円</p>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // ── 人工・手間受け・未選択（従来通り） ──────────────────────────
+            const peopleLabel = ct === '手間受け' ? '作業人数の目安' : '必要人数';
             const rateLabel   = ct === '人工' ? '日当'
                               : ct === '手間受け' ? '手間受け金額'
-                              : ct === '材工'    ? '材工込み金額'
                               : '金額';
             const rateSub     = ct === '人工' ? '1人あたりの1日単価'
                               : ct === '手間受け' ? '材料なし・施工手間のみの総額'
-                              : ct === '材工'    ? '材料代込みの総額'
                               : '';
             const rateUnit    = ct === '人工' ? '円 / 人日' : '円';
             return (
@@ -520,11 +689,13 @@ export default function HelpRequestPage() {
                   <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">{peopleLabel}</p>
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
                       onClick={() => set('people_needed', Math.max(1, form.people_needed - 1))}
                       className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300"
                     >−</button>
                     <span className="flex-1 text-center font-extrabold text-lg text-slate-900">{form.people_needed}</span>
                     <button
+                      type="button"
                       onClick={() => set('people_needed', form.people_needed + 1)}
                       className="w-9 h-9 rounded-xl border border-slate-200 text-slate-600 font-bold text-lg flex items-center justify-center hover:border-blue-300"
                     >＋</button>
@@ -589,28 +760,37 @@ export default function HelpRequestPage() {
             </div>
           </div>
 
-          {/* 駐車場 */}
+          {/* 駐車場（1箇所に統合・3択） */}
           <div>
             <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">駐車場</p>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => set('has_parking', true)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition active:scale-95 ${
-                  form.has_parking
+                onClick={() => set('parkingStatus', 'site')}
+                className={`py-2.5 rounded-xl text-xs font-bold border transition active:scale-95 ${
+                  form.parkingStatus === 'site'
                     ? 'bg-green-600 border-green-600 text-white'
                     : 'bg-white border-slate-200 text-slate-600 hover:border-green-300'
                 }`}
               >🚗 現場駐車可</button>
               <button
                 type="button"
-                onClick={() => set('has_parking', false)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition active:scale-95 ${
-                  !form.has_parking
+                onClick={() => set('parkingStatus', 'nearby')}
+                className={`py-2.5 rounded-xl text-xs font-bold border transition active:scale-95 ${
+                  form.parkingStatus === 'nearby'
                     ? 'bg-amber-500 border-amber-500 text-white'
                     : 'bg-white border-slate-200 text-slate-600 hover:border-amber-300'
                 }`}
               >🅿 近隣P・要確認</button>
+              <button
+                type="button"
+                onClick={() => set('parkingStatus', 'none')}
+                className={`py-2.5 rounded-xl text-xs font-bold border transition active:scale-95 ${
+                  form.parkingStatus === 'none'
+                    ? 'bg-red-500 border-red-500 text-white'
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-red-300'
+                }`}
+              >🚫 駐車場なし</button>
             </div>
           </div>
 
@@ -627,6 +807,18 @@ export default function HelpRequestPage() {
           </div>
 
           <div className="border-t border-slate-100" />
+
+          {/* 支払い条件の補足 */}
+          <div>
+            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">支払い条件の補足（任意）</p>
+            <input
+              type="text"
+              value={form.paymentNote}
+              onChange={e => set('paymentNote', e.target.value)}
+              placeholder="例：材料支給、交通費別、駐車場代別途、追加分は人工精算など"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
 
           {/* コメント */}
           <div>
