@@ -629,7 +629,7 @@ export default function CraftsmanProfile() {
                     </button>
                   </div>
                   <p className="text-[10px] text-blue-500 leading-relaxed">
-                    紹介すると、正式版でも使える特典枠が増えます（初回連絡先確認で +2件）。
+                    紹介すると、お客様案件の連絡先確認に使える特典枠が増えます（+2件）。助っ人募集では枠を消費しません。
                   </p>
                   <a
                     href={lineUrl}
