@@ -68,6 +68,30 @@ function getHelperImages(meta: Record<string, unknown> | null): string[] {
   return imgs.filter((v): v is string => typeof v === 'string');
 }
 
+/** meta から materialDetail を安全に取り出す */
+type MaterialDetail = { qty?: number | null; unit: string; unitPrice?: number | null; total: number };
+function getMaterialDetail(meta: Record<string, unknown> | null): MaterialDetail | null {
+  if (!meta) return null;
+  const d = meta['materialDetail'];
+  if (!d || typeof d !== 'object' || Array.isArray(d)) return null;
+  return d as MaterialDetail;
+}
+
+/** meta から paymentNote を安全に取り出す */
+function getPaymentNote(meta: Record<string, unknown> | null): string | null {
+  if (!meta) return null;
+  const n = meta['paymentNote'];
+  return typeof n === 'string' && n.trim() ? n.trim() : null;
+}
+
+/** meta から parkingStatus を安全に取り出す */
+function getParkingStatus(meta: Record<string, unknown> | null): 'site' | 'nearby' | 'none' | null {
+  if (!meta) return null;
+  const s = meta['parkingStatus'];
+  if (s === 'site' || s === 'nearby' || s === 'none') return s;
+  return null;
+}
+
 function getUserId(): string {
   const stored = localStorage.getItem('user');
   if (stored) {
@@ -220,9 +244,32 @@ function HelperJobDetailModal({ job, applicantCount, myApplication, onClose, onA
               </p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3">
-              <p className="text-[10px] text-slate-400 font-bold mb-1">日当</p>
-              <p className="text-xl font-extrabold text-slate-900">¥{job.daily_rate.toLocaleString()}</p>
-              <p className="text-xs text-slate-400">/ 日</p>
+              {(() => {
+                const ct = job.meta?.['contractType'] as string | undefined;
+                const md = getMaterialDetail(job.meta);
+                const rateLabel = ct === '材工' ? '材工金額' : ct === '手間受け' ? '手間受け金額' : '日当';
+                const rateUnit  = ct === '人工' ? '/ 人日' : '/ 日';
+                return (
+                  <>
+                    <p className="text-[10px] text-slate-400 font-bold mb-1">{rateLabel}</p>
+                    {ct === '材工' && md ? (
+                      <>
+                        <p className="text-xl font-extrabold text-slate-900">¥{md.total.toLocaleString()}</p>
+                        {md.qty != null ? (
+                          <p className="text-xs text-slate-400">{md.qty}{md.unit} × ¥{(md.unitPrice ?? 0).toLocaleString()}</p>
+                        ) : (
+                          <p className="text-xs text-slate-400">一式</p>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xl font-extrabold text-slate-900">¥{job.daily_rate.toLocaleString()}</p>
+                        <p className="text-xs text-slate-400">{rateUnit}</p>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </div>
             <div className="bg-slate-50 rounded-xl p-3">
               <p className="text-[10px] text-slate-400 font-bold mb-1">作業時間</p>
@@ -237,13 +284,22 @@ function HelperJobDetailModal({ job, applicantCount, myApplication, onClose, onA
             </div>
           </div>
 
-          {/* 駐車場 */}
+          {/* 駐車場（meta.parkingStatus → has_parking フォールバック） */}
           <div className="flex items-center gap-2 mb-3">
-            <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold ${
-              job.has_parking ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-500'
-            }`}>
-              {job.has_parking ? '🚗 駐車場あり' : '🚫 駐車場なし'}
-            </span>
+            {(() => {
+              const ps = getParkingStatus(job.meta);
+              if (ps === 'site')   return <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-green-100 text-green-700">🚗 現場駐車可</span>;
+              if (ps === 'none')   return <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-red-50 text-red-500">🚫 駐車場なし</span>;
+              if (ps === 'nearby') return <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-50 text-amber-600">🅿 近隣P・要確認</span>;
+              // 旧データ: meta.parkingStatus なし → has_parking で表示
+              return (
+                <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold ${
+                  job.has_parking ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-500'
+                }`}>
+                  {job.has_parking ? '🚗 駐車場あり' : '🚫 駐車場なし'}
+                </span>
+              );
+            })()}
           </div>
 
           {/* 必要道具 */}
@@ -266,6 +322,14 @@ function HelperJobDetailModal({ job, applicantCount, myApplication, onClose, onA
             <p className="text-sm text-slate-600 bg-slate-50 rounded-xl px-3 py-2.5 mb-4 leading-relaxed">
               📝 {job.notes}
             </p>
+          )}
+
+          {/* 支払い条件の補足 */}
+          {getPaymentNote(job.meta) && (
+            <div className="bg-amber-50 rounded-xl px-3 py-2.5 mb-4">
+              <p className="text-[10px] text-amber-700 font-bold mb-1">支払い条件の補足</p>
+              <p className="text-sm text-slate-700 leading-relaxed">💴 {getPaymentNote(job.meta)}</p>
+            </div>
           )}
 
           {/* 現場写真（モーダルでは最大3枚グリッド） */}
@@ -1065,14 +1129,36 @@ export default function HelpListPage() {
                       {req.area}
                     </p>
 
-                    <div className="rounded-2xl bg-slate-50 px-4 py-3 mb-4 flex items-center justify-between">
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-bold">日当</p>
-                        <p className="text-xl font-extrabold text-slate-900">
-                          ¥{req.daily_rate.toLocaleString()}
-                        </p>
-                      </div>
-                      <p className="text-[10px] text-slate-400">/ 日</p>
+                    {/* 金額カード（契約種別に応じて表示を切り替え） */}
+                    <div className="rounded-2xl bg-slate-50 px-4 py-3 mb-4">
+                      {(() => {
+                        const ct = req.meta?.['contractType'] as string | undefined;
+                        const md = getMaterialDetail(req.meta);
+                        if (ct === '材工' && md) {
+                          return (
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-bold mb-0.5">材工金額</p>
+                              <p className="text-xl font-extrabold text-slate-900">¥{md.total.toLocaleString()}</p>
+                              <p className="text-xs text-slate-400">
+                                {md.qty != null
+                                  ? `${md.qty}${md.unit} × ¥${(md.unitPrice ?? 0).toLocaleString()}`
+                                  : '一式'}
+                              </p>
+                            </div>
+                          );
+                        }
+                        const label = ct === '手間受け' ? '手間受け金額' : '日当';
+                        const unit  = ct === '人工' ? '/ 人日' : '/ 日';
+                        return (
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-bold">{label}</p>
+                              <p className="text-xl font-extrabold text-slate-900">¥{req.daily_rate.toLocaleString()}</p>
+                            </div>
+                            <p className="text-[10px] text-slate-400">{unit}</p>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {req.comment && (
