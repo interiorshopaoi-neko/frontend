@@ -114,12 +114,13 @@ console.log('\n🔍  PRO MATCH route regression check\n');
   check('CraftsmanDashboard (旧UI) not imported in App.tsx', !imported);
 }
 
-// 7. AuthConfirmed が /craftsman/jobs に遷移（/craftsman だけは NG）
+// 7. AuthConfirmed は /login へ誘導する（直接 craftsman ページには飛ばない設計）
+//    Supabase token ≠ localStorage token のため、メール認証後は必ず /login を経由させる
 {
   const src = read('frontend/src/pages/auth/AuthConfirmed.tsx');
-  const toJobs = /\/craftsman\/jobs/.test(src);
+  const toLogin = /navigate\(\s*['"`]\/login/.test(src);
   const toBare  = /['"`]\/craftsman['"`]/.test(src);
-  check('AuthConfirmed redirects craftsman to /craftsman/jobs', toJobs);
+  check('AuthConfirmed redirects to /login (not directly to craftsman pages)', toLogin);
   check('AuthConfirmed does NOT redirect to bare /craftsman', !toBare, toBare ? 'found /craftsman bare string' : '');
 }
 
