@@ -159,6 +159,9 @@ export default function CraftsmanProfile() {
   const [referralCode,     setReferralCode]     = useState<string | null>(null);
   const [showReferral,     setShowReferral]     = useState(false);
   const [copiedCode,       setCopiedCode]       = useState(false);
+  const [referralInput,    setReferralInput]    = useState('');
+  const [referralApplyMsg, setReferralApplyMsg] = useState<{ type: 'ok' | 'err' | 'info'; text: string } | null>(null);
+  const [referralApplying, setReferralApplying] = useState(false);
   const [profitMemo,       setProfitMemo]       = useState({ sales: '', materials: '', parking: '', other: '' });
   const [profitSaved,      setProfitSaved]      = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -249,6 +252,41 @@ export default function CraftsmanProfile() {
       setProfitSaved(true);
       setTimeout(() => setProfitSaved(false), 2000);
     } catch { /* ignore */ }
+  }
+
+  async function handleApplyReferral() {
+    const code = referralInput.toUpperCase().trim();
+    if (!/^PROM-[A-Z0-9]{4}$/.test(code)) {
+      setReferralApplyMsg({ type: 'err', text: 'PROM-XXXX の形式で入力してください' });
+      return;
+    }
+    setReferralApplying(true);
+    setReferralApplyMsg(null);
+    try {
+      const { data } = await supabase.rpc('save_referred_by', {
+        p_user_id:    userId,
+        p_referred_by: code,
+      });
+      const status = (data as { status?: string } | null)?.status ?? 'error';
+      if (status === 'ok') {
+        setReferralApplyMsg({ type: 'ok', text: '紹介コードを適用しました' });
+        localStorage.removeItem('promatch_referral_code');
+      } else if (status === 'already_set') {
+        setReferralApplyMsg({ type: 'info', text: '紹介コードはすでに適用済みです' });
+      } else if (status === 'self_referral') {
+        setReferralApplyMsg({ type: 'err', text: '自分の紹介コードは使えません' });
+        localStorage.removeItem('promatch_referral_code');
+      } else if (status === 'invalid_code') {
+        setReferralApplyMsg({ type: 'err', text: '紹介コードが見つかりませんでした' });
+        localStorage.removeItem('promatch_referral_code');
+      } else {
+        setReferralApplyMsg({ type: 'err', text: '適用に失敗しました。しばらく後でお試しください' });
+      }
+    } catch {
+      setReferralApplyMsg({ type: 'err', text: '適用に失敗しました。しばらく後でお試しください' });
+    } finally {
+      setReferralApplying(false);
+    }
   }
 
   async function handleSave() {
@@ -647,6 +685,47 @@ export default function CraftsmanProfile() {
             </div>
           );
         })()}
+
+        {/* 紹介コード手動入力 */}
+        {referralApplyMsg?.type === 'ok' ? (
+          <div className="mb-3 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
+            <p className="text-xs font-bold text-emerald-700">✅ 紹介コードを適用しました</p>
+            <p className="text-[10px] text-emerald-500 mt-0.5">お客様案件の連絡先確認に使えます</p>
+          </div>
+        ) : (
+          <div className="mb-3 rounded-xl border border-slate-200 bg-white px-4 py-3 space-y-2">
+            <p className="text-xs font-bold text-slate-600">紹介コードをお持ちですか？</p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={referralInput}
+                onChange={e => {
+                  setReferralInput(e.target.value.toUpperCase());
+                  setReferralApplyMsg(null);
+                }}
+                placeholder="PROM-XXXX"
+                maxLength={9}
+                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono tracking-wider text-slate-700 outline-none focus:border-blue-300"
+              />
+              <button
+                onClick={handleApplyReferral}
+                disabled={referralApplying || !referralInput.trim()}
+                className="text-xs font-bold px-3 py-2 rounded-xl bg-blue-600 text-white transition active:scale-95 disabled:opacity-40"
+              >
+                {referralApplying ? '…' : '適用'}
+              </button>
+            </div>
+            {referralApplyMsg && (
+              <p className={`text-[10px] font-semibold ${
+                referralApplyMsg.type === 'err'  ? 'text-red-500'   :
+                referralApplyMsg.type === 'info' ? 'text-slate-500' :
+                'text-emerald-600'
+              }`}>
+                {referralApplyMsg.text}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* 現場ツール導線 */}
         <div className="mb-4 rounded-xl bg-violet-50 border border-violet-200 px-4 py-2.5 flex items-center justify-between gap-3">
