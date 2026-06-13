@@ -796,7 +796,7 @@ export default function CraftsmanDashboardPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentBanner, loading, isDemo, userId]);
 
-  // 無料枠残数 + 紹介コード取得
+  // 無料枠残数 + 紹介コード取得 + localStorage 紹介コード自動適用
   useEffect(() => {
     if (!userId) return;
     supabase
@@ -812,6 +812,24 @@ export default function CraftsmanDashboardPage() {
         const row = Array.isArray(data) ? data[0] : data;
         if (row?.referral_code) setReferralCode(row.referral_code);
       } catch { /* 表示しない */ }
+    })();
+    // localStorage に紹介コードがあれば自動適用（プロフィール保存前の取りこぼし防止）
+    void (async () => {
+      try {
+        const storedRef = localStorage.getItem('promatch_referral_code');
+        if (!storedRef || !/^PROM-[A-Z0-9]{4}$/i.test(storedRef)) return;
+        const { data } = await supabase.rpc('save_referred_by', {
+          p_user_id:    userId,
+          p_referred_by: storedRef.toUpperCase(),
+        });
+        const status = (data as { status?: string } | null)?.status ?? 'error';
+        console.info('[referral] auto-apply:', status);
+        // 成功・設定済み・自己紹介・無効コードはいずれも localStorage から削除
+        if (['ok', 'already_set', 'self_referral', 'invalid_code'].includes(status)) {
+          localStorage.removeItem('promatch_referral_code');
+        }
+        // 'error' の場合は削除しない（次回再試行できるよう保持）
+      } catch { /* fire-and-forget */ }
     })();
   }, [userId]);
 
